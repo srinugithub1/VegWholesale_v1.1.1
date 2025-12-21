@@ -1,20 +1,17 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
+import { pgTable, text, serial, integer, real, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table (simplified for SQLite)
-export const sessions = sqliteTable(
-  "sessions",
-  {
-    sid: text("sid").primaryKey(),
-    sess: text("sess").notNull(), // JSON stored as text
-    expire: integer("expire").notNull(), // Timestamp as integer
-  }
-);
+// Session storage table (compatible with connect-pg-simple)
+export const sessions = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: text("sess").notNull(), // JSON stored as text
+  expire: timestamp("expire", { mode: "date" }).notNull(), 
+});
 
 // Vendors - suppliers/farmers who provide vegetables
-export const vendors = sqliteTable("vendors", {
+export const vendors = pgTable("vendors", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
@@ -27,7 +24,7 @@ export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Vendor = typeof vendors.$inferSelect;
 
 // Customers - buyers who purchase vegetables
-export const customers = sqliteTable("customers", {
+export const customers = pgTable("customers", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
@@ -40,7 +37,7 @@ export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
 
 // Vehicles - used for receiving stock from vendors
-export const vehicles = sqliteTable("vehicles", {
+export const vehicles = pgTable("vehicles", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   number: text("number").notNull(),
   type: text("type").notNull(),
@@ -57,7 +54,7 @@ export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 export type Vehicle = typeof vehicles.$inferSelect;
 
 // Products - vegetables and items
-export const products = sqliteTable("products", {
+export const products = pgTable("products", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   unit: text("unit").notNull(),
@@ -72,7 +69,7 @@ export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 
 // Purchase Orders - buying from vendors
-export const purchases = sqliteTable("purchases", {
+export const purchases = pgTable("purchases", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   vendorId: text("vendor_id").notNull(),
   vehicleId: text("vehicle_id"),
@@ -86,7 +83,7 @@ export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
 export type Purchase = typeof purchases.$inferSelect;
 
 // Purchase Items
-export const purchaseItems = sqliteTable("purchase_items", {
+export const purchaseItems = pgTable("purchase_items", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   purchaseId: text("purchase_id").notNull(),
   productId: text("product_id").notNull(),
@@ -100,7 +97,7 @@ export type InsertPurchaseItem = z.infer<typeof insertPurchaseItemSchema>;
 export type PurchaseItem = typeof purchaseItems.$inferSelect;
 
 // Invoices - selling to customers
-export const invoices = sqliteTable("invoices", {
+export const invoices = pgTable("invoices", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   invoiceNumber: text("invoice_number").notNull(),
   customerId: text("customer_id").notNull(),
@@ -108,10 +105,10 @@ export const invoices = sqliteTable("invoices", {
   vendorId: text("vendor_id"),
   date: text("date").notNull(),
   subtotal: real("subtotal").notNull(),
-  includeHamaliCharge: integer("include_halal_charge", { mode: "boolean" }).notNull().default(false),
+  includeHamaliCharge: boolean("include_halal_charge").notNull().default(false),
   hamaliRatePerKg: real("hamali_rate_per_kg").default(2),
   hamaliChargeAmount: real("halal_charge_amount").default(0),
-  hamaliPaidByCash: integer("hamali_paid_by_cash", { mode: "boolean" }).notNull().default(false),
+  hamaliPaidByCash: boolean("hamali_paid_by_cash").notNull().default(false),
   totalKgWeight: real("total_kg_weight").default(0),
   bags: integer("bags").default(0),
   hamaliRatePerBag: real("hamali_rate_per_bag").default(0),
@@ -124,7 +121,7 @@ export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
 
 // Invoice Items
-export const invoiceItems = sqliteTable("invoice_items", {
+export const invoiceItems = pgTable("invoice_items", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   invoiceId: text("invoice_id").notNull(),
   productId: text("product_id").notNull(),
@@ -139,7 +136,7 @@ export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type InvoiceItem = typeof invoiceItems.$inferSelect;
 
 // Stock Movements - track stock changes
-export const stockMovements = sqliteTable("stock_movements", {
+export const stockMovements = pgTable("stock_movements", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   productId: text("product_id").notNull(),
   type: text("type").notNull(), // 'in' or 'out'
@@ -154,7 +151,7 @@ export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
 export type StockMovement = typeof stockMovements.$inferSelect;
 
 // Vendor Payments - track payments to vendors
-export const vendorPayments = sqliteTable("vendor_payments", {
+export const vendorPayments = pgTable("vendor_payments", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   vendorId: text("vendor_id").notNull(),
   purchaseId: text("purchase_id"),
@@ -169,7 +166,7 @@ export type InsertVendorPayment = z.infer<typeof insertVendorPaymentSchema>;
 export type VendorPayment = typeof vendorPayments.$inferSelect;
 
 // Customer Payments - track payments from customers
-export const customerPayments = sqliteTable("customer_payments", {
+export const customerPayments = pgTable("customer_payments", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   customerId: text("customer_id").notNull(),
   invoiceId: text("invoice_id"),
@@ -184,7 +181,7 @@ export type InsertCustomerPayment = z.infer<typeof insertCustomerPaymentSchema>;
 export type CustomerPayment = typeof customerPayments.$inferSelect;
 
 // Vehicle Inventory - track products in each vehicle
-export const vehicleInventory = sqliteTable("vehicle_inventory", {
+export const vehicleInventory = pgTable("vehicle_inventory", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   vehicleId: text("vehicle_id").notNull(),
   productId: text("product_id").notNull(),
@@ -196,7 +193,7 @@ export type InsertVehicleInventory = z.infer<typeof insertVehicleInventorySchema
 export type VehicleInventory = typeof vehicleInventory.$inferSelect;
 
 // Vehicle Inventory Movements - track loading and selling from vehicles
-export const vehicleInventoryMovements = sqliteTable("vehicle_inventory_movements", {
+export const vehicleInventoryMovements = pgTable("vehicle_inventory_movements", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   vehicleId: text("vehicle_id").notNull(),
   productId: text("product_id").notNull(),
@@ -213,7 +210,7 @@ export type InsertVehicleInventoryMovement = z.infer<typeof insertVehicleInvento
 export type VehicleInventoryMovement = typeof vehicleInventoryMovements.$inferSelect;
 
 // Company Settings - for invoice branding
-export const companySettings = sqliteTable("company_settings", {
+export const companySettings = pgTable("company_settings", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name").notNull(),
   address: text("address"),
@@ -228,7 +225,7 @@ export type InsertCompanySettings = z.infer<typeof insertCompanySettingsSchema>;
 export type CompanySettings = typeof companySettings.$inferSelect;
 
 // Vendor Returns - returning defective products to vendors
-export const vendorReturns = sqliteTable("vendor_returns", {
+export const vendorReturns = pgTable("vendor_returns", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   vendorId: text("vendor_id").notNull(),
   purchaseId: text("purchase_id"),
@@ -244,7 +241,7 @@ export type InsertVendorReturn = z.infer<typeof insertVendorReturnSchema>;
 export type VendorReturn = typeof vendorReturns.$inferSelect;
 
 // Vendor Return Items - individual products being returned
-export const vendorReturnItems = sqliteTable("vendor_return_items", {
+export const vendorReturnItems = pgTable("vendor_return_items", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   returnId: text("return_id").notNull(),
   productId: text("product_id").notNull(),
@@ -259,7 +256,7 @@ export type InsertVendorReturnItem = z.infer<typeof insertVendorReturnItemSchema
 export type VendorReturnItem = typeof vendorReturnItems.$inferSelect;
 
 // Hamali Cash Payments - direct cash given to Hamali (not through invoices)
-export const hamaliCashPayments = sqliteTable("halal_cash_payments", {
+export const hamaliCashPayments = pgTable("halal_cash_payments", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   amount: real("amount").notNull(),
   date: text("date").notNull(),
@@ -276,7 +273,7 @@ export type InsertHamaliCashPayment = z.infer<typeof insertHamaliCashPaymentSche
 export type HamaliCashPayment = typeof hamaliCashPayments.$inferSelect;
 
 // Users table for Authentication
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
@@ -284,7 +281,7 @@ export const users = sqliteTable("users", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   email: text("email"),
-  createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
