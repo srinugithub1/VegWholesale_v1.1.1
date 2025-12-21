@@ -20,5 +20,5 @@ databases:
     plan: free
   - name: vegwholesale-db
     plan: free
-    databaseName: vegdb_v3_clean
-    user: veguser_v3
+    databaseName: vegdb_v4_final
+    user: veguser_v4
