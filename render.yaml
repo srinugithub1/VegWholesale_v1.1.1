@@ -18,7 +18,5 @@ services:
 databases:
   - name: vegwholesale-db
     plan: free
-  - name: vegwholesale-db
-    plan: free
     databaseName: vegwholesale_prod
     user: vegwholesale_user
