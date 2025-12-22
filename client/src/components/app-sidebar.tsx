@@ -35,7 +35,7 @@ const navigationItems = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
-    roles: ["admin", "user"],
+    roles: ["admin"],
   },
   {
     title: "Sell",
@@ -47,7 +47,7 @@ const navigationItems = [
     title: "Stock",
     url: "/stock",
     icon: Warehouse,
-    roles: ["admin", "user"],
+    roles: ["admin"],
   },
   {
     title: "Vendors",

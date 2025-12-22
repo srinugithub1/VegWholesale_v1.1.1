@@ -62,7 +62,7 @@ function ProtectedApp() {
     if (!user) return; // Should not happen in ProtectedApp but safe check
 
     // List of allowed routes for non-admins
-    const allowed = ['/sell', '/stock', '/'];
+    const allowed = ['/sell'];
 
     if (!isAdmin) {
       if (!allowed.includes(location)) {
@@ -76,7 +76,7 @@ function ProtectedApp() {
     "--sidebar-width-icon": "3rem",
   };
 
-  if (!isAdmin && location !== '/sell' && location !== '/stock' && location !== '/') {
+  if (!isAdmin && location !== '/sell') {
     return null; // Don't render restricted content while redirecting
   }
 
@@ -90,8 +90,8 @@ function ProtectedApp() {
               <SidebarTrigger data-testid="button-sidebar-toggle" />
             </div>
 
-            {/* Shop Icons (Only on Sell, Stock, and Dashboard Page) - Centered */}
-            {(location === '/sell' || location === '/stock' || location === '/') && (
+            {/* Shop Icons (Only on Sell Page) - Centered */}
+            {(location === '/sell') && (
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-8">
                 {/* Shop 45 */}
                 <div
