@@ -4,7 +4,7 @@ services:
     env: node
     plan: free
     buildCommand: npm install && npm run build
-    startCommand: npm run start
+    startCommand: npx drizzle-kit push && node dist/index.js
     envVars:
       - key: DATABASE_URL
         fromDatabase:
