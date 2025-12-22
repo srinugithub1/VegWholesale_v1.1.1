@@ -219,6 +219,7 @@ export const companySettings = pgTable("company_settings", {
   email: text("email"),
   gstNumber: text("gst_number"),
   bankDetails: text("bank_details"),
+  scaleSettings: text("scale_settings"), // JSON string of ScaleSettings
 });
 
 export const insertCompanySettingsSchema = createInsertSchema(companySettings).omit({ id: true });
