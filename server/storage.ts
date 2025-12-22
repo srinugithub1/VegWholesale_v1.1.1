@@ -95,6 +95,7 @@ export interface IStorage {
   updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<boolean>;
   updateProductStock(id: string, quantity: number, type: 'in' | 'out'): Promise<Product | undefined>;
+  updateProductAveragePrice(productId: string, date: string): Promise<void>;
 
   getPurchases(): Promise<Purchase[]>;
   getPurchase(id: string): Promise<Purchase | undefined>;
@@ -296,6 +297,35 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async updateProductAveragePrice(productId: string, date: string): Promise<void> {
+    // Calculate weighted average price for the product on the given date
+    // Query: Join invoice_items with invoices, filter by productId and date
+    const result = await db.select({
+      totalQuantity: sql<number>`sum(${invoiceItems.quantity})`,
+      totalAmount: sql<number>`sum(${invoiceItems.total})`,
+    })
+      .from(invoiceItems)
+      .innerJoin(invoices, eq(invoiceItems.invoiceId, invoices.id))
+      .where(and(
+        eq(invoiceItems.productId, productId),
+        eq(invoices.date, date)
+      ));
+
+    const { totalQuantity, totalAmount } = result[0];
+
+    // If we have valid sales data for today
+    if (totalQuantity && totalQuantity > 0 && totalAmount) {
+      const averagePrice = Number((totalAmount / totalQuantity).toFixed(2));
+
+      // Update the product's sale price
+      await db.update(products)
+        .set({ salePrice: averagePrice })
+        .where(eq(products.id, productId));
+
+      console.log(`Updated product ${productId} sale price to ${averagePrice} based on daily average.`);
+    }
+  }
+
   async getPurchases(): Promise<Purchase[]> {
     return await db.select().from(purchases);
   }
@@ -404,6 +434,12 @@ export class DatabaseStorage implements IStorage {
           console.warn(`Failed to deduct ${item.quantity} of product ${item.productId} from vehicle ${insertInvoice.vehicleId}`);
         }
       }
+    }
+
+    // After adding all items, verify/update the average sale price for the products in this invoice
+    // This ensures the product catalog reflects the daily weighted average
+    for (const item of items) {
+      await this.updateProductAveragePrice(item.productId, insertInvoice.date);
     }
 
     // Auto-create hamali cash payment if paid by cash

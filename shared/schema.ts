@@ -4,11 +4,12 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Session storage table (compatible with connect-pg-simple)
-export const sessions = pgTable("session", {
-  sid: text("sid").primaryKey(),
-  sess: text("sess").notNull(), // JSON stored as text
-  expire: timestamp("expire", { mode: "date" }).notNull(), 
-});
+// Session storage table (compatible with connect-pg-simple)
+// export const sessions = pgTable("session", {
+//   sid: text("sid").primaryKey(),
+//   sess: text("sess").notNull(), // JSON stored as text
+//   expire: timestamp("expire", { mode: "date" }).notNull(), 
+// });
 
 // Vendors - suppliers/farmers who provide vegetables
 export const vendors = pgTable("vendors", {
