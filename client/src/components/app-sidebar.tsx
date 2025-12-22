@@ -89,7 +89,7 @@ const transactionItems = [
     roles: ["admin"],
   },
   {
-    title: "Weighing",
+    title: "Weighing Settings",
     url: "/weighing",
     icon: Scale,
     roles: ["admin"], // Weighing page hidden for user, assuming integration is in Sell
