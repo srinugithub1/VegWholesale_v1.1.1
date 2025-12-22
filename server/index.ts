@@ -4,6 +4,8 @@ import { registerRoutes } from "./routes";
 import { setupAuth } from "./auth";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 const app = express();
 const httpServer = createServer(app);
@@ -64,6 +66,18 @@ app.use((req, res, next) => {
 
 (async () => {
   await registerRoutes(httpServer, app);
+
+  // Manual Migration for Scale Settings (Hotfix)
+  try {
+    await db.execute(sql`
+      ALTER TABLE company_settings 
+      ADD COLUMN IF NOT EXISTS scale_settings TEXT;
+    `);
+    log("Migration check complete: scale_settings column ensured.");
+  } catch (error) {
+    console.error("Migration hotfix failed:", error);
+    // Don't crash, might already exist or other issue
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
