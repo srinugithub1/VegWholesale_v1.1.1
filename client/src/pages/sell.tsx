@@ -360,7 +360,7 @@ function VehicleSalePane({
 
       return invoice;
     },
-    onSuccess: () => {
+    onSuccess: (invoice) => {
       queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
       queryClient.invalidateQueries({ queryKey: ["/api/all-vehicle-inventories"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
