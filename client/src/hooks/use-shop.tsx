@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
-type Shop = 45 | 50;
+type Shop = 42 | 50;
 
 interface ShopContextType {
     shop: Shop;
@@ -10,7 +10,7 @@ interface ShopContextType {
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export function ShopProvider({ children }: { children: ReactNode }) {
-    const [shop, setShop] = useState<Shop>(45);
+    const [shop, setShop] = useState<Shop>(42);
 
     return (
         <ShopContext.Provider value={{ shop, setShop }}>

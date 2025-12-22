@@ -93,16 +93,16 @@ function ProtectedApp() {
             {/* Shop Icons (Only on Sell Page) - Centered */}
             {(location === '/sell') && (
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-8">
-                {/* Shop 45 */}
+                {/* Shop 42 */}
                 <div
-                  className={`flex items-center gap-2 cursor-pointer group transition-all duration-300 ${shop === 45 ? 'scale-110 opacity-100' : 'opacity-50 hover:opacity-80'}`}
-                  onClick={() => setShop(45)}
-                  title="Shop 45"
+                  className={`flex items-center gap-2 cursor-pointer group transition-all duration-300 ${shop === 42 ? 'scale-110 opacity-100' : 'opacity-50 hover:opacity-80'}`}
+                  onClick={() => setShop(42)}
+                  title="Shop 42"
                 >
-                  <div className={`p-1.5 rounded-full transition-colors ${shop === 45 ? 'bg-orange-100' : 'bg-orange-100/30'}`}>
-                    <Store className={`h-6 w-6 transition-colors ${shop === 45 ? 'text-orange-600' : 'text-orange-600/70'}`} />
+                  <div className={`p-1.5 rounded-full transition-colors ${shop === 42 ? 'bg-orange-100' : 'bg-orange-100/30'}`}>
+                    <Store className={`h-6 w-6 transition-colors ${shop === 42 ? 'text-orange-600' : 'text-orange-600/70'}`} />
                   </div>
-                  <span className={`text-xl font-bold transition-colors ${shop === 45 ? 'text-orange-700' : 'text-orange-700/70'}`}>45</span>
+                  <span className={`text-xl font-bold transition-colors ${shop === 42 ? 'text-orange-700' : 'text-orange-700/70'}`}>42</span>
                 </div>
 
                 {/* Shop 50 */}

@@ -145,7 +145,7 @@ export function AppSidebar() {
           </div>
           <div>
             <h1 className="text-base font-semibold text-sidebar-foreground" data-testid="text-app-title">
-              VegWholesale
+              PSK Vegetables
             </h1>
             <p className="text-xs text-muted-foreground">Business Manager</p>
           </div>
