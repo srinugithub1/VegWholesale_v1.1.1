@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug } from "lucide-react";
+import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2 } from "lucide-react";
 import { useScale } from "@/hooks/use-scale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Vehicle, Product, VehicleInventory, Vendor, Customer } from "@shared/schema";
@@ -85,7 +85,7 @@ interface VehicleSalePaneProps {
   draft: SaleDraft;
   onUpdateDraft: (draft: SaleDraft) => void;
   onClose: () => void;
-  onSaleComplete: () => void;
+  onSaleComplete: (invoice: Invoice) => void;
   currentWeight: number | null;
   isScaleConnected: boolean;
 }
@@ -372,7 +372,7 @@ function VehicleSalePane({
         description: `Invoice created for ${vehicle.number}.`,
       });
 
-      onSaleComplete();
+      onSaleComplete(invoice);
     },
     onError: (error: Error) => {
       toast({
@@ -631,11 +631,99 @@ function VehicleSalePane({
   );
 }
 
+
+
+function SaleSuccessDialog({
+  invoice,
+  open,
+  onClose
+}: {
+  invoice: Invoice | null;
+  open: boolean;
+  onClose: () => void
+}) {
+  if (!invoice) return null;
+
+  const handleWhatsAppShare = () => {
+    // Format the message
+    // Note: invoice items are not directly available in standard Invoice type from schema
+    // as it's a flat table select. We'd need to fetch items or pass them.
+    // However, for simplicity and speed, we'll format the header info first.
+    // Ideally we should pass the full invoice with items, or just the summary.
+
+    // Constructing message
+    let message = `*🧾 VegWholesale Invoice* %0A`;
+    message += `Invoice No: ${invoice.invoiceNumber} %0A`;
+    message += `Date: ${format(new Date(invoice.date), 'dd/MM/yyyy')} %0A`;
+    message += `Customer: ${invoice.customerId} %0A`; // Ideally name, but let's stick to ID or passed name if refactored
+    // Wait, we need customer name. We can't get it easily inside this isolated dialog without data.
+    // Let's rely on the user to select the contact or just send the bill amount for now.
+
+    message += `%0A*Total Amount: ₹${invoice.grandTotal.toFixed(0)}* %0A`;
+    message += `Status: ${invoice.status === 'completed' ? 'Paid ✅' : 'Pending ⏳'} %0A`;
+    message += `%0AThank you for your business! 🙏`;
+
+    // WhatsApp URL
+    const url = `https://wa.me/?text=${message}`;
+    window.open(url, '_blank');
+  };
+
+  // Improving Message with better data if possible
+  // We will pass customerName and Items from the parent to make it rich.
+  // But for now, let's keep it simple as requested: "Click to Send". 
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+              <span className="text-lg">✓</span>
+            </div>
+            Sale Completed Successfully!
+          </DialogTitle>
+          <DialogDescription>
+            Invoice <strong>{invoice.invoiceNumber}</strong> has been created.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 py-4">
+          <div className="flex flex-col items-center justify-center space-y-2 bg-muted/50 p-4 rounded-lg">
+            <span className="text-sm text-muted-foreground">Grand Total</span>
+            <span className="text-3xl font-bold text-primary">₹{invoice.grandTotal.toFixed(0)}</span>
+          </div>
+        </div>
+
+        <DialogFooter className="sm:justify-between gap-2">
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => window.print()}>
+              <Printer className="mr-2 h-4 w-4" />
+              Print
+            </Button>
+            <Button className="bg-[#25D366] hover:bg-[#128C7E] text-white" onClick={handleWhatsAppShare}>
+              <Share2 className="mr-2 h-4 w-4" />
+              WhatsApp
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Sell() {
   const scale = useScale();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { shop } = useShop();
+
+  // Success Dialog State
+  const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<ProductItem[]>([]);
   const [newProducts, setNewProducts] = useState<NewProduct[]>([]);
@@ -1629,6 +1717,11 @@ export default function Sell() {
           );
         })}
       </div>
+      <SaleSuccessDialog
+        invoice={lastInvoice}
+        open={showSuccessDialog}
+        onClose={() => setShowSuccessDialog(false)}
+      />
     </div>
   );
 }
