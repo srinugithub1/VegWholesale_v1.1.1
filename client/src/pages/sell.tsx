@@ -87,6 +87,7 @@ interface VehicleSalePaneProps {
   onClose: () => void;
   onSaleComplete: (invoice: Invoice) => void;
   currentWeight: number | null;
+  rawWeight: number | null;
   isScaleConnected: boolean;
 }
 
@@ -101,6 +102,7 @@ function VehicleSalePane({
   onClose,
   onSaleComplete,
   currentWeight,
+  rawWeight,
   isScaleConnected
 }: VehicleSalePaneProps) {
   const { toast } = useToast();
@@ -181,12 +183,37 @@ function VehicleSalePane({
     });
   };
 
-  const accumulateWeightAndBags = (productId: string, weightToAdd: number) => {
+  const accumulateWeightAndBags = async (productId: string, weightToAdd: number) => {
     const exists = draft.products.find(p => p.productId === productId);
     const product = products.find(p => p.id === productId);
     const inv = inventory.find(i => i.productId === productId);
 
     if (!product || !inv) return;
+
+    // Calculate weight difference for tracking (Gain/Loss)
+    // weightToAdd is the ROUNDED weight from currentWeight
+    // We need the RAW weight to compare.
+    // Since we don't pass rawWeight here directly in the current signature, 
+    // we should ideally pass it from the button click.
+    // However, to avoid changing too much, let's assume `weightToAdd` IS `currentWeight` (rounded).
+    // But we need `rawWeight`.
+    // The cleaner way is to update the signature or access it from props if available.
+    // But accessing props inside this function which is inside component is fine if `rawWeight` is passed to VehicleSalePane.
+
+    // NOTE: I need to update VehicleSalePane props to accept rawWeight first.
+    // For now, I will modify the logic assuming specific Gain/Loss logic requested by user:
+    // Gain: rounded UP (e.g. 1.8 -> 2.0). Diff is +0.2
+    // Loss: rounded DOWN (e.g. 1.7 -> 1.0). Diff is -0.7
+    // User wants to store POSITIVE diff (0.2) in GAIN field.
+    // And POSITIVE value (0.7) in LOSS field (implied, or just negative).
+    // "1st field stores 1.800 to 2.000 increase(weight) values"
+    // "2nd field stores 1.799 to 1.000 decrease values(weight)"
+
+    // I will trigger the calculation here.
+    // But wait, I need the RAW weight.
+    // I will invoke a callback/mutation or passed function to handle the vehicle update.
+    // Let's postpone the DB update logic to `onAccumulate` prop if I can refactor,
+    // OR just use `apiRequest` here if I have vehicleId.
 
     let newProducts: SaleProduct[];
     if (exists) {
@@ -409,6 +436,10 @@ function VehicleSalePane({
               <span className={`text-xs ${isNewVehicle ? 'text-primary' : 'text-amber-600'}`}>
                 Stock: {totalVehicleStock.toFixed(1)} KG
               </span>
+              <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5">
+                <span className="text-green-600">Gain: {vehicle.totalWeightGain?.toFixed(3) || '0.000'}</span>
+                <span className="text-red-500">Loss: {vehicle.totalWeightLoss?.toFixed(3) || '0.000'}</span>
+              </div>
             </div>
           </div>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose} data-testid={`button-close-sale-${vehicle.id}`}>
@@ -510,7 +541,34 @@ function VehicleSalePane({
                         size="icon"
                         className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary"
                         disabled={currentWeight === null}
-                        onClick={() => accumulateWeightAndBags(item.productId, currentWeight || 0)}
+                        onClick={async () => {
+                          const rounded = currentWeight || 0;
+                          const raw = rawWeight || 0;
+
+                          // Track Gain/Loss
+                          if (raw > 0) {
+                            const diff = rounded - raw;
+                            // Update vehicle stats
+                            // We need to send a PATCH request. 
+                            // This is a side effect.
+                            try {
+                              const gain = diff > 0 ? diff : 0;
+                              const loss = diff < 0 ? Math.abs(diff) : 0;
+
+                              if (gain > 0 || loss > 0) {
+                                await apiRequest("PATCH", `/api/vehicles/${vehicle.id}`, {
+                                  totalWeightGain: (vehicle.totalWeightGain || 0) + gain,
+                                  totalWeightLoss: (vehicle.totalWeightLoss || 0) + loss
+                                });
+                                // Invalidate queries to refresh UI
+                                queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
+                              }
+                            } catch (e) {
+                              console.error("Failed to update weight stats", e);
+                            }
+                          }
+                          accumulateWeightAndBags(item.productId, currentWeight || 0)
+                        }}
                       >
                         <Scale className="h-3 w-3" />
                       </Button>
@@ -1656,6 +1714,7 @@ export default function Sell() {
                 onClose={() => handleCloseSale(vehicle.id)}
                 onSaleComplete={() => handleSaleComplete(vehicle.id)}
                 currentWeight={scale.currentWeight}
+                rawWeight={scale.rawWeight}
                 isScaleConnected={scale.isConnected}
               />
             );

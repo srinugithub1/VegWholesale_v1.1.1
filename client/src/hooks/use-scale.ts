@@ -73,6 +73,8 @@ export function useScale() {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
+  const [rawWeight, setRawWeight] = useState<number | null>(null);
+  const rawWeightRef = useRef<number | null>(null);
   const [rawData, setRawData] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettingsState] = useState<ScaleSettings>(loadLocalSettings);
@@ -150,7 +152,7 @@ export function useScale() {
 
   // Parse weight from scale output
   // Common formats: "ST,NT, +000.125kg", "  12.50 kg", "12.5", etc.
-  const parseWeight = useCallback((data: string): number | null => {
+  const parseWeight = useCallback((data: string): { raw: number, rounded: number } | null => {
     // Remove control characters and trim
     const cleaned = data.replace(/[\x00-\x1F\x7F]/g, " ").trim();
 
@@ -178,11 +180,12 @@ export function useScale() {
       // Apply custom rounding logic: Round to nearest whole number with 0.8 threshold
       // 1.799 -> 1.0 (Math.floor(1.999))
       // 1.800 -> 2.0 (Math.floor(2.0))
+      let rounded = value;
       if (!isNaN(value)) {
-        value = Math.floor(value + 0.2);
+        rounded = Math.floor(value + 0.2);
       }
 
-      return isNaN(value) ? null : value;
+      return isNaN(value) ? null : { raw: value, rounded };
     }
 
     return null;
@@ -218,9 +221,11 @@ export function useScale() {
           for (const line of lines) {
             if (line.trim()) {
               setRawData(line);
-              const weight = parseWeight(line);
-              if (weight !== null) {
-                setCurrentWeight(weight);
+              const result = parseWeight(line);
+              if (result !== null) {
+                setCurrentWeight(result.rounded);
+                setRawWeight(result.raw); // Update state for UI to react
+                rawWeightRef.current = result.raw; // Update ref for synchronous access if needed
               }
             }
           }
@@ -429,6 +434,7 @@ export function useScale() {
     isConnected,
     isConnecting,
     currentWeight,
+    rawWeight: rawWeightRef.current, // Expose raw numeric weight
     rawData,
     error,
     settings,

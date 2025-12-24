@@ -48,6 +48,8 @@ export const vehicles = pgTable("vehicles", {
   entryDate: text("entry_date"),
   vendorId: text("vendor_id"),
   shop: integer("shop").notNull().default(45),
+  totalWeightGain: real("total_weight_gain").default(0),
+  totalWeightLoss: real("total_weight_loss").default(0),
 });
 
 export const insertVehicleSchema = createInsertSchema(vehicles).omit({ id: true });
