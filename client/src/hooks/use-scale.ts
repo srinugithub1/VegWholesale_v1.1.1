@@ -175,6 +175,13 @@ export function useScale() {
         value = value * settings.multiplier;
       }
 
+      // Apply custom rounding logic: Round to nearest whole number with 0.8 threshold
+      // 1.799 -> 1.0 (Math.floor(1.999))
+      // 1.800 -> 2.0 (Math.floor(2.0))
+      if (!isNaN(value)) {
+        value = Math.floor(value + 0.2);
+      }
+
       return isNaN(value) ? null : value;
     }
 
