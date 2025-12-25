@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,7 +28,8 @@ import { z } from "zod";
 import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2 } from "lucide-react";
 import { useScale } from "@/hooks/use-scale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Vehicle, Product, VehicleInventory, Vendor, Customer } from "@shared/schema";
+import type { Vehicle, Product, VehicleInventory, Vendor, Customer, Invoice } from "@shared/schema";
+import { format } from "date-fns";
 
 const productItemSchema = z.object({
   productId: z.string(),
