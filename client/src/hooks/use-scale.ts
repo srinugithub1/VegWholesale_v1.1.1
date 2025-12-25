@@ -266,9 +266,15 @@ export function useScale() {
         // Simulate fluctuating weight
         const baseWeight = Math.random() * 50 + 10;
         const fluctuation = Math.random() * 0.5 - 0.25;
-        const simulatedWeight = parseFloat((baseWeight + fluctuation).toFixed(2));
-        setCurrentWeight(simulatedWeight);
-        setRawData(`DEMO: ${simulatedWeight} KG`);
+        const raw = parseFloat((baseWeight + fluctuation).toFixed(3));
+
+        // Apply same rounding logic as real scale: threshold 0.8
+        const rounded = Math.floor(raw + 0.2);
+
+        setCurrentWeight(rounded);
+        setRawWeight(raw);
+        rawWeightRef.current = raw;
+        setRawData(`DEMO: ${raw.toFixed(3)} KG`);
       }, 500);
     } else {
       if (demoIntervalRef.current) {
