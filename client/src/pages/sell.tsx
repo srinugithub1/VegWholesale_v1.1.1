@@ -692,44 +692,58 @@ function VehicleSalePane({
 
 
 
+interface SaleSuccessDialogProps {
+  invoice: Invoice | null;
+  saleDetails: {
+    customerName: string;
+    items: { name: string, weight: number, bags: number, price: number, total: number }[];
+  } | null;
+  open: boolean;
+  onClose: () => void;
+}
+
 function SaleSuccessDialog({
   invoice,
+  saleDetails,
   open,
   onClose
-}: {
-  invoice: Invoice | null;
-  open: boolean;
-  onClose: () => void
-}) {
+}: SaleSuccessDialogProps) {
   if (!invoice) return null;
 
   const handleWhatsAppShare = () => {
-    // Format the message
-    // Note: invoice items are not directly available in standard Invoice type from schema
-    // as it's a flat table select. We'd need to fetch items or pass them.
-    // However, for simplicity and speed, we'll format the header info first.
-    // Ideally we should pass the full invoice with items, or just the summary.
-
-    // Constructing message
+    // Constructing rich message
     let message = `*🧾 VegWholesale Invoice* %0A`;
-    message += `Invoice No: ${invoice.invoiceNumber} %0A`;
-    message += `Date: ${format(new Date(invoice.date), 'dd/MM/yyyy')} %0A`;
-    message += `Customer: ${invoice.customerId} %0A`; // Ideally name, but let's stick to ID or passed name if refactored
-    // Wait, we need customer name. We can't get it easily inside this isolated dialog without data.
-    // Let's rely on the user to select the contact or just send the bill amount for now.
+    message += `──────────────────────%0A`;
+    message += `📅 *Date:* ${format(new Date(invoice.date), 'dd/MM/yyyy')} %0A`;
+    message += `🔢 *Invoice No:* ${invoice.invoiceNumber} %0A`;
+    if (saleDetails?.customerName) {
+      message += `👤 *Customer:* ${saleDetails.customerName} %0A`;
+    }
+    message += `──────────────────────%0A`;
+    message += `*Items:* %0A`;
 
-    message += `%0A*Total Amount: ₹${invoice.grandTotal.toFixed(0)}* %0A`;
-    message += `Status: ${invoice.status === 'completed' ? 'Paid ✅' : 'Pending ⏳'} %0A`;
-    message += `%0AThank you for your business! 🙏`;
+    if (saleDetails?.items) {
+      saleDetails.items.forEach(item => {
+        message += `▪️ ${item.name}: ${item.weight}kg x ₹${item.price} = ₹${item.total.toFixed(0)} %0A`;
+      });
+    }
+
+    message += `──────────────────────%0A`;
+    message += `💰 *Grand Total: ₹${invoice.grandTotal.toFixed(0)}* %0A`;
+
+    if (invoice.status === 'completed') {
+      message += `✅ *PAID* %0A`;
+    } else {
+      message += `⏳ *PENDING* %0A`;
+    }
+
+    message += `──────────────────────%0A`;
+    message += `🙏 Thank you for your business!`;
 
     // WhatsApp URL
     const url = `https://wa.me/?text=${message}`;
     window.open(url, '_blank');
   };
-
-  // Improving Message with better data if possible
-  // We will pass customerName and Items from the parent to make it rich.
-  // But for now, let's keep it simple as requested: "Click to Send". 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -742,7 +756,7 @@ function SaleSuccessDialog({
             Sale Completed Successfully!
           </DialogTitle>
           <DialogDescription>
-            Invoice <strong>{invoice.invoiceNumber}</strong> has been created.
+            Invoice <strong>{invoice.invoiceNumber}</strong> for <strong>{saleDetails?.customerName || 'Customer'}</strong>
           </DialogDescription>
         </DialogHeader>
 
@@ -751,6 +765,18 @@ function SaleSuccessDialog({
             <span className="text-sm text-muted-foreground">Grand Total</span>
             <span className="text-3xl font-bold text-primary">₹{invoice.grandTotal.toFixed(0)}</span>
           </div>
+
+          {saleDetails?.items && (
+            <div className="text-xs space-y-1 border-t pt-2">
+              <p className="font-semibold mb-1">Items Summary:</p>
+              {saleDetails.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between">
+                  <span>{item.name} ({item.weight}kg)</span>
+                  <span>₹{item.total.toFixed(0)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <DialogFooter className="sm:justify-between gap-2">
@@ -781,6 +807,10 @@ export default function Sell() {
 
   // Success Dialog State
   const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
+  const [lastSaleDetails, setLastSaleDetails] = useState<{
+    customerName: string;
+    items: { name: string, weight: number, bags: number, price: number, total: number }[];
+  } | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -1131,7 +1161,24 @@ export default function Sell() {
     });
   }, []);
 
-  const handleSaleComplete = useCallback((vehicleId: string) => {
+  const handleSaleComplete = useCallback((vehicleId: string, invoice: Invoice) => {
+    // Capture details before resetting
+    const draft = saleDrafts[vehicleId];
+    if (draft) {
+      setLastSaleDetails({
+        customerName: draft.customerName || customers.find(c => c.id === draft.selectedCustomerId)?.name || "Customer",
+        items: draft.products.filter(p => p.weight > 0).map(p => ({
+          name: p.productName,
+          weight: p.weight,
+          bags: p.bags || 0,
+          price: p.price,
+          total: p.weight * p.price
+        }))
+      });
+    }
+    setLastInvoice(invoice);
+    setShowSuccessDialog(true);
+
     // Reset the draft instead of closing - pane stays open for more sales
     setSaleDrafts(prev => ({
       ...prev,
@@ -1144,7 +1191,7 @@ export default function Sell() {
         hamaliRatePerBag: 0,
       },
     }));
-  }, []);
+  }, [saleDrafts, customers]);
 
   if (vehiclesLoading) {
     return (
@@ -1713,7 +1760,7 @@ export default function Sell() {
                 draft={saleDrafts[vehicle.id] || { products: [], customerName: "", selectedCustomerId: "", hamaliCharge: 0 }}
                 onUpdateDraft={(draft) => handleUpdateDraft(vehicle.id, draft)}
                 onClose={() => handleCloseSale(vehicle.id)}
-                onSaleComplete={() => handleSaleComplete(vehicle.id)}
+                onSaleComplete={(invoice) => handleSaleComplete(vehicle.id, invoice)}
                 currentWeight={scale.currentWeight}
                 rawWeight={scale.rawWeight}
                 isScaleConnected={scale.isConnected}
@@ -1779,6 +1826,7 @@ export default function Sell() {
       </div>
       <SaleSuccessDialog
         invoice={lastInvoice}
+        saleDetails={lastSaleDetails}
         open={showSuccessDialog}
         onClose={() => setShowSuccessDialog(false)}
       />
