@@ -73,7 +73,15 @@ app.use((req, res, next) => {
       ALTER TABLE company_settings 
       ADD COLUMN IF NOT EXISTS scale_settings TEXT;
     `);
-    log("Migration check complete: scale_settings column ensured.");
+
+    // Migration for Weight Tracking
+    await db.execute(sql`
+      ALTER TABLE vehicles 
+      ADD COLUMN IF NOT EXISTS total_weight_gain REAL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS total_weight_loss REAL DEFAULT 0;
+    `);
+
+    log("Migration check complete: schema updated.");
   } catch (error) {
     console.error("Migration hotfix failed:", error);
     // Don't crash, might already exist or other issue
