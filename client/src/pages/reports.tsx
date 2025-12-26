@@ -411,7 +411,7 @@ export default function Reports() {
         summary: {
           qtyReceived: vehicleTotalWeight,
           qtySold: totalSoldWeight,
-          qtyRemaining: 0, // Calculate if we had stock info, else 0
+          qtyRemaining: vehicleTotalWeight - totalSoldWeight - (vehicleTotalLoss || 0),
           totalCredit,
           totalCash,
           grandTotal
