@@ -32,7 +32,9 @@ import {
   Legend,
 } from "recharts";
 
-type PeriodType = "today" | "week" | "month" | "custom";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 
 type DailySummary = {
   date: string;
@@ -61,31 +63,16 @@ function downloadCSV(data: string[][], filename: string) {
 }
 
 export default function Reports() {
-  const today = new Date().toISOString().split("T")[0];
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-
-  const [periodType, setPeriodType] = useState<PeriodType>("today");
-  const [customStartDate, setCustomStartDate] = useState(monthAgo);
-  const [customEndDate, setCustomEndDate] = useState(today);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: new Date(),
+    to: new Date(),
+  });
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("all");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
 
-  const { startDate, endDate } = useMemo(() => {
-    switch (periodType) {
-      case "today":
-        return { startDate: today, endDate: today };
-      case "week":
-        return { startDate: weekAgo, endDate: today };
-      case "month":
-        return { startDate: monthAgo, endDate: today };
-      case "custom":
-        return { startDate: customStartDate, endDate: customEndDate };
-      default:
-        return { startDate: today, endDate: today };
-    }
-  }, [periodType, customStartDate, customEndDate, today, weekAgo, monthAgo]);
+  const startDate = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : "";
+  const endDate = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : "";
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -425,50 +412,22 @@ export default function Reports() {
 
   const FilterSection = () => (
     <Card className="mb-4">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-base flex items-center gap-2">
           <Filter className="h-4 w-4" />
           Filters
         </CardTitle>
+        <Button variant="default" size="sm" onClick={downloadDetailedPDF} data-testid="button-download-pdf">
+          <FileText className="h-4 w-4 mr-1" />
+          PDF Report
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="flex items-end gap-4 flex-wrap">
           <div className="space-y-2">
-            <Label>Quick Select</Label>
-            <Select value={periodType} onValueChange={(v) => setPeriodType(v as PeriodType)}>
-              <SelectTrigger className="w-40" data-testid="select-period-type">
-                <SelectValue placeholder="Select period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">Last 7 Days</SelectItem>
-                <SelectItem value="month">Last 30 Days</SelectItem>
-                <SelectItem value="custom">Custom Range</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Date Range</Label>
+            <DatePickerWithRange date={dateRange} setDate={setDateRange} className="w-[300px]" />
           </div>
-          {periodType === "custom" && (
-            <>
-              <div className="space-y-2">
-                <Label>From Date</Label>
-                <Input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  data-testid="input-filter-start-date"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>To Date</Label>
-                <Input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  data-testid="input-filter-end-date"
-                />
-              </div>
-            </>
-          )}
           <div className="space-y-2">
             <Label>Vehicle</Label>
             <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
@@ -556,18 +515,7 @@ export default function Reports() {
           Sales Reports
         </h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={downloadSalesReport} data-testid="button-download-sales">
-            <Download className="h-4 w-4 mr-1" />
-            Sales CSV
-          </Button>
-          <Button variant="outline" size="sm" onClick={downloadDailySummaryReport} data-testid="button-download-daily">
-            <Download className="h-4 w-4 mr-1" />
-            Daily CSV
-          </Button>
-          <Button variant="default" size="sm" onClick={downloadDetailedPDF} data-testid="button-download-pdf">
-            <FileText className="h-4 w-4 mr-1" />
-            PDF Report
-          </Button>
+          {/* CSV Download buttons removed */}
         </div>
       </div>
 
