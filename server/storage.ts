@@ -109,6 +109,7 @@ export interface IStorage {
   updateInvoice(id: string, updates: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   updateInvoiceItem(id: string, updates: { quantity?: number; unitPrice?: number; total?: number }): Promise<InvoiceItem | undefined>;
   getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]>;
+  getAllInvoiceItems(): Promise<InvoiceItem[]>;
 
   getStockMovements(startDate?: string, endDate?: string): Promise<StockMovement[]>;
   createStockMovement(movement: InsertStockMovement): Promise<StockMovement>;
@@ -461,6 +462,10 @@ export class DatabaseStorage implements IStorage {
 
   async getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]> {
     return await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+  }
+
+  async getAllInvoiceItems(): Promise<InvoiceItem[]> {
+    return await db.select().from(invoiceItems);
   }
 
   async getInvoicesByCustomer(customerId: string): Promise<(Invoice & { shop?: number | null })[]> {

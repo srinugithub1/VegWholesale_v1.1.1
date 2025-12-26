@@ -351,6 +351,15 @@ export async function registerRoutes(
     res.json(items);
   });
 
+  app.get("/api/invoice-items", async (req, res) => {
+    try {
+      const items = await storage.getAllInvoiceItems();
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get invoice items" });
+    }
+  });
+
   const invoiceSchema = z.object({
     customerId: z.string(),
     vehicleId: z.string().optional(),
