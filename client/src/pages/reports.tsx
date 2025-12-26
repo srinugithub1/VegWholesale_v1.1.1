@@ -382,8 +382,16 @@ export default function Reports() {
       const totalSoldBags = summary.totalBags;
 
       // Update Top Block totals
-      vehicleTotalWeight = totalSoldWeight; // Assuming Load ~ Sold if unknown
-      vehicleTotalBags = totalSoldBags;
+      // Priority: Vehicle Starting Totals (from load) -> fallback to Sold Totals
+      const currentVehicle = vehicles.find(v => v.id === selectedVehicleId);
+
+      vehicleTotalWeight = currentVehicle?.startingWeight && currentVehicle.startingWeight > 0
+        ? currentVehicle.startingWeight
+        : totalSoldWeight;
+
+      vehicleTotalBags = currentVehicle?.startingBags && currentVehicle.startingBags > 0
+        ? currentVehicle.startingBags
+        : totalSoldBags;
 
       const totalSaleAmount = summary.totalSales; // Grand total logic
 

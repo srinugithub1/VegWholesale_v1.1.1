@@ -911,6 +911,30 @@ export default function Sell() {
         }
       }
 
+      let totalLoadedWeight = 0;
+      let totalLoadedBags = 0;
+
+      // Calculate totals from selected existing products
+      for (const p of selectedProducts) {
+        const product = products.find(prod => prod.id === p.productId);
+        if (product && p.quantity > 0) {
+          if (product.unit.toLowerCase() === 'kg') {
+            totalLoadedWeight += p.quantity;
+          }
+          totalLoadedBags += (p.bags || 0);
+        }
+      }
+
+      // Calculate totals from new products
+      for (const np of newProducts) {
+        if (np.name.trim() && np.quantity > 0) {
+          if (np.unit.toLowerCase() === 'kg') {
+            totalLoadedWeight += np.quantity;
+          }
+          totalLoadedBags += (np.bags || 0);
+        }
+      }
+
       const vehicleResponse = await apiRequest("POST", "/api/vehicles", {
         number: data.vehicleNumber,
         type: data.vehicleType,
@@ -920,6 +944,8 @@ export default function Sell() {
         entryDate: new Date().toISOString().split("T")[0],
         vendorId: actualVendorId,
         shop,
+        startingWeight: totalLoadedWeight,
+        startingBags: totalLoadedBags,
       });
 
       const vehicle = await vehicleResponse.json();
