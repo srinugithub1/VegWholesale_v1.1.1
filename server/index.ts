@@ -78,7 +78,9 @@ app.use((req, res, next) => {
     await db.execute(sql`
       ALTER TABLE vehicles 
       ADD COLUMN IF NOT EXISTS total_weight_gain REAL DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS total_weight_loss REAL DEFAULT 0;
+      ADD COLUMN IF NOT EXISTS total_weight_loss REAL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS starting_weight REAL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS starting_bags INTEGER DEFAULT 0;
     `);
 
     log("Migration check complete: schema updated.");
