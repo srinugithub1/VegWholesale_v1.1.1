@@ -128,6 +128,22 @@ export const generateDetailedReport = (data: ReportData) => {
         item.total.toFixed(2)
     ]);
 
+    // Financial Totals for Footer
+    const footRows = [
+        [
+            { content: 'Total Credit', colSpan: 9, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+            { content: data.summary.totalCredit.toFixed(2), styles: { halign: 'right' as const, fontStyle: 'bold' as const } }
+        ],
+        [
+            { content: 'Total Cash', colSpan: 9, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+            { content: data.summary.totalCash.toFixed(2), styles: { halign: 'right' as const, fontStyle: 'bold' as const } }
+        ],
+        [
+            { content: 'Grand Total', colSpan: 9, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 253, 244] as [number, number, number] } }, // Light Green Highlight
+            { content: `₹ ${data.summary.grandTotal.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 253, 244] as [number, number, number] } }
+        ]
+    ];
+
     // @ts-ignore
     const mainTableY = (doc as any).lastAutoTable.finalY + 5;
 
@@ -135,21 +151,25 @@ export const generateDetailedReport = (data: ReportData) => {
         startY: mainTableY,
         head: [tableColumn],
         body: tableRows,
+        foot: footRows,
         theme: 'grid',
         styles: {
             fontSize: 9,
             cellPadding: 2,
-            lineColor: [0, 0, 0],
+            lineColor: [229, 231, 235], // Light Gray
             lineWidth: 0.1,
-            textColor: [0, 0, 0],
+            textColor: [31, 41, 55], // Gray 800
             fillColor: [255, 255, 255]
         },
         headStyles: {
-            fillColor: [255, 255, 0], // Yellow Header
-            textColor: [0, 0, 0],
+            fillColor: [22, 101, 52], // Green 800
+            textColor: [255, 255, 255],
             fontStyle: 'bold',
             lineWidth: 0.1,
-            lineColor: [0, 0, 0] // Border for header
+            lineColor: [22, 101, 52]
+        },
+        alternateRowStyles: {
+            fillColor: [249, 250, 251] // Gray 50
         },
         columnStyles: {
             0: { cellWidth: 10, halign: 'center' }, // S.No
@@ -161,34 +181,6 @@ export const generateDetailedReport = (data: ReportData) => {
             7: { halign: 'right' }, // Subtotal
             8: { halign: 'right' }, // Hamali
             9: { halign: 'right' }, // Total
-        }
-    });
-
-    // --- Financial Summary ---
-    // @ts-ignore
-    const summaryY = (doc as any).lastAutoTable.finalY + 10;
-
-    autoTable(doc, {
-        startY: summaryY,
-        theme: 'grid',
-        head: [],
-        body: [
-            [{ content: 'Total Credit', styles: { fontStyle: 'bold', fillColor: [255, 255, 0] } }, `₹ ${data.summary.totalCredit.toFixed(2)}`],
-            [{ content: 'Total Cash', styles: { fontStyle: 'bold', fillColor: [255, 255, 0] } }, `₹ ${data.summary.totalCash.toFixed(2)}`],
-            [{ content: 'Grand Total', styles: { fontStyle: 'bold', fillColor: [255, 255, 0] } }, `₹ ${data.summary.grandTotal.toFixed(2)}`]
-        ],
-        showHead: 'never',
-        styles: {
-            fontSize: 10,
-            cellPadding: 3,
-            lineColor: [0, 0, 0],
-            lineWidth: 0.1,
-            textColor: [0, 0, 0],
-            fillColor: [255, 255, 255]
-        },
-        columnStyles: {
-            0: { cellWidth: 90 }, // Label
-            1: { cellWidth: 92, halign: 'right' } // Value
         }
     });
 
@@ -208,9 +200,9 @@ export const generateDetailedReport = (data: ReportData) => {
         styles: {
             fontSize: 10,
             cellPadding: 3,
-            lineColor: [0, 0, 0],
+            lineColor: [229, 231, 235],
             lineWidth: 0.1,
-            textColor: [0, 0, 0],
+            textColor: [31, 41, 55],
             fillColor: [255, 255, 255]
         },
         columnStyles: {
