@@ -334,36 +334,43 @@ export default function Reports() {
           const quantity = item.quantity;
           const unitPrice = item.unitPrice;
           const subtotal = quantity * unitPrice;
-          // Hamali logic: Show invoice total hamali if single item, else 0 or pro-rate (simplified to 0 for multi-item for now)
+
+          // Determine if this is a single-item invoice to allow precise Bag/Hamali mapping
+          const itemsInInvoice = invoiceItems.filter(i => i.invoiceId === item.invoiceId);
+          const isSingleItem = itemsInInvoice.length === 1;
+
+          // Hamali logic
           let hamali = 0;
           const invoiceHamali = invoice?.hamaliChargeAmount || 0;
 
           if (invoice && invoiceHamali > 0) {
-            const itemsInInvoice = invoiceItems.filter(i => i.invoiceId === item.invoiceId);
-            if (itemsInInvoice.length === 1) {
+            if (isSingleItem) {
               hamali = invoiceHamali;
             } else if (itemsInInvoice.length > 0) {
-              // Pro-rate by count? Or weight? Let's do even split for simplicity if not 1 item
-              // hamali = invoice.hamaliChargeAmount / itemsInInvoice.length; 
-              // Let's safe side show 0 on line item to avoid confusion and rely on summary?
-              // User asked for "Hamali" column in table.
-              // Let's pro-rate by weight share
+              // Pro-rate by weight share
               const totalInvWeight = invoice.totalKgWeight || 1;
               if (totalInvWeight > 0) {
                 hamali = (item.quantity / totalInvWeight) * invoiceHamali;
               }
             }
           }
+
           const total = subtotal + hamali;
+
+          // Bags Logic: If single item, inherit invoice bags. Else 0 (to avoid assumption).
+          const bags = (invoice && isSingleItem) ? (invoice.bags || 0) : 0;
+
+          // Payment Type Logic: Completed = CASH (Full Payment), Pending = CREDIT
+          const paymentType = (invoice?.status === "completed") ? "CASH" : "CREDIT";
 
           return {
             no: index + 1,
             item: productName,
             customer: customer,
             weight: quantity,
-            bags: 0, // Not persisted on item level in schema
+            bags: bags,
             price: unitPrice,
-            type: (invoice?.status === "completed" ? "CASH" : "CREDIT") as "CASH" | "CREDIT",
+            type: paymentType as "CASH" | "CREDIT",
             subtotal,
             hamali,
             total
