@@ -274,8 +274,21 @@ export default function Reports() {
 
   const downloadDetailedPDF = () => {
     try {
+      // Determine Report Title
+      let reportTitle = "Daily Sales Report";
+      if (selectedVehicleId !== "all") {
+        const v = vehicles.find(v => v.id === selectedVehicleId);
+        reportTitle = `Vehicle Report - ${v?.number || 'Unknown'}`;
+      } else if (selectedCustomerId !== "all") {
+        const c = customers.find(c => c.id === selectedCustomerId);
+        reportTitle = `Customer Report - ${c?.name || 'Unknown'}`;
+      } else if (selectedVendorId !== "all") {
+        const v = vendors.find(v => v.id === selectedVendorId);
+        reportTitle = `Vendor Report - ${v?.name || 'Unknown'}`;
+      }
+
       // Determine vehicle and vendor details
-      let vehicleNumber = "All Vehicles";
+      let vehicleNumber = "N/A"; // Default to N/A if not filtered by vehicle
       let vendorName = "";
       let vehicleTotalWeight = 0;
       let vehicleTotalBags = 0;
@@ -288,13 +301,6 @@ export default function Reports() {
         if (v) {
           const ven = vendors.find(vn => vn.id === v.vendorId);
           vendorName = ven ? ven.name : "";
-          // Total Weight/Bags could come from stock movements or just be calculated from sales if not tracked separately
-          // For now, let's use the 'currentStock' logic or just sum of sold if that's what 'Total Weight' means in this report's context (Sold Weight)
-          // Or if it means 'Load Weight', we need that info. 
-          // Let's assume Total Weight = Total Sold Weight for now as "Weight Balance" usually implies what happened to the load.
-          // Actually, 'Total Quantity Received' is at the bottom.
-          // Top 'Total Weight' next to 'Truck Number' usually implies 'Weigh Bridge Weight' or 'Manifest Weight'.
-          // We can use 0 if unknown or valid sums.
           vehicleTotalGain = v.totalWeightGain || 0;
           vehicleTotalLoss = v.totalWeightLoss || 0;
         }
@@ -316,6 +322,7 @@ export default function Reports() {
         .map((item, index) => {
           const invoice = invoices.find(inv => inv.id === item.invoiceId);
           const customer = invoice ? getCustomerName(invoice.customerId) : "Unknown";
+          const invoiceNumber = invoice?.invoiceNumber || "-"; // Pass Invoice Number
           const productName = getProductName(item.productId);
 
           const quantity = item.quantity;
@@ -352,6 +359,7 @@ export default function Reports() {
 
           return {
             no: index + 1,
+            invoiceNumber,
             item: productName,
             customer: customer,
             weight: quantity,
@@ -388,6 +396,7 @@ export default function Reports() {
 
       generateDetailedReport({
         date: startDate === endDate ? startDate : `${startDate} to ${endDate}`,
+        title: reportTitle,
         vehicleNumber,
         vendorName,
         totalWeight: vehicleTotalWeight,

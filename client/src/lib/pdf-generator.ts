@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 
 export interface ReportData {
     date: string;
+    title: string; // Dynamic Title
     // Vehicle Info Block
     vendorName: string;
     vehicleNumber: string;
@@ -14,6 +15,7 @@ export interface ReportData {
     // Main Table
     items: {
         no: number;
+        invoiceNumber: string; // New field
         item: string;
         customer: string;
         weight: number;
@@ -56,7 +58,9 @@ export const generateDetailedReport = (data: ReportData) => {
     doc.rect(14, 28, 182, 10); // Box
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text(`Weight Balance Report on Date: ${data.date}`, 18, 34);
+    // Use dynamic title, fallback to Weight Balance Report if missing (for safety)
+    const reportTitle = data.title || `Weight Balance Report`;
+    doc.text(`${reportTitle} on Date: ${data.date}`, 18, 34);
 
     // --- Vehicle/Vendor Info Table ---
     const statsY = 43;
@@ -104,6 +108,7 @@ export const generateDetailedReport = (data: ReportData) => {
     // --- Main Items Table ---
     const tableColumn = [
         "S.No",
+        "Invoice", // New Column
         "Item",
         "Customer",
         "Weight",
@@ -117,6 +122,7 @@ export const generateDetailedReport = (data: ReportData) => {
 
     const tableRows = data.items.map(item => [
         item.no,
+        item.invoiceNumber, // New Data
         item.item,
         item.customer,
         item.weight.toFixed(2),
@@ -128,18 +134,18 @@ export const generateDetailedReport = (data: ReportData) => {
         item.total.toFixed(2)
     ]);
 
-    // Financial Totals for Footer
+    // Financial Totals for Footer (adjusted colSpan to 10 for new column)
     const footRows = [
         [
-            { content: 'Total Credit', colSpan: 9, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+            { content: 'Total Credit', colSpan: 10, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
             { content: data.summary.totalCredit.toFixed(2), styles: { halign: 'right' as const, fontStyle: 'bold' as const } }
         ],
         [
-            { content: 'Total Cash', colSpan: 9, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+            { content: 'Total Cash', colSpan: 10, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
             { content: data.summary.totalCash.toFixed(2), styles: { halign: 'right' as const, fontStyle: 'bold' as const } }
         ],
         [
-            { content: 'Grand Total', colSpan: 9, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 253, 244] as [number, number, number] } }, // Light Green Highlight
+            { content: 'Grand Total', colSpan: 10, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 253, 244] as [number, number, number] } },
             { content: `₹ ${data.summary.grandTotal.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 253, 244] as [number, number, number] } }
         ]
     ];
@@ -173,14 +179,15 @@ export const generateDetailedReport = (data: ReportData) => {
         },
         columnStyles: {
             0: { cellWidth: 10, halign: 'center' }, // S.No
+            1: { cellWidth: 20, halign: 'center' }, // Invoice No
             // Item, Customer grow
-            3: { halign: 'center' }, // Weight
-            4: { halign: 'center' }, // Bags
-            5: { halign: 'right' }, // Price
-            6: { halign: 'center' }, // Type
-            7: { halign: 'right' }, // Subtotal
-            8: { halign: 'right' }, // Hamali
-            9: { halign: 'right' }, // Total
+            4: { halign: 'center' }, // Weight
+            5: { halign: 'center' }, // Bags
+            6: { halign: 'right' }, // Price
+            7: { halign: 'center' }, // Type
+            8: { halign: 'right' }, // Subtotal
+            9: { halign: 'right' }, // Hamali
+            10: { halign: 'right' }, // Total
         }
     });
 
@@ -211,5 +218,5 @@ export const generateDetailedReport = (data: ReportData) => {
         }
     });
 
-    doc.save(`Weight_Balance_Report_${data.date}_${data.vehicleNumber || 'All'}.pdf`);
+    doc.save(`${reportTitle.replace(/\s+/g, '_')}_${data.date}.pdf`);
 };
