@@ -329,6 +329,10 @@ function VehicleSalePane({
           total: saleProduct.weight * saleProduct.price,
         }));
 
+      const currentCustomerName = draft.customerName || customers.find(c => c.id === customerId)?.name || "";
+      const isCashCustomer = currentCustomerName.toLowerCase().includes("cash");
+      const invoiceStatus = isCashCustomer ? "completed" : "pending";
+
       const invoiceRes = await apiRequest("POST", "/api/invoices", {
         invoiceNumber,
         customerId,
@@ -344,14 +348,14 @@ function VehicleSalePane({
         bags: saleTotalBags,
         hamaliRatePerBag: draft.hamaliRatePerBag,
         grandTotal: subtotal + draft.hamaliCharge,
+        status: invoiceStatus,
         items,
       });
 
       const invoice = await invoiceRes.json();
 
       // Auto-payment for "Cash" customers
-      const currentCustomerName = draft.customerName || customers.find(c => c.id === customerId)?.name || "";
-      if (currentCustomerName.toLowerCase().includes("cash")) {
+      if (isCashCustomer) {
         try {
           await apiRequest("POST", "/api/customer-payments", {
             customerId,

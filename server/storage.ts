@@ -393,7 +393,7 @@ export class DatabaseStorage implements IStorage {
   async createInvoice(insertInvoice: InsertInvoice, items: InsertInvoiceItem[]): Promise<Invoice> {
     const [invoice] = await db.insert(invoices).values({
       ...insertInvoice,
-      status: insertInvoice.status ?? "completed",
+      status: insertInvoice.status ?? "pending",
       hamaliRatePerKg: insertInvoice.hamaliRatePerKg ?? 2,
       hamaliChargeAmount: insertInvoice.hamaliChargeAmount ?? 0,
       hamaliPaidByCash: insertInvoice.hamaliPaidByCash ?? false,
