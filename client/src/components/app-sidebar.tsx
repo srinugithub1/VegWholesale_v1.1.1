@@ -62,6 +62,12 @@ const navigationItems = [
     roles: ["admin"],
   },
   {
+    title: "Customer Edit",
+    url: "/customer-edit",
+    icon: UserCheck,
+    roles: ["admin", "user"],
+  },
+  {
     title: "Vehicles",
     url: "/vehicles",
     icon: Truck,

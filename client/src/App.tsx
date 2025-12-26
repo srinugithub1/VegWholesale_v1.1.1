@@ -28,6 +28,7 @@ import Settings from "@/pages/settings";
 import Weighing from "@/pages/weighing";
 import VendorReturns from "@/pages/vendor-returns";
 import AuthPage from "@/pages/auth-page";
+import CustomerEdit from "@/pages/customer-edit";
 
 function Router() {
   return (
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/customers" component={Customers} />
       <Route path="/vehicles" component={Vehicles} />
       <Route path="/products" component={Products} />
+      <Route path="/customer-edit" component={CustomerEdit} />
       <Route path="/stock" component={Stock} />
       <Route path="/purchases" component={Purchases} />
       <Route path="/vendor-returns" component={VendorReturns} />
@@ -62,7 +64,7 @@ function ProtectedApp() {
     if (!user) return; // Should not happen in ProtectedApp but safe check
 
     // List of allowed routes for non-admins
-    const allowed = ['/sell'];
+    const allowed = ['/sell', '/customer-edit'];
 
     if (!isAdmin) {
       if (!allowed.includes(location)) {
@@ -76,7 +78,7 @@ function ProtectedApp() {
     "--sidebar-width-icon": "3rem",
   };
 
-  if (!isAdmin && location !== '/sell') {
+  if (!isAdmin && location !== '/sell' && location !== '/customer-edit') {
     return null; // Don't render restricted content while redirecting
   }
 

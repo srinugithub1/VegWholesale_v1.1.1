@@ -218,6 +218,98 @@ export default function Reports() {
     ].filter((d) => d.value > 0);
   }, [summary]);
 
+
+  const reportItems = useMemo(() => {
+    const relevantInvoiceIds = new Set(filteredInvoices.map(inv => inv.id));
+
+    return invoiceItems
+      .filter(item => relevantInvoiceIds.has(item.invoiceId))
+      .map((item, index) => {
+        const invoice = invoices.find(inv => inv.id === item.invoiceId);
+
+        // Context Data
+        const customer = invoice ? getCustomerName(invoice.customerId) : "Unknown";
+        const invoiceNumber = invoice?.invoiceNumber || "-";
+        const date = invoice?.date || "";
+        const vehicleNumber = getVehicleNumber(invoice?.vehicleId || null);
+        const vendorName = getInvoiceVendorName(invoice as Invoice);
+        const productName = getProductName(item.productId);
+
+        const quantity = item.quantity;
+        const unitPrice = item.unitPrice;
+        const subtotal = quantity * unitPrice;
+
+        // Determine if this is a single-item invoice to allow precise Bag/Hamali mapping
+        const itemsInInvoice = invoiceItems.filter(i => i.invoiceId === item.invoiceId);
+        const isSingleItem = itemsInInvoice.length === 1;
+
+        // Hamali logic
+        let hamali = 0;
+        const invoiceHamali = invoice?.hamaliChargeAmount || 0;
+
+        if (invoice && invoiceHamali > 0) {
+          if (isSingleItem) {
+            hamali = invoiceHamali;
+          } else if (itemsInInvoice.length > 0) {
+            // Pro-rate by weight share
+            const totalInvWeight = invoice.totalKgWeight || 1;
+            if (totalInvWeight > 0) {
+              hamali = (item.quantity / totalInvWeight) * invoiceHamali;
+            }
+          }
+        }
+
+        const total = subtotal + hamali;
+
+        // Bags Logic
+        const bags = (invoice && isSingleItem) ? (invoice.bags || 0) : 0;
+
+        // Payment Type Logic
+        const paymentType = (invoice?.status === "completed") ? "CASH" : "CREDIT";
+
+        return {
+          no: index + 1,
+          id: item.id,
+          invoiceId: item.invoiceId,
+
+          invoiceNumber,
+          date,
+          vehicle: vehicleNumber,
+          customer,
+          vendor: vendorName,
+
+          item: productName,
+          weight: quantity,
+          bags,
+          price: unitPrice,
+          type: paymentType as "CASH" | "CREDIT",
+          subtotal,
+          hamali,
+          total
+        };
+      });
+  }, [filteredInvoices, invoiceItems, invoices, customers, vehicles, vendors, products]);
+
+  const reportSummary = useMemo(() => {
+    if (reportItems.length === 0) return summary;
+
+    const totalWeight = reportItems.reduce((sum, i) => sum + i.weight, 0);
+    const totalBags = reportItems.reduce((sum, i) => sum + i.bags, 0);
+    const totalSubtotal = reportItems.reduce((sum, i) => sum + i.subtotal, 0);
+    const totalHamali = reportItems.reduce((sum, i) => sum + i.hamali, 0);
+    const totalSales = reportItems.reduce((sum, i) => sum + i.total, 0);
+
+    return {
+      ...summary,
+      totalWeight,
+      totalBags,
+      totalSubtotal,
+      totalHamali,
+      totalSales,
+      grandTotal: totalSales
+    };
+  }, [reportItems, summary]);
+
   const CHART_COLORS = [
     "hsl(var(--chart-1))",
     "hsl(var(--chart-2))",
@@ -287,11 +379,9 @@ export default function Reports() {
         reportTitle = `Vendor Report - ${v?.name || 'Unknown'}`;
       }
 
-      // Determine vehicle and vendor details
-      let vehicleNumber = "N/A"; // Default to N/A if not filtered by vehicle
+      // Determine vehicle details for header
+      let vehicleNumber = "N/A";
       let vendorName = "";
-      let vehicleTotalWeight = 0;
-      let vehicleTotalBags = 0;
       let vehicleTotalGain = 0;
       let vehicleTotalLoss = 0;
 
@@ -306,93 +396,22 @@ export default function Reports() {
         }
       }
 
-      // 1. Flatten items
-      // We need to join Invoice -> InvoiceItems -> Product/Vehicle/Customer
-      // Filter invoice items based on filteredInvoices
-      console.log('PDF Generation Debug:');
-      console.log('Filtered Invoices:', filteredInvoices.length);
-      console.log('Total Invoice Items available:', invoiceItems.length);
-
-      const relevantInvoiceIds = new Set(filteredInvoices.map(inv => inv.id));
-      const items = invoiceItems
-        .filter(item => {
-          const match = relevantInvoiceIds.has(item.invoiceId);
-          return match;
-        })
-        .map((item, index) => {
-          const invoice = invoices.find(inv => inv.id === item.invoiceId);
-          const customer = invoice ? getCustomerName(invoice.customerId) : "Unknown";
-          const invoiceNumber = invoice?.invoiceNumber || "-"; // Pass Invoice Number
-          const productName = getProductName(item.productId);
-
-          const quantity = item.quantity;
-          const unitPrice = item.unitPrice;
-          const subtotal = quantity * unitPrice;
-
-          // Determine if this is a single-item invoice to allow precise Bag/Hamali mapping
-          const itemsInInvoice = invoiceItems.filter(i => i.invoiceId === item.invoiceId);
-          const isSingleItem = itemsInInvoice.length === 1;
-
-          // Hamali logic
-          let hamali = 0;
-          const invoiceHamali = invoice?.hamaliChargeAmount || 0;
-
-          if (invoice && invoiceHamali > 0) {
-            if (isSingleItem) {
-              hamali = invoiceHamali;
-            } else if (itemsInInvoice.length > 0) {
-              // Pro-rate by weight share
-              const totalInvWeight = invoice.totalKgWeight || 1;
-              if (totalInvWeight > 0) {
-                hamali = (item.quantity / totalInvWeight) * invoiceHamali;
-              }
-            }
-          }
-
-          const total = subtotal + hamali;
-
-          // Bags Logic: If single item, inherit invoice bags. Else 0 (to avoid assumption).
-          const bags = (invoice && isSingleItem) ? (invoice.bags || 0) : 0;
-
-          // Payment Type Logic: Completed = CASH (Full Payment), Pending = CREDIT
-          const paymentType = (invoice?.status === "completed") ? "CASH" : "CREDIT";
-
-          return {
-            no: index + 1,
-            invoiceNumber,
-            item: productName,
-            customer: customer,
-            weight: quantity,
-            bags: bags,
-            price: unitPrice,
-            type: paymentType as "CASH" | "CREDIT",
-            subtotal,
-            hamali,
-            total
-          };
-        });
-
-      // 2. Calculate Summaries
-      const totalSoldWeight = summary.totalWeight;
-      const totalSoldBags = summary.totalBags;
-
-      // Update Top Block totals
-      // Priority: Vehicle Starting Totals (from load) -> fallback to Sold Totals
+      // Calculate Vehicle Load Totals (if applicable)
       const currentVehicle = vehicles.find(v => v.id === selectedVehicleId);
+      const totalSoldWeight = reportSummary.totalWeight;
+      const totalSoldBags = reportSummary.totalBags;
 
-      vehicleTotalWeight = currentVehicle?.startingWeight && currentVehicle.startingWeight > 0
+      const vehicleTotalWeight = currentVehicle?.startingWeight && currentVehicle.startingWeight > 0
         ? currentVehicle.startingWeight
         : totalSoldWeight;
 
-      vehicleTotalBags = currentVehicle?.startingBags && currentVehicle.startingBags > 0
+      const vehicleTotalBags = currentVehicle?.startingBags && currentVehicle.startingBags > 0
         ? currentVehicle.startingBags
         : totalSoldBags;
 
-      const totalSaleAmount = summary.totalSales; // Grand total logic
-
-      const totalCredit = items.filter(i => i.type === "CREDIT").reduce((sum, i) => sum + i.total, 0);
-      const totalCash = items.filter(i => i.type === "CASH").reduce((sum, i) => sum + i.total, 0);
-      const grandTotal = totalCredit + totalCash;
+      // Filter Credit/Cash from reportItems
+      const totalCredit = reportItems.filter(i => i.type === "CREDIT").reduce((sum, i) => sum + i.total, 0);
+      const totalCash = reportItems.filter(i => i.type === "CASH").reduce((sum, i) => sum + i.total, 0);
 
       generateDetailedReport({
         date: startDate === endDate ? startDate : `${startDate} to ${endDate}`,
@@ -403,14 +422,27 @@ export default function Reports() {
         totalBags: vehicleTotalBags,
         totalGain: vehicleTotalGain,
         totalLoss: vehicleTotalLoss,
-        items,
+        // Map reportItems to PDF specific interface
+        items: reportItems.map(item => ({
+          no: item.no,
+          invoiceNumber: item.invoiceNumber,
+          item: item.item,
+          customer: item.customer,
+          weight: item.weight,
+          bags: item.bags,
+          price: item.price,
+          type: item.type,
+          subtotal: item.subtotal,
+          hamali: item.hamali,
+          total: item.total
+        })),
         summary: {
           qtyReceived: vehicleTotalWeight,
           qtySold: totalSoldWeight,
           qtyRemaining: vehicleTotalWeight - totalSoldWeight - (vehicleTotalLoss || 0),
           totalCredit,
           totalCash,
-          grandTotal
+          grandTotal: reportSummary.totalSales
         }
       });
     } catch (error) {
@@ -698,11 +730,11 @@ export default function Reports() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Receipt className="h-4 w-4" />
-                Sales List ({filteredInvoices.length})
+                Sales List ({reportItems.length} items)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {filteredInvoices.length === 0 ? (
+              {reportItems.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <ShoppingBag className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>No sales found for this period</p>
@@ -713,82 +745,74 @@ export default function Reports() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[50px]">S.No</TableHead>
                         <TableHead>Invoice</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Vehicle</TableHead>
                         <TableHead>Customer</TableHead>
                         <TableHead>Vendor</TableHead>
+                        <TableHead>Item</TableHead>
                         <TableHead className="text-right">Weight</TableHead>
                         <TableHead className="text-right">Bags</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-center">Type</TableHead>
                         <TableHead className="text-right">Subtotal</TableHead>
                         <TableHead className="text-right">Hamali</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredInvoices.map((inv) => (
-                        <TableRow key={inv.id} data-testid={`row-sale-${inv.id}`}>
-                          <TableCell className="font-mono text-sm">
-                            {inv.invoiceNumber}
-                          </TableCell>
-                          <TableCell>{inv.date}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Truck className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm">{getVehicleNumber(inv.vehicleId)}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Users className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm">{getCustomerName(inv.customerId)}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Package className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-sm">{getInvoiceVendorName(inv)}</span>
-                            </div>
+                      {reportItems.map((item) => (
+                        <TableRow key={`${item.id}-${item.no}`} data-testid={`row-item-${item.id}`}>
+                          <TableCell className="font-mono text-sm">{item.no}</TableCell>
+                          <TableCell className="font-mono text-sm">{item.invoiceNumber}</TableCell>
+                          <TableCell className="text-sm whitespace-nowrap">{item.date}</TableCell>
+                          <TableCell className="text-sm whitespace-nowrap">{item.vehicle}</TableCell>
+                          <TableCell className="text-sm">{item.customer}</TableCell>
+                          <TableCell className="text-sm">{item.vendor}</TableCell>
+                          <TableCell className="text-sm">{item.item}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {item.weight.toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            {(inv.totalKgWeight || 0).toFixed(2)} KG
+                            {item.bags}
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            {inv.bags || 0}
+                            {item.price.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-center text-xs">
+                            <Badge variant={item.type === "CASH" ? "outline" : "secondary"} className="text-xs">
+                              {item.type}
+                            </Badge>
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            {formatCurrency(inv.subtotal)}
+                            {formatCurrency(item.subtotal)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
-                            {(inv.hamaliChargeAmount || 0) > 0 ? (
-                              <Badge variant="secondary" className="font-mono">
-                                {formatCurrency(inv.hamaliChargeAmount || 0)}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
+                            {item.hamali > 0 ? formatCurrency(item.hamali) : "-"}
                           </TableCell>
                           <TableCell className="text-right font-mono font-semibold">
-                            {formatCurrency(inv.grandTotal)}
+                            {formatCurrency(item.total)}
                           </TableCell>
                         </TableRow>
                       ))}
                       <TableRow className="bg-muted/50 font-semibold">
-                        <TableCell colSpan={5}>TOTAL</TableCell>
+                        <TableCell colSpan={7}>TOTAL</TableCell>
                         <TableCell className="text-right font-mono">
-                          {summary.totalWeight.toFixed(2)} KG
+                          {reportSummary.totalWeight.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {summary.totalBags}
+                          {reportSummary.totalBags}
+                        </TableCell>
+                        <TableCell colSpan={2}></TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(reportSummary.totalSubtotal)}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {formatCurrency(summary.totalSubtotal)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {formatCurrency(summary.totalHamali)}
+                          {formatCurrency(reportSummary.totalHamali)}
                         </TableCell>
                         <TableCell className="text-right font-mono text-primary">
-                          {formatCurrency(summary.totalSales)}
+                          {formatCurrency(reportSummary.totalSales)}
                         </TableCell>
                       </TableRow>
                     </TableBody>
