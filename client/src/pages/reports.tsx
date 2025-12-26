@@ -286,82 +286,87 @@ export default function Reports() {
   };
 
   const downloadDetailedPDF = () => {
-    // Determine vehicle details if filtered
-    let vehicleNumber = "All Vehicles";
-    if (selectedVehicleId !== "all") {
-      vehicleNumber = getVehicleNumber(selectedVehicleId);
-    }
-
-    // 1. Flatten items
-    // We need to join Invoice -> InvoiceItems -> Product/Vehicle/Customer
-    // Filter invoice items based on filteredInvoices
-    const relevantInvoiceIds = new Set(filteredInvoices.map(inv => inv.id));
-    const items = invoiceItems
-      .filter(item => relevantInvoiceIds.has(item.invoiceId))
-      .map((item, index) => {
-        const invoice = invoices.find(inv => inv.id === item.invoiceId);
-        const customer = invoice ? getCustomerName(invoice.customerId) : "Unknown";
-        const productName = getProductName(item.productId);
-        const isCredit = invoice?.status === "pending" || invoice?.grandTotal !== (customerPayments.find(p => p.invoiceId === invoice?.id)?.amount || 0);
-
-        return {
-          no: index + 1,
-          item: productName,
-          customer: customer,
-          weight: item.quantity,
-          bags: 0, // Bags are per invoice usually, but if item level bags exist use them. Schema says bags on Invoice, not Item? 
-          // Wait, schema has bags on Invoice. 
-          // If we are listing ITEMS, we should check checks.
-          // Actually item has quantity (weight). Bags are on Invoice. 
-          // Let's assume proportional or 0 if unknown. 
-          // Correction: earlier code in Sell page added 'bags' to logic but schema might not have it on Item.
-          // Checking use-scale or sell: "bags: z.number().min(0).optional()" in schema was added?
-          // If not in schema, we can't show it per item.
-          // Use invoice bags if single item invoice, else 0.
-          avgPrice: item.unitPrice,
-          sale: item.total,
-          type: invoice?.status === "completed" ? "CASH" : "CREDIT"
-        };
-      });
-
-    // 2. Calculate Summaries
-    const totalReceivedWeight = summary.totalWeight + 1000; // Mock or calculate from Vehicle Inventory Loads (not easily available here without fetching)
-    // For now, let's use Total Sold + Current Stock if we can fetch it.
-    // Or just leave "Received" as Sold for now if stock unknown.
-    // Actually, we can fetch vehicle loads if we want accurate.
-    // Let's stick to simple summary for now as requested by user based on available data.
-    // User screenshot shows "Total Quantity Received".
-    // Let's assume filteredInvoices Sum is "Sold".
-    // We'll use 0 for Received/Remaining if not available, or calc logic later.
-
-    // Better approximation for "Received": 
-    // If selected vehicle, we might know its capacity or load. 
-    // But `vehicle-inventory-movements` would be best.
-
-    // Let's use what we have:
-    const totalSoldWeight = summary.totalWeight;
-    const totalSoldBags = summary.totalBags;
-
-    const totalSaleAmount = summary.totalSales;
-    const creditAmount = items.filter(i => i.type === "CREDIT").reduce((sum, i) => sum + i.sale, 0);
-    const cashAmount = items.filter(i => i.type === "CASH").reduce((sum, i) => sum + i.sale, 0);
-
-    generateDetailedReport({
-      date: startDate === endDate ? startDate : `${startDate} to ${endDate}`,
-      vehicleNumber,
-      items,
-      summary: {
-        totalReceivedWeight: 0, // Placeholder
-        totalReceivedBags: 0,   // Placeholder
-        totalSoldWeight,
-        totalSoldBags,
-        totalRemainingWeight: 0, // Placeholder
-        totalRemainingBags: 0,   // Placeholder
-        totalSaleAmount,
-        creditAmount,
-        cashAmount
+    try {
+      // Determine vehicle details if filtered
+      let vehicleNumber = "All Vehicles";
+      if (selectedVehicleId !== "all") {
+        vehicleNumber = getVehicleNumber(selectedVehicleId);
       }
-    });
+
+      // 1. Flatten items
+      // We need to join Invoice -> InvoiceItems -> Product/Vehicle/Customer
+      // Filter invoice items based on filteredInvoices
+      const relevantInvoiceIds = new Set(filteredInvoices.map(inv => inv.id));
+      const items = invoiceItems
+        .filter(item => relevantInvoiceIds.has(item.invoiceId))
+        .map((item, index) => {
+          const invoice = invoices.find(inv => inv.id === item.invoiceId);
+          const customer = invoice ? getCustomerName(invoice.customerId) : "Unknown";
+          const productName = getProductName(item.productId);
+          const isCredit = invoice?.status === "pending" || invoice?.grandTotal !== (customerPayments.find(p => p.invoiceId === invoice?.id)?.amount || 0);
+
+          return {
+            no: index + 1,
+            item: productName,
+            customer: customer,
+            weight: item.quantity,
+            bags: 0, // Bags are per invoice usually, but if item level bags exist use them. Schema says bags on Invoice, not Item? 
+            // Wait, schema has bags on Invoice. 
+            // If we are listing ITEMS, we should check checks.
+            // Actually item has quantity (weight). Bags are on Invoice. 
+            // Let's assume proportional or 0 if unknown. 
+            // Correction: earlier code in Sell page added 'bags' to logic but schema might not have it on Item.
+            // Checking use-scale or sell: "bags: z.number().min(0).optional()" in schema was added?
+            // If not in schema, we can't show it per item.
+            // Use invoice bags if single item invoice, else 0.
+            avgPrice: item.unitPrice,
+            sale: item.total,
+            type: invoice?.status === "completed" ? "CASH" : "CREDIT"
+          };
+        });
+
+      // 2. Calculate Summaries
+      const totalReceivedWeight = summary.totalWeight + 1000; // Mock or calculate from Vehicle Inventory Loads (not easily available here without fetching)
+      // For now, let's use Total Sold + Current Stock if we can fetch it.
+      // Or just leave "Received" as Sold for now if stock unknown.
+      // Actually, we can fetch vehicle loads if we want accurate.
+      // Let's stick to simple summary for now as requested by user based on available data.
+      // User screenshot shows "Total Quantity Received".
+      // Let's assume filteredInvoices Sum is "Sold".
+      // We'll use 0 for Received/Remaining if not available, or calc logic later.
+
+      // Better approximation for "Received": 
+      // If selected vehicle, we might know its capacity or load. 
+      // But `vehicle-inventory-movements` would be best.
+
+      // Let's use what we have:
+      const totalSoldWeight = summary.totalWeight;
+      const totalSoldBags = summary.totalBags;
+
+      const totalSaleAmount = summary.totalSales;
+      const creditAmount = items.filter(i => i.type === "CREDIT").reduce((sum, i) => sum + i.sale, 0);
+      const cashAmount = items.filter(i => i.type === "CASH").reduce((sum, i) => sum + i.sale, 0);
+
+      generateDetailedReport({
+        date: startDate === endDate ? startDate : `${startDate} to ${endDate}`,
+        vehicleNumber,
+        items,
+        summary: {
+          totalReceivedWeight: 0, // Placeholder
+          totalReceivedBags: 0,   // Placeholder
+          totalSoldWeight,
+          totalSoldBags,
+          totalRemainingWeight: 0, // Placeholder
+          totalRemainingBags: 0,   // Placeholder
+          totalSaleAmount,
+          creditAmount,
+          cashAmount
+        }
+      });
+    } catch (error) {
+      console.error("PDF Generation Error:", error);
+      alert(`Failed to generate PDF: ${(error as Error).message}`);
+    }
   };
 
   const FilterSection = () => (

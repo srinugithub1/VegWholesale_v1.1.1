@@ -1,6 +1,5 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format } from "date-fns";
 
 // Define interface for report data
 export interface ReportData {
@@ -84,8 +83,7 @@ export const generateDetailedReport = (data: ReportData) => {
         item.type.toUpperCase()
     ]);
 
-    // Use autoTable (cast to any because of type definition issues in some environments)
-    (doc as any).autoTable({
+    autoTable(doc, {
         startY: 85,
         head: [tableColumn],
         body: tableRows,
@@ -115,9 +113,6 @@ export const generateDetailedReport = (data: ReportData) => {
             6: { cellWidth: 25, halign: 'right' }, // Sale
             7: { cellWidth: 20, halign: 'center' }, // Type
         },
-        didDrawPage: (_data: any) => {
-            // Footer on every page if needed, but we do summary at end
-        }
     });
 
     // --- Footer / Summary ---
