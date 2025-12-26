@@ -42,8 +42,6 @@ export const generateDetailedReport = (data: ReportData) => {
     const doc = new jsPDF();
 
     // --- Header ---
-    // "Dr B. R. Ambedkar Vegetable Market (Shop No)"
-    // "Bowenpally, Secunderabad"
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("Dr B. R. Ambedkar Vegetable Market (Shop No. 42)", 14, 15);
@@ -65,7 +63,7 @@ export const generateDetailedReport = (data: ReportData) => {
 
     autoTable(doc, {
         startY: statsY,
-        theme: 'grid', // Grid theme for borders
+        theme: 'grid',
         head: [],
         body: [
             [
@@ -90,10 +88,10 @@ export const generateDetailedReport = (data: ReportData) => {
         styles: {
             fontSize: 10,
             cellPadding: 2,
-            lineColor: [0, 0, 0], // Black borders
+            lineColor: [0, 0, 0],
             lineWidth: 0.1,
             textColor: [0, 0, 0],
-            fillColor: [255, 255, 255] // White bg
+            fillColor: [255, 255, 255]
         },
         columnStyles: {
             0: { cellWidth: 35 },
@@ -147,7 +145,7 @@ export const generateDetailedReport = (data: ReportData) => {
             fillColor: [255, 255, 255]
         },
         headStyles: {
-            fillColor: [255, 255, 255],
+            fillColor: [255, 255, 0], // Yellow Header
             textColor: [0, 0, 0],
             fontStyle: 'bold',
             lineWidth: 0.1,
@@ -175,9 +173,9 @@ export const generateDetailedReport = (data: ReportData) => {
         theme: 'grid',
         head: [],
         body: [
-            [{ content: 'Total Credit', styles: { fontStyle: 'bold' } }, `₹ ${data.summary.totalCredit.toFixed(2)}`],
-            [{ content: 'Total Cash', styles: { fontStyle: 'bold' } }, `₹ ${data.summary.totalCash.toFixed(2)}`],
-            [{ content: 'Grand Total', styles: { fontStyle: 'bold' } }, `₹ ${data.summary.grandTotal.toFixed(2)}`]
+            [{ content: 'Total Credit', styles: { fontStyle: 'bold', fillColor: [255, 255, 0] } }, `₹ ${data.summary.totalCredit.toFixed(2)}`],
+            [{ content: 'Total Cash', styles: { fontStyle: 'bold', fillColor: [255, 255, 0] } }, `₹ ${data.summary.totalCash.toFixed(2)}`],
+            [{ content: 'Grand Total', styles: { fontStyle: 'bold', fillColor: [255, 255, 0] } }, `₹ ${data.summary.grandTotal.toFixed(2)}`]
         ],
         showHead: 'never',
         styles: {
@@ -221,6 +219,5 @@ export const generateDetailedReport = (data: ReportData) => {
         }
     });
 
-    // Save the PDF
     doc.save(`Weight_Balance_Report_${data.date}_${data.vehicleNumber || 'All'}.pdf`);
 };

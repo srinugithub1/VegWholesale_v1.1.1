@@ -316,9 +316,16 @@ export default function Reports() {
       // 1. Flatten items
       // We need to join Invoice -> InvoiceItems -> Product/Vehicle/Customer
       // Filter invoice items based on filteredInvoices
+      console.log('PDF Generation Debug:');
+      console.log('Filtered Invoices:', filteredInvoices.length);
+      console.log('Total Invoice Items available:', invoiceItems.length);
+
       const relevantInvoiceIds = new Set(filteredInvoices.map(inv => inv.id));
       const items = invoiceItems
-        .filter(item => relevantInvoiceIds.has(item.invoiceId))
+        .filter(item => {
+          const match = relevantInvoiceIds.has(item.invoiceId);
+          return match;
+        })
         .map((item, index) => {
           const invoice = invoices.find(inv => inv.id === item.invoiceId);
           const customer = invoice ? getCustomerName(invoice.customerId) : "Unknown";
