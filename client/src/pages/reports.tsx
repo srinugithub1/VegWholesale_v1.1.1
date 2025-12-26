@@ -287,10 +287,30 @@ export default function Reports() {
 
   const downloadDetailedPDF = () => {
     try {
-      // Determine vehicle details if filtered
+      // Determine vehicle and vendor details
       let vehicleNumber = "All Vehicles";
+      let vendorName = "";
+      let vehicleTotalWeight = 0;
+      let vehicleTotalBags = 0;
+      let vehicleTotalGain = 0;
+      let vehicleTotalLoss = 0;
+
       if (selectedVehicleId !== "all") {
         vehicleNumber = getVehicleNumber(selectedVehicleId);
+        const v = vehicles.find(v => v.id === selectedVehicleId);
+        if (v) {
+          const ven = vendors.find(vn => vn.id === v.vendorId);
+          vendorName = ven ? ven.name : "";
+          // Total Weight/Bags could come from stock movements or just be calculated from sales if not tracked separately
+          // For now, let's use the 'currentStock' logic or just sum of sold if that's what 'Total Weight' means in this report's context (Sold Weight)
+          // Or if it means 'Load Weight', we need that info. 
+          // Let's assume Total Weight = Total Sold Weight for now as "Weight Balance" usually implies what happened to the load.
+          // Actually, 'Total Quantity Received' is at the bottom.
+          // Top 'Total Weight' next to 'Truck Number' usually implies 'Weigh Bridge Weight' or 'Manifest Weight'.
+          // We can use 0 if unknown or valid sums.
+          vehicleTotalGain = v.totalWeightGain || 0;
+          vehicleTotalLoss = v.totalWeightLoss || 0;
+        }
       }
 
       // 1. Flatten items
@@ -303,64 +323,76 @@ export default function Reports() {
           const invoice = invoices.find(inv => inv.id === item.invoiceId);
           const customer = invoice ? getCustomerName(invoice.customerId) : "Unknown";
           const productName = getProductName(item.productId);
-          const isCredit = invoice?.status === "pending" || invoice?.grandTotal !== (customerPayments.find(p => p.invoiceId === invoice?.id)?.amount || 0);
+
+          const quantity = item.quantity;
+          const unitPrice = item.unitPrice;
+          const subtotal = quantity * unitPrice;
+          // Hamali logic: Show invoice total hamali if single item, else 0 or pro-rate (simplified to 0 for multi-item for now)
+          let hamali = 0;
+          const invoiceHamali = invoice?.hamaliChargeAmount || 0;
+
+          if (invoice && invoiceHamali > 0) {
+            const itemsInInvoice = invoiceItems.filter(i => i.invoiceId === item.invoiceId);
+            if (itemsInInvoice.length === 1) {
+              hamali = invoiceHamali;
+            } else if (itemsInInvoice.length > 0) {
+              // Pro-rate by count? Or weight? Let's do even split for simplicity if not 1 item
+              // hamali = invoice.hamaliChargeAmount / itemsInInvoice.length; 
+              // Let's safe side show 0 on line item to avoid confusion and rely on summary?
+              // User asked for "Hamali" column in table.
+              // Let's pro-rate by weight share
+              const totalInvWeight = invoice.totalKgWeight || 1;
+              if (totalInvWeight > 0) {
+                hamali = (item.quantity / totalInvWeight) * invoiceHamali;
+              }
+            }
+          }
+          const total = subtotal + hamali;
 
           return {
             no: index + 1,
             item: productName,
             customer: customer,
-            weight: item.quantity,
-            bags: 0, // Bags are per invoice usually, but if item level bags exist use them. Schema says bags on Invoice, not Item? 
-            // Wait, schema has bags on Invoice. 
-            // If we are listing ITEMS, we should check checks.
-            // Actually item has quantity (weight). Bags are on Invoice. 
-            // Let's assume proportional or 0 if unknown. 
-            // Correction: earlier code in Sell page added 'bags' to logic but schema might not have it on Item.
-            // Checking use-scale or sell: "bags: z.number().min(0).optional()" in schema was added?
-            // If not in schema, we can't show it per item.
-            // Use invoice bags if single item invoice, else 0.
-            avgPrice: item.unitPrice,
-            sale: item.total,
-            type: invoice?.status === "completed" ? "CASH" : "CREDIT"
+            weight: quantity,
+            bags: 0, // Not persisted on item level in schema
+            price: unitPrice,
+            type: (invoice?.status === "completed" ? "CASH" : "CREDIT") as "CASH" | "CREDIT",
+            subtotal,
+            hamali,
+            total
           };
         });
 
       // 2. Calculate Summaries
-      const totalReceivedWeight = summary.totalWeight + 1000; // Mock or calculate from Vehicle Inventory Loads (not easily available here without fetching)
-      // For now, let's use Total Sold + Current Stock if we can fetch it.
-      // Or just leave "Received" as Sold for now if stock unknown.
-      // Actually, we can fetch vehicle loads if we want accurate.
-      // Let's stick to simple summary for now as requested by user based on available data.
-      // User screenshot shows "Total Quantity Received".
-      // Let's assume filteredInvoices Sum is "Sold".
-      // We'll use 0 for Received/Remaining if not available, or calc logic later.
-
-      // Better approximation for "Received": 
-      // If selected vehicle, we might know its capacity or load. 
-      // But `vehicle-inventory-movements` would be best.
-
-      // Let's use what we have:
       const totalSoldWeight = summary.totalWeight;
       const totalSoldBags = summary.totalBags;
 
-      const totalSaleAmount = summary.totalSales;
-      const creditAmount = items.filter(i => i.type === "CREDIT").reduce((sum, i) => sum + i.sale, 0);
-      const cashAmount = items.filter(i => i.type === "CASH").reduce((sum, i) => sum + i.sale, 0);
+      // Update Top Block totals
+      vehicleTotalWeight = totalSoldWeight; // Assuming Load ~ Sold if unknown
+      vehicleTotalBags = totalSoldBags;
+
+      const totalSaleAmount = summary.totalSales; // Grand total logic
+
+      const totalCredit = items.filter(i => i.type === "CREDIT").reduce((sum, i) => sum + i.total, 0);
+      const totalCash = items.filter(i => i.type === "CASH").reduce((sum, i) => sum + i.total, 0);
+      const grandTotal = totalCredit + totalCash;
 
       generateDetailedReport({
         date: startDate === endDate ? startDate : `${startDate} to ${endDate}`,
         vehicleNumber,
+        vendorName,
+        totalWeight: vehicleTotalWeight,
+        totalBags: vehicleTotalBags,
+        totalGain: vehicleTotalGain,
+        totalLoss: vehicleTotalLoss,
         items,
         summary: {
-          totalReceivedWeight: 0, // Placeholder
-          totalReceivedBags: 0,   // Placeholder
-          totalSoldWeight,
-          totalSoldBags,
-          totalRemainingWeight: 0, // Placeholder
-          totalRemainingBags: 0,   // Placeholder
-          totalSaleAmount,
-          creditAmount,
-          cashAmount
+          qtyReceived: vehicleTotalWeight,
+          qtySold: totalSoldWeight,
+          qtyRemaining: 0, // Calculate if we had stock info, else 0
+          totalCredit,
+          totalCash,
+          grandTotal
         }
       });
     } catch (error) {

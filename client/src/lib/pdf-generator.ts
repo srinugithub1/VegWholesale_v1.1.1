@@ -1,30 +1,40 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// Define interface for report data
 export interface ReportData {
     date: string;
-    vehicleNumber?: string;
+    // Vehicle Info Block
+    vendorName: string;
+    vehicleNumber: string;
+    totalWeight: number; // Truck Load
+    totalBags: number;   // Truck Bags
+    totalGain: number;
+    totalLoss: number;
+
+    // Main Table
     items: {
         no: number;
         item: string;
         customer: string;
         weight: number;
         bags: number;
-        avgPrice: number;
-        sale: number;
-        type: string;
+        price: number;
+        type: "CREDIT" | "CASH";
+        subtotal: number;
+        hamali: number;
+        total: number;
     }[];
+
+    // Financial Summary
     summary: {
-        totalReceivedWeight: number;
-        totalReceivedBags: number;
-        totalSoldWeight: number;
-        totalSoldBags: number;
-        totalRemainingWeight: number;
-        totalRemainingBags: number;
-        totalSaleAmount: number;
-        creditAmount: number;
-        cashAmount: number;
+        totalCredit: number;
+        totalCash: number;
+        grandTotal: number;
+
+        // Stock Summary
+        qtyReceived: number; // Weight
+        qtySold: number;     // Weight
+        qtyRemaining: number; // Weight
     };
 }
 
@@ -32,115 +42,184 @@ export const generateDetailedReport = (data: ReportData) => {
     const doc = new jsPDF();
 
     // --- Header ---
-    // Logo placeholder (Green box for now, or text)
-    doc.setFillColor(220, 250, 220);
-    doc.rect(14, 10, 25, 25, "F");
-    doc.setTextColor(34, 139, 34); // Forest Green
-    doc.setFontSize(10);
-    doc.text("PSK", 18, 25);
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
+    // "Dr B. R. Ambedkar Vegetable Market (Shop No)"
+    // "Bowenpally, Secunderabad"
     doc.setFont("helvetica", "bold");
-    doc.text("Dr.B R Ambedkar Vegetable Market (50)", 14, 45);
+    doc.setFontSize(14);
+    doc.text("Dr B. R. Ambedkar Vegetable Market (Shop No. 42)", 14, 15);
+
     doc.setFont("helvetica", "normal");
-    doc.text("Bowenpally, Secunderabad", 14, 52);
+    doc.setFontSize(11);
+    doc.text("Bowenpally, Secunderabad", 14, 22);
 
-    // --- Title Bar ---
-    doc.setFillColor(245, 245, 245);
-    doc.rect(14, 58, 182, 12, "F");
-
-    doc.setFontSize(12);
+    // --- Title Box ---
+    doc.setLineWidth(0.5);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(14, 28, 182, 10); // Box
     doc.setFont("helvetica", "bold");
-    doc.text(`Weight Balance Report on Date: ${data.date}`, 18, 66);
+    doc.setFontSize(12);
+    doc.text(`Weight Balance Report on Date: ${data.date}`, 18, 34);
 
-    // --- Vehicle Details ---
-    if (data.vehicleNumber) {
-        doc.setFontSize(11);
-        doc.text(`Truck Number: ${data.vehicleNumber}`, 14, 80);
-    }
+    // --- Vehicle/Vendor Info Table ---
+    const statsY = 43;
 
-    // --- Table ---
+    autoTable(doc, {
+        startY: statsY,
+        theme: 'grid', // Grid theme for borders
+        head: [],
+        body: [
+            [
+                { content: 'Vendor Name', styles: { fontStyle: 'bold' } },
+                data.vendorName,
+                { content: 'Truck Number', styles: { fontStyle: 'bold' } },
+                data.vehicleNumber
+            ],
+            [
+                { content: 'Total Weight', styles: { fontStyle: 'bold' } },
+                `${data.totalWeight.toFixed(2)}`,
+                { content: 'Total Bags', styles: { fontStyle: 'bold' } },
+                `${data.totalBags}`
+            ],
+            [
+                { content: 'Total Gain', styles: { fontStyle: 'bold' } },
+                `${data.totalGain.toFixed(2)}`,
+                { content: 'Total Loss', styles: { fontStyle: 'bold' } },
+                `${data.totalLoss.toFixed(2)}`
+            ]
+        ],
+        styles: {
+            fontSize: 10,
+            cellPadding: 2,
+            lineColor: [0, 0, 0], // Black borders
+            lineWidth: 0.1,
+            textColor: [0, 0, 0],
+            fillColor: [255, 255, 255] // White bg
+        },
+        columnStyles: {
+            0: { cellWidth: 35 },
+            1: { cellWidth: 55 },
+            2: { cellWidth: 35 },
+            3: { cellWidth: 57 }
+        }
+    });
+
+    // --- Main Items Table ---
     const tableColumn = [
-        "No",
+        "S.No",
         "Item",
         "Customer",
-        "Weight\n(Kg)",
+        "Weight",
         "Bags",
-        "Avg.\nPrice",
-        "Sale",
-        "Type"
+        "Price",
+        "Type",
+        "Subtotal",
+        "Hamali",
+        "Total"
     ];
 
     const tableRows = data.items.map(item => [
         item.no,
         item.item,
         item.customer,
-        item.weight.toFixed(0),
-        item.bags,
-        item.avgPrice.toFixed(0),
-        `₹ ${item.sale.toLocaleString('en-IN')}`,
-        item.type.toUpperCase()
+        item.weight.toFixed(2),
+        item.bags || '',
+        item.price.toFixed(2),
+        item.type,
+        item.subtotal.toFixed(2),
+        item.hamali.toFixed(2),
+        item.total.toFixed(2)
     ]);
 
+    // @ts-ignore
+    const mainTableY = (doc as any).lastAutoTable.finalY + 5;
+
     autoTable(doc, {
-        startY: 85,
+        startY: mainTableY,
         head: [tableColumn],
         body: tableRows,
-        theme: 'plain',
+        theme: 'grid',
         styles: {
             fontSize: 9,
-            cellPadding: 3,
-            valign: 'middle',
-            lineColor: [220, 220, 220],
+            cellPadding: 2,
+            lineColor: [0, 0, 0],
             lineWidth: 0.1,
+            textColor: [0, 0, 0],
+            fillColor: [255, 255, 255]
         },
         headStyles: {
-            fontStyle: 'bold',
             fillColor: [255, 255, 255],
             textColor: [0, 0, 0],
-            lineWidth: 0,
-            minCellHeight: 15, // Make header taller
-            valign: 'bottom'
+            fontStyle: 'bold',
+            lineWidth: 0.1,
+            lineColor: [0, 0, 0] // Border for header
         },
         columnStyles: {
-            0: { cellWidth: 10, halign: 'center' }, // No
-            1: { cellWidth: 25 }, // Item
-            2: { cellWidth: 50 }, // Customer
-            3: { cellWidth: 20, halign: 'center' }, // Weight
-            4: { cellWidth: 15, halign: 'center' }, // Bags
-            5: { cellWidth: 20, halign: 'center' }, // Avg Price
-            6: { cellWidth: 25, halign: 'right' }, // Sale
-            7: { cellWidth: 20, halign: 'center' }, // Type
-        },
+            0: { cellWidth: 10, halign: 'center' }, // S.No
+            // Item, Customer grow
+            3: { halign: 'center' }, // Weight
+            4: { halign: 'center' }, // Bags
+            5: { halign: 'right' }, // Price
+            6: { halign: 'center' }, // Type
+            7: { halign: 'right' }, // Subtotal
+            8: { halign: 'right' }, // Hamali
+            9: { halign: 'right' }, // Total
+        }
     });
 
-    // --- Footer / Summary ---
+    // --- Financial Summary ---
     // @ts-ignore
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    const summaryY = (doc as any).lastAutoTable.finalY + 10;
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    autoTable(doc, {
+        startY: summaryY,
+        theme: 'grid',
+        head: [],
+        body: [
+            [{ content: 'Total Credit', styles: { fontStyle: 'bold' } }, `₹ ${data.summary.totalCredit.toFixed(2)}`],
+            [{ content: 'Total Cash', styles: { fontStyle: 'bold' } }, `₹ ${data.summary.totalCash.toFixed(2)}`],
+            [{ content: 'Grand Total', styles: { fontStyle: 'bold' } }, `₹ ${data.summary.grandTotal.toFixed(2)}`]
+        ],
+        showHead: 'never',
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            lineColor: [0, 0, 0],
+            lineWidth: 0.1,
+            textColor: [0, 0, 0],
+            fillColor: [255, 255, 255]
+        },
+        columnStyles: {
+            0: { cellWidth: 90 }, // Label
+            1: { cellWidth: 92, halign: 'right' } // Value
+        }
+    });
 
-    let currentY = finalY;
+    // --- Stock Summary ---
+    // @ts-ignore
+    const stockY = (doc as any).lastAutoTable.finalY + 10;
 
-    // Stock Summary
-    doc.text(`Total Quantity Received: ${data.summary.totalReceivedWeight} Kg AND ${data.summary.totalReceivedBags} Bags`, 14, currentY);
-    currentY += 6;
-    doc.text(`Total Quantity Sold: ${data.summary.totalSoldWeight} Kg AND ${data.summary.totalSoldBags} Bags`, 14, currentY);
-    currentY += 6;
-    doc.text(`Total Quantity Remaining: ${data.summary.totalRemainingWeight} Kg AND ${data.summary.totalRemainingBags} Bags`, 14, currentY);
-
-    // Financial Summary
-    currentY += 10;
-    // Black Line
-    doc.setLineWidth(0.5);
-    doc.line(14, currentY - 5, 196, currentY - 5);
-
-    doc.text(`Total Sale: ₹${data.summary.totalSaleAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 14, currentY);
-
-    currentY += 8;
-    doc.text(`CREDIT: ₹${data.summary.creditAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} + CASH: ₹${data.summary.cashAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 14, currentY);
+    autoTable(doc, {
+        startY: stockY,
+        theme: 'grid',
+        head: [],
+        body: [
+            [{ content: 'Total Quantity Received', styles: { fontStyle: 'bold' } }, `${data.summary.qtyReceived.toFixed(2)}`],
+            [{ content: 'Total Quantity Sold', styles: { fontStyle: 'bold' } }, `${data.summary.qtySold.toFixed(2)}`],
+            [{ content: 'Total Quantity Remaining', styles: { fontStyle: 'bold' } }, `${data.summary.qtyRemaining.toFixed(2)}`]
+        ],
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            lineColor: [0, 0, 0],
+            lineWidth: 0.1,
+            textColor: [0, 0, 0],
+            fillColor: [255, 255, 255]
+        },
+        columnStyles: {
+            0: { cellWidth: 90 },
+            1: { cellWidth: 92, halign: 'right' }
+        }
+    });
 
     // Save the PDF
     doc.save(`Weight_Balance_Report_${data.date}_${data.vehicleNumber || 'All'}.pdf`);
