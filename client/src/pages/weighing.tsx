@@ -177,7 +177,7 @@ export default function Weighing() {
                                 id="demo-mode-settings"
                                 className="h-4 w-4"
                                 checked={scale.isDemoMode}
-                                onChange={scale.toggleDemoMode}
+                                onChange={(e) => scale.toggleDemoMode(e.target.checked)}
                               />
                             </div>
                           </div>
