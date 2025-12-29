@@ -83,6 +83,14 @@ app.use((req, res, next) => {
       ADD COLUMN IF NOT EXISTS starting_bags INTEGER DEFAULT 0;
     `);
 
+    // Migration for Timestamps (Hotfix)
+    await db.execute(sql`
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+      ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+      ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+    `);
+
     log("Migration check complete: schema updated.");
   } catch (error) {
     console.error("Migration hotfix failed:", error);
