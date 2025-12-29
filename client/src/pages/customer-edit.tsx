@@ -34,10 +34,6 @@ import { Invoice, InvoiceItem, Customer, Vendor, Product, Vehicle } from "@share
 import { Loader2, Search, Filter, Edit, Save, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
-// Add timestamps to type interface if missing in generated schema imports
-// (They are added to schema but maybe not propagated to types immediately without full rebuild)
-// We cast if necessary.
-
 export default function CustomerEdit() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
@@ -48,6 +44,7 @@ export default function CustomerEdit() {
         to: new Date(),
     });
     const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
+    const [selectedVehicleId, setSelectedVehicleId] = useState<string>("all"); // Added Vehicle Filter
     const [customerSearch, setCustomerSearch] = useState("");
 
     // Pagination State
@@ -93,12 +90,28 @@ export default function CustomerEdit() {
         }
 
         // Filter by Vendor
+        // NOTE: Updated logic to correctly identify Vendor from both direct Invoice.vendorId AND Invoice.vehicleId's vendor
         if (selectedVendorId !== "all") {
             filteredInvoices = filteredInvoices.filter(inv => {
-                const vId = Number(selectedVendorId);
-                if (inv.vendorId === vId) return true;
-                const vehicle = vehicles.find(v => v.id === inv.vehicleId);
-                return vehicle?.vendorId === vId;
+                const vId = String(selectedVendorId);
+
+                // Direct Vendor ID match (assuming string comparison to be safe)
+                if (inv.vendorId && String(inv.vendorId) === vId) return true;
+
+                // Indirect match via Vehicle
+                if (inv.vehicleId) {
+                    const vehicle = vehicles.find(v => String(v.id) === String(inv.vehicleId));
+                    if (vehicle && String(vehicle.vendorId) === vId) return true;
+                }
+
+                return false;
+            });
+        }
+
+        // Filter by Vehicle (New)
+        if (selectedVehicleId !== "all") {
+            filteredInvoices = filteredInvoices.filter(inv => {
+                return inv.vehicleId && String(inv.vehicleId) === String(selectedVehicleId);
             });
         }
 
@@ -121,9 +134,7 @@ export default function CustomerEdit() {
                 const vendor = vendors.find(v => v.id === (invoice.vendorId || vehicle?.vendorId));
                 const productName = products.find(p => p.id === item.productId)?.name || "Unknown";
 
-                // Timestamps (Cast strict timestamp) - Updated Record Sorting
-                // item.updatedAt usually available if migration ran. 
-                // invoice.createdAt for created date.
+                // Timestamps
                 const createdAt = (invoice as any).createdAt ? new Date((invoice as any).createdAt) : new Date(invoice.date);
                 const updatedAt = (item as any).updatedAt ? new Date((item as any).updatedAt) :
                     ((invoice as any).updatedAt ? new Date((invoice as any).updatedAt) : createdAt);
@@ -137,6 +148,7 @@ export default function CustomerEdit() {
                     updatedDate: updatedAt,
                     customerName,
                     vendorName: vendor?.name || "-",
+                    vehicleNumber: vehicle?.number || "-", // Added for context
                     productName,
                     weight: item.quantity,
                     bags: invoice.bags || 0,
@@ -149,7 +161,7 @@ export default function CustomerEdit() {
         // SORTING: Updated Record First (Descending)
         return mappedData.sort((a, b) => b.updatedDate.getTime() - a.updatedDate.getTime());
 
-    }, [invoices, invoiceItems, customers, vendors, vehicles, products, dateRange, selectedVendorId, customerSearch, loadingInvoices, loadingItems]);
+    }, [invoices, invoiceItems, customers, vendors, vehicles, products, dateRange, selectedVendorId, selectedVehicleId, customerSearch, loadingInvoices, loadingItems]);
 
     // --- Pagination Logic ---
     const totalPages = Math.ceil(tableData.length / itemsPerPage);
@@ -197,7 +209,7 @@ export default function CustomerEdit() {
     const handleSave = () => {
         if (!editingItem) return;
         const w = parseFloat(editingItem.weight);
-        const p = parseFloat(editingItem.price); // Price per Kg from user input
+        const p = parseFloat(editingItem.price);
         const b = parseInt(editingItem.bags);
 
         if (isNaN(w) || isNaN(p) || isNaN(b)) {
@@ -209,7 +221,7 @@ export default function CustomerEdit() {
             id: editingItem.id,
             invoiceId: editingItem.invoiceId,
             weight: w,
-            price: p, // Use edited price
+            price: p,
             bags: b
         });
     };
@@ -234,6 +246,9 @@ export default function CustomerEdit() {
         <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold">Customer Edit</h1>
+                <div className="bg-primary/10 text-primary px-4 py-2 rounded-lg font-medium">
+                    Total Records: {tableData.length}
+                </div>
             </div>
 
             {/* Filters */}
@@ -266,6 +281,21 @@ export default function CustomerEdit() {
                         </div>
 
                         <div className="space-y-2">
+                            <Label>Vehicle</Label>
+                            <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
+                                <SelectTrigger className="w-48">
+                                    <SelectValue placeholder="All Vehicles" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Vehicles</SelectItem>
+                                    {vehicles.map(v => (
+                                        <SelectItem key={v.id} value={v.id.toString()}>{v.number} ({v.type})</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
                             <Label>Customer Search</Label>
                             <div className="relative">
                                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -282,6 +312,7 @@ export default function CustomerEdit() {
                             variant="outline"
                             onClick={() => {
                                 setSelectedVendorId("all");
+                                setSelectedVehicleId("all");
                                 setCustomerSearch("");
                                 setDateRange({ from: new Date(), to: new Date() });
                             }}
@@ -305,6 +336,7 @@ export default function CustomerEdit() {
                                 <TableHead>Modified</TableHead>
                                 <TableHead>Customer</TableHead>
                                 <TableHead>Vendor</TableHead>
+                                <TableHead>Vehicle</TableHead> {/* Optionally show vehicle col too? */}
                                 <TableHead className="text-right">Weight</TableHead>
                                 <TableHead className="text-right">Bags</TableHead>
                                 <TableHead className="text-right">Price</TableHead>
@@ -315,7 +347,7 @@ export default function CustomerEdit() {
                         <TableBody>
                             {paginatedData.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={12} className="text-center h-24 text-muted-foreground">
+                                    <TableCell colSpan={13} className="text-center h-24 text-muted-foreground">
                                         No records found
                                     </TableCell>
                                 </TableRow>
@@ -333,6 +365,7 @@ export default function CustomerEdit() {
                                         </TableCell>
                                         <TableCell>{row.customerName}</TableCell>
                                         <TableCell>{row.vendorName}</TableCell>
+                                        <TableCell>{row.vehicleNumber}</TableCell>
                                         <TableCell className="text-right">{row.weight.toFixed(2)}</TableCell>
                                         <TableCell className="text-right">{row.bags}</TableCell>
                                         <TableCell className="text-right">{row.price.toFixed(2)}</TableCell>
