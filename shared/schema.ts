@@ -119,6 +119,8 @@ export const invoices = pgTable("invoices", {
   hamaliRatePerBag: real("hamali_rate_per_bag").default(0),
   grandTotal: real("grand_total").notNull(),
   status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true });
@@ -134,6 +136,8 @@ export const invoiceItems = pgTable("invoice_items", {
   quantity: real("quantity").notNull(),
   unitPrice: real("unit_price").notNull(),
   total: real("total").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true });

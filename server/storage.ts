@@ -484,12 +484,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateInvoice(id: string, updates: Partial<InsertInvoice>): Promise<Invoice | undefined> {
-    const [invoice] = await db.update(invoices).set(updates).where(eq(invoices.id, id)).returning();
+    const [invoice] = await db.update(invoices)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(invoices.id, id))
+      .returning();
     return invoice || undefined;
   }
 
   async updateInvoiceItem(id: string, updates: { quantity?: number; unitPrice?: number; total?: number }): Promise<InvoiceItem | undefined> {
-    const [item] = await db.update(invoiceItems).set(updates).where(eq(invoiceItems.id, id)).returning();
+    const [item] = await db.update(invoiceItems)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(invoiceItems.id, id))
+      .returning();
     return item || undefined;
   }
 
