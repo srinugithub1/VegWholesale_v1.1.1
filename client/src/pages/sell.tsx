@@ -1772,7 +1772,17 @@ export default function Sell() {
           </DialogContent>
         </Dialog>
 
-        {vehicles.filter(v => v.shop === shop).map((vehicle) => {
+        {vehicles.filter(v => v.shop === shop).filter(vehicle => {
+          const inventory = vehicleInventories[vehicle.id] || [];
+          const totalQty = inventory.reduce((sum, inv) => sum + inv.quantity, 0);
+
+          // Check if vehicle is new (today's date)
+          const today = new Date().toISOString().split("T")[0];
+          const isNewVehicle = vehicle.entryDate === today;
+
+          // Show if it has stock OR if it's new (even if empty) OR if it's currently selected
+          return totalQty > 0 || isNewVehicle || selectedVehicleIds.has(vehicle.id);
+        }).map((vehicle) => {
           const inventory = vehicleInventories[vehicle.id] || [];
           const itemsWithStock = inventory.filter((inv) => inv.quantity > 0);
           const hasInventory = itemsWithStock.length > 0;
@@ -1790,7 +1800,31 @@ export default function Sell() {
                 draft={saleDrafts[vehicle.id] || { products: [], customerName: "", selectedCustomerId: "", hamaliCharge: 0 }}
                 onUpdateDraft={(draft) => handleUpdateDraft(vehicle.id, draft)}
                 onClose={() => handleCloseSale(vehicle.id)}
-                onSaleComplete={(invoice) => handleSaleComplete(vehicle.id, invoice)}
+                onSaleComplete={(invoice) => {
+                  handleSaleComplete(vehicle.id, invoice);
+
+                  // Check if vehicle became empty after this sale
+                  // We need to re-calculate based on the *latest* inventory fetch which happens in onSuccess of mutation
+                  // But here we rely on the prop 'vehicleInventories' which will actaully trigger a re-render
+                  // We can check the remainder.
+
+                  // Easier: The 'vehicleInventories' will update via react-query invalidation.
+                  // We can add a useEffect to monitor stock change, OR just trust the user sees it disappear.
+                  // But user wanted a NOTIFICATION "before" it disappears. 
+                  // Since it disappears on re-render, we can show toast here if we calculate it will be zero.
+
+                  const currentTotal = inventory.reduce((sum, inv) => sum + inv.quantity, 0);
+                  const soldWeight = invoice.totalKgWeight || 0;
+
+                  // Simple heuristic: if remaining is negligible
+                  if (currentTotal - soldWeight <= 0.1) {
+                    toast({
+                      title: "Vehicle Cleared",
+                      description: `Vehicle ${vehicle.number} is now empty.`,
+                      duration: 3000,
+                    });
+                  }
+                }}
                 currentWeight={scale.currentWeight}
                 rawWeight={scale.rawWeight}
                 isScaleConnected={scale.isConnected}
