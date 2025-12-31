@@ -1335,488 +1335,27 @@ export default function Sell() {
 
 
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogTrigger asChild>
-            <Card
-              className="hover-elevate cursor-pointer border-dashed border-2 flex items-center justify-center w-28 h-24 flex-shrink-0"
-              data-testid="button-add-vehicle"
-            >
-              <CardContent className="flex flex-col items-center justify-center p-2 text-center">
-                <Plus className="h-5 w-5 text-primary mb-1" />
-                <span className="text-xs font-medium">Add</span>
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Vehicle</DialogTitle>
-              <DialogDescription>Enter the vehicle details and select products to load.</DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="vehicleNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Vehicle Number *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., MH12AB1234" {...field} data-testid="input-vehicle-number" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="vehicleType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Vehicle Type *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-vehicle-type">
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Truck">Truck</SelectItem>
-                            <SelectItem value="Mini Truck">Mini Truck</SelectItem>
-                            <SelectItem value="Tempo">Tempo</SelectItem>
-                            <SelectItem value="Van">Van</SelectItem>
-                            <SelectItem value="Pickup">Pickup</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="capacity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Capacity (Tons)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Auto-calculated" {...field} data-testid="input-capacity" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="vendorId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Vendor (Source)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-vendor">
-                              <SelectValue placeholder="Select vendor" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="new">+ Add New Vendor</SelectItem>
-                            {vendors.map((vendor) => (
-                              <SelectItem key={vendor.id} value={vendor.id}>
-                                {vendor.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {form.watch("vendorId") === "new" && (
-                    <FormField
-                      control={form.control}
-                      name="newVendorName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>New Vendor Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter vendor name" {...field} data-testid="input-new-vendor-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-                  <FormField
-                    control={form.control}
-                    name="driverName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Driver Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Driver name" {...field} data-testid="input-driver-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="driverPhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Driver Phone</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Driver phone" {...field} data-testid="input-driver-phone" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+      {(() => {
+        const shopVehicles = vehicles.filter(v => v.shop === shop);
+        const today = new Date().toISOString().split("T")[0];
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-md">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Weight className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Weight</p>
-                      <p className="text-lg font-semibold" data-testid="text-total-weight">
-                        {totalWeight.toFixed(1)} KG
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <ShoppingBag className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Bags</p>
-                      <p className="text-lg font-semibold" data-testid="text-total-bags">
-                        {totalBags} Bags
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <h3 className="text-lg font-medium">Select Products to Load</h3>
-                    <div className="flex items-center gap-2">
-                      {(selectedProducts.length > 0 || newProducts.length > 0) && (
-                        <Badge variant="secondary">{selectedProducts.length + newProducts.length} selected</Badge>
-                      )}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowNewProductForm(true)}
-                        data-testid="button-add-new-product"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add New
-                      </Button>
-                    </div>
-                  </div>
-
-                  {showNewProductForm && (
-                    <div className="p-3 border rounded-md bg-muted/30 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">Add New Product</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setShowNewProductForm(false);
-                            setNewProductName("");
-                            setNewProductUnit("KG");
-                            setNewProductPrice("");
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                        <Input
-                          placeholder="Product name"
-                          value={newProductName}
-                          onChange={(e) => setNewProductName(e.target.value)}
-                          data-testid="input-new-product-name"
-                        />
-                        <Select value={newProductUnit} onValueChange={setNewProductUnit}>
-                          <SelectTrigger data-testid="select-new-product-unit">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="KG">KG</SelectItem>
-                            <SelectItem value="Units">Units</SelectItem>
-                            <SelectItem value="Dozen">Dozen</SelectItem>
-                            <SelectItem value="Bundle">Bundle</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          placeholder="Purchase Price (₹)"
-                          value={newProductPrice}
-                          onChange={(e) => setNewProductPrice(e.target.value)}
-                          data-testid="input-new-product-price"
-                        />
-                        <Button
-                          type="button"
-                          onClick={addNewProduct}
-                          disabled={!newProductName.trim()}
-                          data-testid="button-confirm-new-product"
-                        >
-                          Add Product
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {newProducts.length > 0 && (
-                    <div className="space-y-2">
-                      <span className="text-sm text-muted-foreground">New Products (will be created):</span>
-                      {newProducts.map((np, index) => (
-                        <div key={index} className="p-3 border rounded-md border-primary/50 bg-primary/5">
-                          <div className="flex items-start gap-3">
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between gap-2 flex-wrap">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium">{np.name}</span>
-                                  <Badge variant="outline" className="text-xs">{np.unit}</Badge>
-                                  {np.purchasePrice > 0 && (
-                                    <Badge variant="outline" className="text-xs font-mono">₹{np.purchasePrice}/unit</Badge>
-                                  )}
-                                  <Badge variant="secondary" className="text-xs">New</Badge>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeNewProduct(index)}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                  <label className="text-sm text-muted-foreground mb-1 block">
-                                    Quantity ({np.unit})
-                                  </label>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="outline"
-                                      onClick={() => updateNewProductQuantity(index, np.quantity - 1)}
-                                      className="h-8 w-8"
-                                    >
-                                      <Minus className="h-3 w-3" />
-                                    </Button>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      step={np.unit === "KG" ? "0.1" : "1"}
-                                      value={np.quantity || 0}
-                                      onChange={(e) => updateNewProductQuantity(index, parseFloat(e.target.value) || 0)}
-                                      className="text-center h-8 w-20"
-                                      data-testid={`input-new-product-qty-${index}`}
-                                    />
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="outline"
-                                      onClick={() => updateNewProductQuantity(index, np.quantity + 1)}
-                                      className="h-8 w-8"
-                                    >
-                                      <Plus className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                                <div>
-                                  <label className="text-sm text-muted-foreground mb-1 block">Bags</label>
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="outline"
-                                      onClick={() => updateNewProductBags(index, np.bags - 1)}
-                                      className="h-8 w-8"
-                                    >
-                                      <Minus className="h-3 w-3" />
-                                    </Button>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      step="1"
-                                      value={np.bags || 0}
-                                      onChange={(e) => updateNewProductBags(index, parseInt(e.target.value) || 0)}
-                                      className="text-center h-8 w-20"
-                                      data-testid={`input-new-product-bags-${index}`}
-                                    />
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="outline"
-                                      onClick={() => updateNewProductBags(index, np.bags + 1)}
-                                      className="h-8 w-8"
-                                    >
-                                      <Plus className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <ScrollArea className="h-64 border rounded-md p-4">
-                    <div className="space-y-3">
-                      {products.map((product) => {
-                        const isSelected = selectedProducts.some((p) => p.productId === product.id);
-                        const productData = selectedProducts.find((p) => p.productId === product.id);
-
-                        return (
-                          <div
-                            key={product.id}
-                            className={`p-3 border rounded-md transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleProduct(product.id)}
-                                data-testid={`checkbox-product-${product.id}`}
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between gap-2 flex-wrap">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">{product.name}</span>
-                                    <Badge variant="outline" className="text-xs">{product.unit}</Badge>
-                                  </div>
-                                  <span className="text-sm text-muted-foreground">Stock: {product.currentStock}</span>
-                                </div>
-
-                                {isSelected && (
-                                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                      <label className="text-sm text-muted-foreground mb-1 block">
-                                        Quantity ({product.unit})
-                                      </label>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          type="button"
-                                          size="icon"
-                                          variant="outline"
-                                          onClick={() => updateProductQuantity(product.id, (productData?.quantity || 0) - 1)}
-                                          className="h-8 w-8"
-                                        >
-                                          <Minus className="h-3 w-3" />
-                                        </Button>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          step={product.unit === "KG" ? "0.1" : "1"}
-                                          value={productData?.quantity || 0}
-                                          onChange={(e) => updateProductQuantity(product.id, parseFloat(e.target.value) || 0)}
-                                          className="text-center h-8 w-20"
-                                          data-testid={`input-quantity-${product.id}`}
-                                        />
-                                        <Button
-                                          type="button"
-                                          size="icon"
-                                          variant="outline"
-                                          onClick={() => updateProductQuantity(product.id, (productData?.quantity || 0) + 1)}
-                                          className="h-8 w-8"
-                                        >
-                                          <Plus className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className="text-sm text-muted-foreground mb-1 block flex items-center gap-1">
-                                        Bags
-                                        {(productData?.bags || 0) > 0 && (
-                                          <Badge variant="secondary" className="text-xs ml-1">{productData?.bags}</Badge>
-                                        )}
-                                      </label>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          type="button"
-                                          size="icon"
-                                          variant="outline"
-                                          onClick={() => updateProductBags(product.id, (productData?.bags || 0) - 1)}
-                                          className="h-8 w-8"
-                                        >
-                                          <Minus className="h-3 w-3" />
-                                        </Button>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          step="1"
-                                          value={productData?.bags || 0}
-                                          onChange={(e) => updateProductBags(product.id, parseInt(e.target.value) || 0)}
-                                          className="text-center h-8 w-20"
-                                          data-testid={`input-bags-${product.id}`}
-                                        />
-                                        <Button
-                                          type="button"
-                                          size="icon"
-                                          variant="outline"
-                                          onClick={() => updateProductBags(product.id, (productData?.bags || 0) + 1)}
-                                          className="h-8 w-8"
-                                        >
-                                          <Plus className="h-3 w-3" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {products.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">
-                          No products available. Add products first.
-                        </p>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={() => handleDialogClose(false)} data-testid="button-cancel-vehicle">
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={createVehicleMutation.isPending} data-testid="button-submit-vehicle">
-                    {createVehicleMutation.isPending ? "Creating..." : "Create Vehicle"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        {vehicles.filter(v => v.shop === shop).filter(vehicle => {
+        const visibleVehicles = shopVehicles.filter(vehicle => {
           const inventory = vehicleInventories[vehicle.id] || [];
           const totalQty = inventory.reduce((sum, inv) => sum + inv.quantity, 0);
-
-          // Check if vehicle is new (today's date)
-          const today = new Date().toISOString().split("T")[0];
           const isNewVehicle = vehicle.entryDate === today;
-
-          // Show if it has stock OR if it's new (even if empty) OR if it's currently selected
           return totalQty > 0 || isNewVehicle || selectedVehicleIds.has(vehicle.id);
-        }).map((vehicle) => {
+        });
+
+        const newVehicles = visibleVehicles.filter(v => v.entryDate === today);
+        const oldVehicles = visibleVehicles.filter(v => v.entryDate !== today);
+
+        const renderVehicle = (vehicle: Vehicle) => {
           const inventory = vehicleInventories[vehicle.id] || [];
           const itemsWithStock = inventory.filter((inv) => inv.quantity > 0);
           const hasInventory = itemsWithStock.length > 0;
           const isSelected = selectedVehicleIds.has(vehicle.id);
+          const totalQty = itemsWithStock.reduce((sum, inv) => sum + inv.quantity, 0);
+          const isNewVehicle = vehicle.entryDate === today;
 
           if (isSelected) {
             return (
@@ -1832,21 +1371,8 @@ export default function Sell() {
                 onClose={() => handleCloseSale(vehicle.id)}
                 onSaleComplete={(invoice) => {
                   handleSaleComplete(vehicle.id, invoice);
-
-                  // Check if vehicle became empty after this sale
-                  // We need to re-calculate based on the *latest* inventory fetch which happens in onSuccess of mutation
-                  // But here we rely on the prop 'vehicleInventories' which will actaully trigger a re-render
-                  // We can check the remainder.
-
-                  // Easier: The 'vehicleInventories' will update via react-query invalidation.
-                  // We can add a useEffect to monitor stock change, OR just trust the user sees it disappear.
-                  // But user wanted a NOTIFICATION "before" it disappears. 
-                  // Since it disappears on re-render, we can show toast here if we calculate it will be zero.
-
                   const currentTotal = inventory.reduce((sum, inv) => sum + inv.quantity, 0);
                   const soldWeight = invoice.totalKgWeight || 0;
-
-                  // Simple heuristic: if remaining is negligible
                   if (currentTotal - soldWeight <= 0.1) {
                     toast({
                       title: "Vehicle Cleared",
@@ -1862,16 +1388,10 @@ export default function Sell() {
             );
           }
 
-          const totalQty = itemsWithStock.reduce((sum, inv) => sum + inv.quantity, 0);
-
-          // Check if vehicle is new (today's date)
-          const today = new Date().toISOString().split("T")[0];
-          const isNewVehicle = vehicle.entryDate === today;
-
           return (
             <Card
               key={vehicle.id}
-              className={`hover-elevate cursor-pointer w-48 flex-shrink-0 ${isNewVehicle ? 'ring-2 ring-primary' : ''}`}
+              className={`hover-elevate cursor-pointer w-48 flex-shrink-0 ${isNewVehicle ? 'ring-2 ring-primary border-primary/20' : 'border-amber-200 bg-amber-50/50 dark:bg-amber-950/10'}`}
               onClick={() => handleVehicleSelect(vehicle.id)}
               data-testid={`card-vehicle-${vehicle.id}`}
             >
@@ -1916,8 +1436,509 @@ export default function Sell() {
               </CardContent>
             </Card>
           );
-        })}
-      </div>
+        };
+
+        return (
+          <div className="flex flex-col gap-6">
+            <div className="rounded-lg border bg-card p-3 shadow-sm border-l-4 border-l-primary/50">
+              <h3 className="mb-2 text-sm font-semibold flex items-center gap-2 text-primary">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">🚚</span>
+                Today's Arrivals
+                <Badge variant="secondary" className="ml-2 bg-primary/10 text-primary hover:bg-primary/20">{newVehicles.length}</Badge>
+              </h3>
+              <div className="flex gap-2 overflow-x-auto pb-2 items-center">
+                <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+                  <DialogTrigger asChild>
+                    <Card
+                      className="hover-elevate cursor-pointer border-dashed border-2 flex items-center justify-center w-28 h-24 flex-shrink-0"
+                      data-testid="button-add-vehicle"
+                    >
+                      <CardContent className="flex flex-col items-center justify-center p-2 text-center">
+                        <Plus className="h-5 w-5 text-primary mb-1" />
+                        <span className="text-xs font-medium">Add</span>
+                      </CardContent>
+                    </Card>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New Vehicle</DialogTitle>
+                      <DialogDescription>Enter the vehicle details and select products to load.</DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="vehicleNumber"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Vehicle Number *</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="e.g., MH12AB1234" {...field} data-testid="input-vehicle-number" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="vehicleType"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Vehicle Type *</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger data-testid="select-vehicle-type">
+                                      <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="Truck">Truck</SelectItem>
+                                    <SelectItem value="Mini Truck">Mini Truck</SelectItem>
+                                    <SelectItem value="Tempo">Tempo</SelectItem>
+                                    <SelectItem value="Van">Van</SelectItem>
+                                    <SelectItem value="Pickup">Pickup</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="capacity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Capacity (Tons)</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Auto-calculated" {...field} data-testid="input-capacity" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="vendorId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Vendor (Source)</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger data-testid="select-vendor">
+                                      <SelectValue placeholder="Select vendor" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="new">+ Add New Vendor</SelectItem>
+                                    {vendors.map((vendor) => (
+                                      <SelectItem key={vendor.id} value={vendor.id}>
+                                        {vendor.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          {form.watch("vendorId") === "new" && (
+                            <FormField
+                              control={form.control}
+                              name="newVendorName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>New Vendor Name</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Enter vendor name" {...field} data-testid="input-new-vendor-name" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                          <FormField
+                            control={form.control}
+                            name="driverName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Driver Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Driver name" {...field} data-testid="input-driver-name" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="driverPhone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Driver Phone</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Driver phone" {...field} data-testid="input-driver-phone" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-md">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <Weight className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total Weight</p>
+                              <p className="text-lg font-semibold" data-testid="text-total-weight">
+                                {totalWeight.toFixed(1)} KG
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <ShoppingBag className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Total Bags</p>
+                              <p className="text-lg font-semibold" data-testid="text-total-bags">
+                                {totalBags} Bags
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <h3 className="text-lg font-medium">Select Products to Load</h3>
+                            <div className="flex items-center gap-2">
+                              {(selectedProducts.length > 0 || newProducts.length > 0) && (
+                                <Badge variant="secondary">{selectedProducts.length + newProducts.length} selected</Badge>
+                              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowNewProductForm(true)}
+                                data-testid="button-add-new-product"
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add New
+                              </Button>
+                            </div>
+                          </div>
+
+                          {showNewProductForm && (
+                            <div className="p-3 border rounded-md bg-muted/30 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-sm">Add New Product</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setShowNewProductForm(false);
+                                    setNewProductName("");
+                                    setNewProductUnit("KG");
+                                    setNewProductPrice("");
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                                <Input
+                                  placeholder="Product name"
+                                  value={newProductName}
+                                  onChange={(e) => setNewProductName(e.target.value)}
+                                  data-testid="input-new-product-name"
+                                />
+                                <Select value={newProductUnit} onValueChange={setNewProductUnit}>
+                                  <SelectTrigger data-testid="select-new-product-unit">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="KG">KG</SelectItem>
+                                    <SelectItem value="Units">Units</SelectItem>
+                                    <SelectItem value="Dozen">Dozen</SelectItem>
+                                    <SelectItem value="Bundle">Bundle</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Input
+                                  type="number"
+                                  placeholder="Purchase Price (₹)"
+                                  value={newProductPrice}
+                                  onChange={(e) => setNewProductPrice(e.target.value)}
+                                  data-testid="input-new-product-price"
+                                />
+                                <Button
+                                  type="button"
+                                  onClick={addNewProduct}
+                                  disabled={!newProductName.trim()}
+                                  data-testid="button-confirm-new-product"
+                                >
+                                  Add Product
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {newProducts.length > 0 && (
+                            <div className="space-y-2">
+                              <span className="text-sm text-muted-foreground">New Products (will be created):</span>
+                              {newProducts.map((np, index) => (
+                                <div key={index} className="p-3 border rounded-md border-primary/50 bg-primary/5">
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex-1">
+                                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="font-medium">{np.name}</span>
+                                          <Badge variant="outline" className="text-xs">{np.unit}</Badge>
+                                          {np.purchasePrice > 0 && (
+                                            <Badge variant="outline" className="text-xs font-mono">₹{np.purchasePrice}/unit</Badge>
+                                          )}
+                                          <Badge variant="secondary" className="text-xs">New</Badge>
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => removeNewProduct(index)}
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                          <label className="text-sm text-muted-foreground mb-1 block">
+                                            Quantity ({np.unit})
+                                          </label>
+                                          <div className="flex items-center gap-1">
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="outline"
+                                              onClick={() => updateNewProductQuantity(index, np.quantity - 1)}
+                                              className="h-8 w-8"
+                                            >
+                                              <Minus className="h-3 w-3" />
+                                            </Button>
+                                            <Input
+                                              type="number"
+                                              min="0"
+                                              step={np.unit === "KG" ? "0.1" : "1"}
+                                              value={np.quantity || 0}
+                                              onChange={(e) => updateNewProductQuantity(index, parseFloat(e.target.value) || 0)}
+                                              className="text-center h-8 w-20"
+                                              data-testid={`input-new-product-qty-${index}`}
+                                            />
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="outline"
+                                              onClick={() => updateNewProductQuantity(index, np.quantity + 1)}
+                                              className="h-8 w-8"
+                                            >
+                                              <Plus className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <label className="text-sm text-muted-foreground mb-1 block">Bags</label>
+                                          <div className="flex items-center gap-1">
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="outline"
+                                              onClick={() => updateNewProductBags(index, np.bags - 1)}
+                                              className="h-8 w-8"
+                                            >
+                                              <Minus className="h-3 w-3" />
+                                            </Button>
+                                            <Input
+                                              type="number"
+                                              min="0"
+                                              step="1"
+                                              value={np.bags || 0}
+                                              onChange={(e) => updateNewProductBags(index, parseInt(e.target.value) || 0)}
+                                              className="text-center h-8 w-20"
+                                              data-testid={`input-new-product-bags-${index}`}
+                                            />
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="outline"
+                                              onClick={() => updateNewProductBags(index, np.bags + 1)}
+                                              className="h-8 w-8"
+                                            >
+                                              <Plus className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <ScrollArea className="h-64 border rounded-md p-4">
+                            <div className="space-y-3">
+                              {products.map((product) => {
+                                const isSelected = selectedProducts.some((p) => p.productId === product.id);
+                                const productData = selectedProducts.find((p) => p.productId === product.id);
+
+                                return (
+                                  <div
+                                    key={product.id}
+                                    className={`p-3 border rounded-md transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() => toggleProduct(product.id)}
+                                        data-testid={`checkbox-product-${product.id}`}
+                                      />
+                                      <div className="flex-1">
+                                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium">{product.name}</span>
+                                            <Badge variant="outline" className="text-xs">{product.unit}</Badge>
+                                          </div>
+                                          <span className="text-sm text-muted-foreground">Stock: {product.currentStock}</span>
+                                        </div>
+
+                                        {isSelected && (
+                                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                              <label className="text-sm text-muted-foreground mb-1 block">
+                                                Quantity ({product.unit})
+                                              </label>
+                                              <div className="flex items-center gap-1">
+                                                <Button
+                                                  type="button"
+                                                  size="icon"
+                                                  variant="outline"
+                                                  onClick={() => updateProductQuantity(product.id, (productData?.quantity || 0) - 1)}
+                                                  className="h-8 w-8"
+                                                >
+                                                  <Minus className="h-3 w-3" />
+                                                </Button>
+                                                <Input
+                                                  type="number"
+                                                  min="0"
+                                                  step={product.unit === "KG" ? "0.1" : "1"}
+                                                  value={productData?.quantity || 0}
+                                                  onChange={(e) => updateProductQuantity(product.id, parseFloat(e.target.value) || 0)}
+                                                  className="text-center h-8 w-20"
+                                                  data-testid={`input-quantity-${product.id}`}
+                                                />
+                                                <Button
+                                                  type="button"
+                                                  size="icon"
+                                                  variant="outline"
+                                                  onClick={() => updateProductQuantity(product.id, (productData?.quantity || 0) + 1)}
+                                                  className="h-8 w-8"
+                                                >
+                                                  <Plus className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <label className="text-sm text-muted-foreground mb-1 block flex items-center gap-1">
+                                                Bags
+                                                {(productData?.bags || 0) > 0 && (
+                                                  <Badge variant="secondary" className="text-xs ml-1">{productData?.bags}</Badge>
+                                                )}
+                                              </label>
+                                              <div className="flex items-center gap-1">
+                                                <Button
+                                                  type="button"
+                                                  size="icon"
+                                                  variant="outline"
+                                                  onClick={() => updateProductBags(product.id, (productData?.bags || 0) - 1)}
+                                                  className="h-8 w-8"
+                                                >
+                                                  <Minus className="h-3 w-3" />
+                                                </Button>
+                                                <Input
+                                                  type="number"
+                                                  min="0"
+                                                  step="1"
+                                                  value={productData?.bags || 0}
+                                                  onChange={(e) => updateProductBags(product.id, parseInt(e.target.value) || 0)}
+                                                  className="text-center h-8 w-20"
+                                                  data-testid={`input-bags-${product.id}`}
+                                                />
+                                                <Button
+                                                  type="button"
+                                                  size="icon"
+                                                  variant="outline"
+                                                  onClick={() => updateProductBags(product.id, (productData?.bags || 0) + 1)}
+                                                  className="h-8 w-8"
+                                                >
+                                                  <Plus className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {products.length === 0 && (
+                                <p className="text-center text-muted-foreground py-8">
+                                  No products available. Add products first.
+                                </p>
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-4 border-t">
+                          <Button type="button" variant="outline" onClick={() => handleDialogClose(false)} data-testid="button-cancel-vehicle">
+                            Cancel
+                          </Button>
+                          <Button type="submit" disabled={createVehicleMutation.isPending} data-testid="button-submit-vehicle">
+                            {createVehicleMutation.isPending ? "Creating..." : "Create Vehicle"}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+
+                {newVehicles.map(renderVehicle)}
+              </div>
+            </div>
+
+            {oldVehicles.length > 0 && (
+              <div className="rounded-lg border bg-card p-3 shadow-sm border-l-4 border-l-amber-500/50">
+                <h3 className="mb-2 text-sm font-semibold flex items-center gap-2 text-amber-600">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/10">📦</span>
+                  Previous Stock
+                  <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/10 dark:text-amber-400">{oldVehicles.length}</Badge>
+                </h3>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {oldVehicles.map(renderVehicle)}
+                </div>
+              </div>
+            )}
+
+            {newVehicles.length === 0 && oldVehicles.length === 0 && (
+              <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg bg-muted/10">
+                <Truck className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                <p>No active vehicles found.</p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
       <SaleSuccessDialog
         invoice={lastInvoice}
         saleDetails={lastSaleDetails}
