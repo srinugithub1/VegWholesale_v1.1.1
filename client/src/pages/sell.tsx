@@ -999,6 +999,36 @@ export default function Sell() {
   });
 
   const onSubmit = (data: VehicleFormValues) => {
+    // Validation: Ensure at least one product is selected with quantity > 0
+    let hasValidProducts = false;
+
+    // Check existing products
+    for (const p of selectedProducts) {
+      if (p.quantity > 0) {
+        hasValidProducts = true;
+        break;
+      }
+    }
+
+    // Check new products
+    if (!hasValidProducts) {
+      for (const np of newProducts) {
+        if (np.quantity > 0) {
+          hasValidProducts = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasValidProducts) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one product to load (Quantity > 0).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createVehicleMutation.mutate(data);
   };
 
