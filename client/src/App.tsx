@@ -58,27 +58,38 @@ function ProtectedApp() {
   const { shop, setShop } = useShop();
   const { user, logoutMutation } = useAuth();
   const isAdmin = user?.role === "admin";
+  const isRestrictedAdmin = user?.role === "restricted_admin";
 
-  // Redirect non-admins to /sell if they try to access restricted routes
+  // Redirect based on role permissions
   useEffect(() => {
-    if (!user) return; // Should not happen in ProtectedApp but safe check
+    if (!user) return;
 
-    // List of allowed routes for non-admins
-    const allowed = ['/sell', '/customer-edit'];
+    if (isAdmin) return; // Admins can access everything
 
-    if (!isAdmin) {
+    if (isRestrictedAdmin) {
+      // Allowed routes for restricted admin
+      const allowed = ['/', '/stock', '/reports'];
+      // Also allow sub-paths if necessary, but wouter location is exact path usually.
+      // If we visit a route not in allowed, redirect to Dashboard (/)
       if (!allowed.includes(location)) {
-        setLocation('/sell');
+        setLocation('/');
       }
+      return;
     }
-  }, [user, isAdmin, location, setLocation]);
+
+    // Regular User
+    const allowed = ['/sell', '/customer-edit'];
+    if (!allowed.includes(location)) {
+      setLocation('/sell');
+    }
+  }, [user, isAdmin, isRestrictedAdmin, location, setLocation]);
 
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
-  if (!isAdmin && location !== '/sell' && location !== '/customer-edit') {
+  if (!isAdmin && !isRestrictedAdmin && location !== '/sell' && location !== '/customer-edit') {
     return null; // Don't render restricted content while redirecting
   }
 
