@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2 } from "lucide-react";
+import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2, Edit } from "lucide-react";
 import { useScale } from "@/hooks/use-scale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Vehicle, Product, VehicleInventory, Vendor, Customer, Invoice } from "@shared/schema";
@@ -441,9 +441,10 @@ function VehicleSalePane({
               <span className={`text-xs ${isNewVehicle ? 'text-primary' : 'text-amber-600'}`}>
                 Stock: {totalVehicleStock.toFixed(1)} KG
               </span>
-              <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5">
+              <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5 items-center">
                 <span className="text-green-600">Gain: {vehicle.totalWeightGain?.toFixed(3) || '0.000'}</span>
                 <span className="text-red-500">Loss: {vehicle.totalWeightLoss?.toFixed(3) || '0.000'}</span>
+                <StockEditDialog vehicle={vehicle} inventory={inventory} products={products} />
               </div>
             </div>
           </div>
@@ -690,7 +691,91 @@ function VehicleSalePane({
           {createSaleMutation.isPending ? "..." : "Create Sale"}
         </Button>
       </CardContent>
-    </Card>
+    </Card >
+  );
+}
+
+function StockEditDialog({ vehicle, inventory, products }: { vehicle: Vehicle, inventory: VehicleInventory[], products: Product[] }) {
+  const [open, setOpen] = useState(false);
+  const [editedStock, setEditedStock] = useState<Record<string, string>>({});
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      const initialStock: Record<string, string> = {};
+      inventory.forEach(item => {
+        initialStock[item.productId] = item.quantity.toString();
+      });
+      setEditedStock(initialStock);
+    }
+  }, [open, inventory]);
+
+  const updateInventoryMutation = useMutation({
+    mutationFn: async () => {
+      const updates = Object.entries(editedStock).map(async ([productId, quantityStr]) => {
+        const quantity = parseFloat(quantityStr);
+        if (isNaN(quantity)) return null;
+
+        // Use the existing endpoint to update vehicle inventory
+        return apiRequest("PATCH", `/api/vehicles/${vehicle.id}/inventory/${productId}`, {
+          quantity: quantity
+        });
+      });
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/all-vehicle-inventories"] });
+      toast({ title: "Stock Updated", description: "Vehicle inventory stock corrected." });
+      setOpen(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update stock.", variant: "destructive" });
+    }
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-4 w-4 ml-2 hover:bg-muted" title="Correct Stock">
+          <Edit className="h-3 w-3 text-muted-foreground" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Correct Stock - {vehicle.number}</DialogTitle>
+          <DialogDescription>
+            Update the current stock quantity for this vehicle.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          {inventory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No inventory items found.</p>
+          ) : (
+            inventory.map(item => {
+              const product = products.find(p => p.id === item.productId);
+              return (
+                <div key={item.productId} className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right col-span-2 truncate">{product?.name || "Product"}</Label>
+                  <Input
+                    type="number"
+                    className="col-span-2"
+                    value={editedStock[item.productId] || ""}
+                    onChange={(e) => setEditedStock({ ...editedStock, [item.productId]: e.target.value })}
+                  />
+                </div>
+              );
+            })
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={() => updateInventoryMutation.mutate()} disabled={updateInventoryMutation.isPending}>
+            {updateInventoryMutation.isPending ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
