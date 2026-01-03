@@ -511,9 +511,10 @@ function VehicleSalePane({
         <div className="space-y-1">
           <div className="grid grid-cols-12 gap-1 text-[10px] text-muted-foreground font-medium px-1">
             <div className="col-span-3">Product</div>
-            <div className="col-span-2 text-center">Weight</div>
-            <div className="col-span-2 text-center">Bags</div>
-            <div className="col-span-3 text-center">Price/KG</div>
+            <div className="col-span-2 text-center">Add Wt</div>
+            <div className="col-span-2 text-center">Total</div>
+            <div className="col-span-1 text-center">Bags</div>
+            <div className="col-span-2 text-center">Price/KG</div>
             <div className="col-span-2 text-right">Total</div>
           </div>
           <div className="space-y-1 max-h-40 overflow-y-auto">
@@ -524,99 +525,39 @@ function VehicleSalePane({
               const price = draftProduct?.price || item.product?.salePrice || 0;
               const lineTotal = weight * price;
 
+              // Local state for the "Add" input isn't strictly needed if we just use the Input for transient values OR manual entry.
+              // To enable "type and add", we need a local state or use a ref.
+              // But for simplicity with React, let's keep it controlled but separate from 'weight'.
+              // Actually, to make it simple:
+              // The Input displays "0" or "Scale Value".
+              // If Scale connected -> Input = scale.currentWeight.
+              // If User types -> It overrides.
+              // Clicking "+" or Scale Icon -> Adds Input Value to Draft Weight, then resets Input to 0 (if manual) or Scale Value.
+
+              // We need a way to track "manual input" vs "auto scale".
+              // Let's assume the Input is UNBOUND or bound to a transient state.
+              // Since we are mapping, we can't easily add state hook inside map.
+              // We should extract this row to a component OR use a state object keyed by productId.
+
+              // Refactoring to a sub-component is cleaner but I'll try to stick to inline for minimal change if possible.
+              // I'll add a state `addWeights` to VehicleSalePane.
+
               return (
-                <div key={item.productId} className="grid grid-cols-12 gap-1 items-center">
-                  <div className="col-span-3 text-xs truncate" title={item.product?.name}>
-                    {item.product?.name}
-                  </div>
-                  <div className="col-span-2 flex items-center gap-1">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      className="h-6 text-xs text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full"
-                      value={weight || ""}
-                      placeholder="0"
-                      onChange={(e) => updateProductField(item.productId, 'weight', parseFloat(e.target.value) || 0)}
-                      data-testid={`input-weight-${vehicle.id}-${item.productId}`}
-                    />
-                    {isScaleConnected && (
-                      <Button
-                        title="Add Scale Weight (+1 Bag)"
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary"
-                        disabled={currentWeight === null}
-                        onClick={async () => {
-                          const rounded = currentWeight || 0;
-                          const raw = rawWeight || 0;
-
-                          // Track Gain/Loss
-                          if (raw > 0) {
-                            const diff = rounded - raw;
-                            // Update vehicle stats
-                            // We need to send a PATCH request. 
-                            // This is a side effect.
-                            try {
-                              const gain = diff > 0 ? diff : 0;
-                              const loss = diff < 0 ? Math.abs(diff) : 0;
-
-                              if (gain > 0 || loss > 0) {
-                                await apiRequest("PATCH", `/api/vehicles/${vehicle.id}`, {
-                                  totalWeightGain: (vehicle.totalWeightGain || 0) + gain,
-                                  totalWeightLoss: (vehicle.totalWeightLoss || 0) + loss
-                                });
-                                // Invalidate queries to refresh UI
-                                queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
-                              }
-                            } catch (e) {
-                              console.error("Failed to update weight stats", e);
-                            }
-                          }
-                          accumulateWeightAndBags(item.productId, currentWeight || 0)
-                        }}
-                      >
-                        <Scale className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="col-span-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="1"
-                      className="h-6 text-xs text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      value={bags || ""}
-                      placeholder="0"
-                      onChange={(e) => updateProductField(item.productId, 'bags', parseInt(e.target.value) || 0)}
-                      data-testid={`input-bags-${vehicle.id}-${item.productId}`}
-                    />
-                  </div>
-                  <div className="col-span-3">
-                    <Input
-                      type="number"
-                      min="0"
-                      className={`h-6 text-xs text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors.products?.[item.productId]?.price ? "border-destructive ring-1 ring-destructive bg-destructive/10" : ""}`}
-                      title={errors.products?.[item.productId]?.price}
-                      value={price || ""}
-                      placeholder="0"
-                      onChange={(e) => {
-                        updateProductField(item.productId, 'price', parseFloat(e.target.value) || 0);
-                        if (errors.products?.[item.productId]) {
-                          setErrors(prev => {
-                            const newProducts = { ...prev.products };
-                            delete newProducts[item.productId];
-                            return { ...prev, products: newProducts };
-                          });
-                        }
-                      }}
-                      data-testid={`input-price-${vehicle.id}-${item.productId}`}
-                    />
-                  </div>
-                  <div className="col-span-2 text-xs text-right font-medium">
-                    {lineTotal > 0 ? `₹${lineTotal.toFixed(0)}` : "-"}
-                  </div>
-                </div>
+                <ProductRow
+                  key={item.productId}
+                  item={item}
+                  weight={weight}
+                  bags={bags}
+                  price={price}
+                  lineTotal={lineTotal}
+                  vehicle={vehicle}
+                  isScaleConnected={isScaleConnected}
+                  currentWeight={currentWeight}
+                  rawWeight={rawWeight}
+                  errors={errors}
+                  updateProductField={updateProductField}
+                  accumulateWeightAndBags={accumulateWeightAndBags}
+                />
               );
             })}
             {availableProducts.length === 0 && (
@@ -2030,6 +1971,159 @@ export default function Sell() {
         open={showSuccessDialog}
         onClose={() => setShowSuccessDialog(false)}
       />
+    </div>
+  );
+}
+
+function ProductRow({
+  item,
+  weight,
+  bags,
+  price,
+  lineTotal,
+  vehicle,
+  isScaleConnected,
+  currentWeight,
+  rawWeight,
+  errors,
+  updateProductField,
+  accumulateWeightAndBags
+}: {
+  item: any,
+  weight: number,
+  bags: number,
+  price: number,
+  lineTotal: number,
+  vehicle: Vehicle,
+  isScaleConnected: boolean,
+  currentWeight: number | null,
+  rawWeight: number | null,
+  errors: any,
+  updateProductField: (id: string, field: 'weight' | 'bags' | 'price', val: number) => void,
+  accumulateWeightAndBags: (id: string, val: number) => void
+}) {
+  // Local state for "Add Weight" input
+  const [addValue, setAddValue] = useState<string>("");
+
+  // Effect: If scale is connected and stable, maybe auto-populate? 
+  useEffect(() => {
+    if (isScaleConnected && currentWeight !== null && currentWeight > 0) {
+      setAddValue(currentWeight.toString());
+    }
+  }, [currentWeight, isScaleConnected]);
+
+  return (
+    <div className="grid grid-cols-12 gap-1 items-center">
+      <div className="col-span-3 text-xs truncate" title={item.product?.name}>
+        {item.product?.name}
+      </div>
+
+      {/* Add Weight Column */}
+      <div className="col-span-2 flex items-center gap-1">
+        <Input
+          type="number"
+          min="0"
+          step="0.1"
+          className="h-6 text-xs text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full bg-yellow-50 dark:bg-yellow-900/10"
+          value={addValue}
+          placeholder="0"
+          onChange={(e) => setAddValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              const val = parseFloat(addValue);
+              if (!isNaN(val) && val > 0) {
+                accumulateWeightAndBags(item.productId, val);
+                setAddValue("");
+              }
+            }
+          }}
+        />
+        {isScaleConnected ? (
+          <Button
+            title="Add Scale Weight"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary"
+            disabled={currentWeight === null}
+            onClick={async () => {
+              const val = currentWeight || 0;
+              if (val > 0) {
+                // Trigger accumulation
+                // Also handle Gain/Loss logic here if needed (copied from previous logic)
+                const rounded = val;
+                const raw = rawWeight || 0;
+                if (raw > 0) {
+                  const diff = rounded - raw;
+                  try {
+                    const gain = diff > 0 ? diff : 0;
+                    const loss = diff < 0 ? Math.abs(diff) : 0;
+                    if (gain > 0 || loss > 0) {
+                      await apiRequest("PATCH", `/api/vehicles/${vehicle.id}`, {
+                        totalWeightGain: (vehicle.totalWeightGain || 0) + gain,
+                        totalWeightLoss: (vehicle.totalWeightLoss || 0) + loss
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
+                    }
+                  } catch (e) {
+                    console.error("Failed to update weight stats", e);
+                  }
+                }
+                accumulateWeightAndBags(item.productId, val);
+                setAddValue(""); // Reset after add
+              }
+            }}
+          >
+            <Scale className="h-3 w-3" />
+          </Button>
+        ) : (
+          <Button
+            title="Add Manually"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary"
+            onClick={() => {
+              const val = parseFloat(addValue);
+              if (!isNaN(val) && val > 0) {
+                accumulateWeightAndBags(item.productId, val);
+                setAddValue("");
+              }
+            }}
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+
+      {/* Total Weight Column */}
+      <div className="col-span-2 text-center text-xs font-medium">
+        {weight.toFixed(1)}
+      </div>
+
+      <div className="col-span-1">
+        <Input
+          type="number"
+          min="0"
+          step="1"
+          className="h-6 text-xs text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          value={bags || ""}
+          placeholder="0"
+          onChange={(e) => updateProductField(item.productId, 'bags', parseInt(e.target.value) || 0)}
+        />
+      </div>
+      <div className="col-span-2">
+        <Input
+          type="number"
+          min="0"
+          className={`h-6 text-xs text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors.products?.[item.productId]?.price ? "border-destructive ring-1 ring-destructive bg-destructive/10" : ""}`}
+          title={errors.products?.[item.productId]?.price}
+          value={price || ""}
+          placeholder="0"
+          onChange={(e) => updateProductField(item.productId, 'price', parseFloat(e.target.value) || 0)}
+        />
+      </div>
+      <div className="col-span-2 text-xs text-right font-medium">
+        {lineTotal > 0 ? `₹${lineTotal.toFixed(0)}` : "-"}
+      </div>
     </div>
   );
 }
