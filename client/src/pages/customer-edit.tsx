@@ -59,6 +59,9 @@ export default function CustomerEdit() {
         bags: string;
         price: string; // Price per Kg
         amount: string; // Calculated (ReadOnly)
+        customerName: string;
+        vendorName: string;
+        vehicleNumber: string;
     } | null>(null);
 
     // --- Data Fetching ---
@@ -202,7 +205,10 @@ export default function CustomerEdit() {
             weight: row.weight.toString(),
             bags: row.bags.toString(),
             price: row.price.toString(),
-            amount: row.amount.toFixed(2)
+            amount: row.amount.toFixed(2),
+            customerName: row.customerName,
+            vendorName: row.vendorName,
+            vehicleNumber: row.vehicleNumber,
         });
     };
 
@@ -410,48 +416,67 @@ export default function CustomerEdit() {
 
             {/* Edit Dialog */}
             <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Edit Record</DialogTitle>
                     </DialogHeader>
 
                     {editingItem && (
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="weight" className="text-right">Weight</Label>
-                                <Input
-                                    id="weight"
-                                    value={editingItem.weight}
-                                    onChange={(e) => handleDialogChange('weight', e.target.value)}
-                                    className="col-span-3"
-                                />
+                        <div className="grid gap-6 py-4">
+                            {/* Read-only Context Info */}
+                            <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                                <div className="space-y-1 col-span-2">
+                                    <Label className="text-xs text-muted-foreground">Customer</Label>
+                                    <div className="font-semibold text-lg">{editingItem.customerName}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Vehicle</Label>
+                                    <div className="font-medium">{editingItem.vehicleNumber}</div>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Vendor</Label>
+                                    <div className="font-medium">{editingItem.vendorName}</div>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="bags" className="text-right">Bags</Label>
-                                <Input
-                                    id="bags"
-                                    value={editingItem.bags}
-                                    onChange={(e) => handleDialogChange('bags', e.target.value)}
-                                    className="col-span-3"
-                                />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="price" className="text-right">Price/Kg</Label>
-                                <Input
-                                    id="price"
-                                    value={editingItem.price}
-                                    onChange={(e) => handleDialogChange('price', e.target.value)}
-                                    className="col-span-3"
-                                />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="amount" className="text-right font-bold">Amount</Label>
-                                <Input
-                                    id="amount"
-                                    value={editingItem.amount}
-                                    className="col-span-3 bg-muted font-bold"
-                                    readOnly // Read only as requested
-                                />
+
+                            {/* Editable Fields */}
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="weight">Weight</Label>
+                                    <Input
+                                        id="weight"
+                                        value={editingItem.weight}
+                                        onChange={(e) => handleDialogChange('weight', e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="bags">Bags</Label>
+                                    <Input
+                                        id="bags"
+                                        value={editingItem.bags}
+                                        onChange={(e) => handleDialogChange('bags', e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="price">Price/Kg</Label>
+                                    <Input
+                                        id="price"
+                                        value={editingItem.price}
+                                        onChange={(e) => handleDialogChange('price', e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="amount">Amount</Label>
+                                    <Input
+                                        id="amount"
+                                        value={editingItem.amount}
+                                        className="bg-muted font-bold"
+                                        readOnly
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
