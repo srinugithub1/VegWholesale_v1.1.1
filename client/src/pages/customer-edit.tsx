@@ -31,8 +31,22 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { Invoice, InvoiceItem, Customer, Vendor, Product, Vehicle } from "@shared/schema";
-import { Loader2, Search, Filter, Edit, Save, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
+import { Loader2, Search, Filter, Edit, Save, ArrowUpDown, ArrowLeft, ArrowRight, Check, ChevronsUpDown } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function CustomerEdit() {
     const { toast } = useToast();
@@ -59,7 +73,10 @@ export default function CustomerEdit() {
         bags: string;
         price: string; // Price per Kg
         amount: string; // Calculated (ReadOnly)
-        customerName: string;
+        customerId: string;
+        vendorId: string;
+        vehicleId: string;
+        customerName: string; // Keep for fallback display
         vendorName: string;
         vehicleNumber: string;
     } | null>(null);
@@ -149,10 +166,14 @@ export default function CustomerEdit() {
                     date: invoice.date,
                     createdDate: createdAt,
                     updatedDate: updatedAt,
+                    customerId: invoice.customerId,
                     customerName,
+                    vendorId: vendor?.id || "",
                     vendorName: vendor?.name || "-",
+                    vehicleId: vehicle?.id || "",
                     vehicleNumber: vehicle?.number || "-", // Added for context
                     productName,
+                    vehicleNumberOld: vehicle?.number, // Keep for display if needed
                     weight: item.quantity,
                     bags: invoice.bags || 0,
                     price: item.unitPrice,
@@ -176,7 +197,16 @@ export default function CustomerEdit() {
 
     // --- Mutation ---
     const updateItemMutation = useMutation({
-        mutationFn: async (values: { id: number, invoiceId: number, weight: number, price: number, bags: number }) => {
+        mutationFn: async (values: {
+            id: number,
+            invoiceId: number,
+            weight: number,
+            price: number,
+            bags: number,
+            customerId: string,
+            vehicleId: string | null,
+            vendorId: string | null
+        }) => {
             const total = values.weight * values.price;
             await apiRequest("PATCH", `/api/invoice-items/${values.id}`, {
                 quantity: values.weight,
@@ -184,7 +214,10 @@ export default function CustomerEdit() {
                 total: total
             });
             await apiRequest("PATCH", `/api/invoices/${values.invoiceId}`, {
-                bags: values.bags
+                bags: values.bags,
+                customerId: values.customerId,
+                vehicleId: values.vehicleId,
+                vendorId: values.vendorId
             });
         },
         onSuccess: () => {
@@ -206,6 +239,9 @@ export default function CustomerEdit() {
             bags: row.bags.toString(),
             price: row.price.toString(),
             amount: row.amount.toFixed(2),
+            customerId: row.customerId,
+            vehicleId: row.vehicleId,
+            vendorId: row.vendorId,
             customerName: row.customerName,
             vendorName: row.vendorName,
             vehicleNumber: row.vehicleNumber,
@@ -223,17 +259,25 @@ export default function CustomerEdit() {
             return;
         }
 
+        if (!editingItem.customerId) {
+            toast({ title: "Customer Required", variant: "destructive" });
+            return;
+        }
+
         updateItemMutation.mutate({
             id: editingItem.id,
             invoiceId: editingItem.invoiceId,
             weight: w,
             price: p,
-            bags: b
+            bags: b,
+            customerId: editingItem.customerId,
+            vehicleId: editingItem.vehicleId || null,
+            vendorId: editingItem.vendorId || null
         });
     };
 
     // Auto-calculate Amount when Weight or Price changes in dialog
-    const handleDialogChange = (field: 'weight' | 'price' | 'bags', value: string) => {
+    const handleDialogChange = (field: 'weight' | 'price' | 'bags' | 'customerId' | 'vehicleId' | 'vendorId', value: string) => {
         if (!editingItem) return;
 
         let newItem = { ...editingItem, [field]: value };
@@ -416,31 +460,186 @@ export default function CustomerEdit() {
 
             {/* Edit Dialog */}
             <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-4xl">
                     <DialogHeader>
                         <DialogTitle>Edit Record</DialogTitle>
                     </DialogHeader>
 
                     {editingItem && (
                         <div className="grid gap-6 py-4">
-                            {/* Read-only Context Info */}
-                            <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                                <div className="space-y-1 col-span-2">
-                                    <Label className="text-xs text-muted-foreground">Customer</Label>
-                                    <div className="font-semibold text-lg">{editingItem.customerName}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Vehicle</Label>
-                                    <div className="font-medium">{editingItem.vehicleNumber}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Vendor</Label>
-                                    <div className="font-medium">{editingItem.vendorName}</div>
-                                </div>
-                            </div>
-
-                            {/* Editable Fields */}
+                            {/* Editable Fields Section */}
                             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+
+                                {/* Customer - Searchable Combobox */}
+                                <div className="space-y-2 flex flex-col">
+                                    <Label>Customer <span className="text-red-500">*</span></Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between",
+                                                    !editingItem.customerId && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {editingItem.customerId
+                                                    ? customers.find(c => c.id === editingItem.customerId)?.name
+                                                    : "Select Customer"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[300px] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search customer..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No customer found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {customers.map((customer) => (
+                                                            <CommandItem
+                                                                value={customer.name}
+                                                                key={customer.id}
+                                                                onSelect={() => {
+                                                                    handleDialogChange("customerId", customer.id);
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        customer.id === editingItem.customerId
+                                                                            ? "opacity-100"
+                                                                            : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {customer.name}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+
+                                {/* Vehicle - Searchable Combobox */}
+                                <div className="space-y-2 flex flex-col">
+                                    <Label>Vehicle</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between",
+                                                    !editingItem.vehicleId && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {editingItem.vehicleId
+                                                    ? vehicles.find(v => v.id === editingItem.vehicleId)?.number
+                                                    : "Select Vehicle"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[300px] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search vehicle..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No vehicle found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        <CommandItem
+                                                            value="none"
+                                                            onSelect={() => handleDialogChange("vehicleId", "")}
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", !editingItem.vehicleId ? "opacity-100" : "opacity-0")} />
+                                                            None
+                                                        </CommandItem>
+                                                        {vehicles.map((vehicle) => (
+                                                            <CommandItem
+                                                                value={vehicle.number}
+                                                                key={vehicle.id}
+                                                                onSelect={() => {
+                                                                    handleDialogChange("vehicleId", vehicle.id);
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        vehicle.id === editingItem.vehicleId
+                                                                            ? "opacity-100"
+                                                                            : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {vehicle.number} ({vehicle.type})
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+
+                                {/* Vendor - Searchable Combobox */}
+                                <div className="space-y-2 flex flex-col">
+                                    <Label>Vendor</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                    "w-full justify-between",
+                                                    !editingItem.vendorId && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {editingItem.vendorId
+                                                    ? vendors.find(v => v.id === editingItem.vendorId)?.name
+                                                    : "Select Vendor"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[300px] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search vendor..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No vendor found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        <CommandItem
+                                                            value="none"
+                                                            onSelect={() => handleDialogChange("vendorId", "")}
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", !editingItem.vendorId ? "opacity-100" : "opacity-0")} />
+                                                            None
+                                                        </CommandItem>
+                                                        {vendors.map((vendor) => (
+                                                            <CommandItem
+                                                                value={vendor.name}
+                                                                key={vendor.id}
+                                                                onSelect={() => {
+                                                                    handleDialogChange("vendorId", vendor.id);
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        vendor.id === editingItem.vendorId
+                                                                            ? "opacity-100"
+                                                                            : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {vendor.name}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <div className="space-y-2">
+                                    {/* Spacer to align grid if needed, or leave empty */}
+                                </div>
+
                                 <div className="space-y-2">
                                     <Label htmlFor="weight">Weight</Label>
                                     <Input
@@ -493,3 +692,4 @@ export default function CustomerEdit() {
         </div>
     );
 }
+
