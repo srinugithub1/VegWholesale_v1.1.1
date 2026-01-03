@@ -35,7 +35,7 @@ const navigationItems = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
-    roles: ["admin"],
+    roles: ["admin", "restricted_admin"],
   },
   {
     title: "Sell",
@@ -47,7 +47,7 @@ const navigationItems = [
     title: "Stock",
     url: "/stock",
     icon: Warehouse,
-    roles: ["admin"],
+    roles: ["admin", "restricted_admin"],
   },
   {
     title: "Vendors",
@@ -113,7 +113,7 @@ const reportItems = [
     title: "Reports",
     url: "/reports",
     icon: BarChart3,
-    roles: ["admin"],
+    roles: ["admin", "restricted_admin"],
   },
   {
     title: "Print Center",
@@ -132,7 +132,7 @@ const reportItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "restricted_admin";
 
   const filterItems = (items: typeof navigationItems) => {
     return items.filter(item => item.roles.includes(user?.role || "user"));
