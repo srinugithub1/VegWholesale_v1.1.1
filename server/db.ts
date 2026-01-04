@@ -8,5 +8,11 @@ if (!process.env.DATABASE_URL) {
     );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Fix for IPv6 localhost issue (::1)
+let connectionString = process.env.DATABASE_URL;
+if (connectionString && connectionString.includes("@localhost")) {
+    connectionString = connectionString.replace("@localhost", "@127.0.0.1");
+}
+
+export const pool = new Pool({ connectionString });
 export const db = drizzle(pool, { schema });

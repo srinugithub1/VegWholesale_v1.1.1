@@ -136,6 +136,7 @@ export const invoiceItems = pgTable("invoice_items", {
   quantity: real("quantity").notNull(),
   unitPrice: real("unit_price").notNull(),
   total: real("total").notNull(),
+  weightBreakdown: text("weight_breakdown"), // JSON array of individual weights
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });

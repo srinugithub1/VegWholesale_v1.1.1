@@ -17,6 +17,7 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import {
@@ -31,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { Invoice, InvoiceItem, Customer, Vendor, Product, Vehicle } from "@shared/schema";
-import { Loader2, Search, Filter, Edit, Save, ArrowUpDown, ArrowLeft, ArrowRight, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, Search, Filter, Edit, Save, ArrowUpDown, ArrowLeft, ArrowRight, Check, ChevronsUpDown, X, ShoppingBag } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import {
@@ -59,6 +60,7 @@ export default function CustomerEdit() {
     });
     const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>("all"); // Added Vehicle Filter
+    const [shopFilter, setShopFilter] = useState<string>("all"); // Added shop filter state
     const [customerSearch, setCustomerSearch] = useState("");
 
     // Pagination State
@@ -79,6 +81,7 @@ export default function CustomerEdit() {
         customerName: string; // Keep for fallback display
         vendorName: string;
         vehicleNumber: string;
+        weightBreakdown: number[]; // Added
     } | null>(null);
 
     // --- Data Fetching ---
@@ -135,6 +138,14 @@ export default function CustomerEdit() {
             });
         }
 
+        // Filter by Shop
+        if (shopFilter !== "all") {
+            filteredInvoices = filteredInvoices.filter(inv => {
+                const vehicle = vehicles.find(v => v.id === inv.vehicleId);
+                return vehicle && String(vehicle.shop) === shopFilter;
+            });
+        }
+
         const relevantIds = new Set(filteredInvoices.map(i => i.id));
 
         const mappedData = invoiceItems
@@ -171,13 +182,15 @@ export default function CustomerEdit() {
                     vendorId: vendor?.id || "",
                     vendorName: vendor?.name || "-",
                     vehicleId: vehicle?.id || "",
-                    vehicleNumber: vehicle?.number || "-", // Added for context
+                    vehicleNumber: vehicle?.number || "-",
+                    shopNumber: vehicle?.shop || "-", // Added Shop Number
                     productName,
-                    vehicleNumberOld: vehicle?.number, // Keep for display if needed
+                    vehicleNumberOld: vehicle?.number,
                     weight: item.quantity,
                     bags: invoice.bags || 0,
                     price: item.unitPrice,
-                    amount: (item.quantity * item.unitPrice)
+                    amount: (item.quantity * item.unitPrice),
+                    weightBreakdown: item.weightBreakdown ? JSON.parse(item.weightBreakdown) : [],
                 };
             })
             .filter(Boolean) as any[];
@@ -205,13 +218,16 @@ export default function CustomerEdit() {
             bags: number,
             customerId: string,
             vehicleId: string | null,
-            vendorId: string | null
+            vehicleId: string | null,
+            vendorId: string | null,
+            weightBreakdown: number[]
         }) => {
             const total = values.weight * values.price;
             await apiRequest("PATCH", `/api/invoice-items/${values.id}`, {
                 quantity: values.weight,
                 unitPrice: values.price,
-                total: total
+                total: total,
+                weightBreakdown: JSON.stringify(values.weightBreakdown)
             });
             await apiRequest("PATCH", `/api/invoices/${values.invoiceId}`, {
                 bags: values.bags,
@@ -245,6 +261,7 @@ export default function CustomerEdit() {
             customerName: row.customerName,
             vendorName: row.vendorName,
             vehicleNumber: row.vehicleNumber,
+            weightBreakdown: row.weightBreakdown || [],
         });
     };
 
@@ -272,7 +289,8 @@ export default function CustomerEdit() {
             bags: b,
             customerId: editingItem.customerId,
             vehicleId: editingItem.vehicleId || null,
-            vendorId: editingItem.vendorId || null
+            vendorId: editingItem.vendorId || null,
+            weightBreakdown: editingItem.weightBreakdown
         });
     };
 
@@ -346,6 +364,20 @@ export default function CustomerEdit() {
                         </div>
 
                         <div className="space-y-2">
+                            <Label>Shop</Label>
+                            <Select value={shopFilter} onValueChange={setShopFilter}>
+                                <SelectTrigger className="w-24">
+                                    <SelectValue placeholder="All" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="45">Shop 45</SelectItem>
+                                    <SelectItem value="50">Shop 50</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
                             <Label>Customer Search</Label>
                             <div className="relative">
                                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -385,7 +417,9 @@ export default function CustomerEdit() {
                                 <TableHead>Created</TableHead>
                                 <TableHead>Modified</TableHead>
                                 <TableHead>Customer</TableHead>
+                                <TableHead>Customer</TableHead>
                                 <TableHead>Vendor</TableHead>
+                                <TableHead>Shop</TableHead>
                                 <TableHead>Vehicle</TableHead> {/* Optionally show vehicle col too? */}
                                 <TableHead className="text-right">Weight</TableHead>
                                 <TableHead className="text-right">Bags</TableHead>
@@ -414,7 +448,9 @@ export default function CustomerEdit() {
                                             {format(row.updatedDate, "dd/MM/yy HH:mm")}
                                         </TableCell>
                                         <TableCell>{row.customerName}</TableCell>
+                                        <TableCell>{row.customerName}</TableCell>
                                         <TableCell>{row.vendorName}</TableCell>
+                                        <TableCell>{row.shopNumber}</TableCell>
                                         <TableCell>{row.vehicleNumber}</TableCell>
                                         <TableCell className="text-right">{row.weight.toFixed(2)}</TableCell>
                                         <TableCell className="text-right">{row.bags}</TableCell>
@@ -646,7 +682,61 @@ export default function CustomerEdit() {
                                         id="weight"
                                         value={editingItem.weight}
                                         onChange={(e) => handleDialogChange('weight', e.target.value)}
+                                        readOnly={editingItem.weightBreakdown.length > 0}
+                                        className={editingItem.weightBreakdown.length > 0 ? "bg-muted" : ""}
                                     />
+                                </div>
+
+                                <div className="col-span-2 space-y-2 border rounded-md p-2 bg-slate-50 dark:bg-slate-900/50">
+                                    <Label>Bag Weights Breakdown</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {editingItem.weightBreakdown.map((w, idx) => (
+                                            <div key={idx} className="flex items-center bg-white dark:bg-slate-800 border rounded px-1.5 py-0.5 shadow-sm">
+                                                <span className="text-sm font-medium mr-1">{w}</span>
+                                                <Button
+                                                    variant="ghost" size="icon" className="h-4 w-4 text-muted-foreground hover:text-destructive"
+                                                    onClick={() => {
+                                                        const newBreakdown = [...editingItem.weightBreakdown];
+                                                        newBreakdown.splice(idx, 1);
+                                                        const newWeight = newBreakdown.reduce((a, b) => a + b, 0);
+                                                        setEditingItem({
+                                                            ...editingItem,
+                                                            weightBreakdown: newBreakdown,
+                                                            weight: newWeight.toString(),
+                                                            bags: newBreakdown.length.toString(),
+                                                            amount: (newWeight * parseFloat(editingItem.price || "0")).toFixed(2)
+                                                        });
+                                                    }}
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                        <div className="flex items-center gap-1">
+                                            <Input
+                                                className="h-7 w-20 text-xs"
+                                                placeholder="Add Wt"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const val = parseFloat(e.currentTarget.value);
+                                                        if (!isNaN(val) && val > 0) {
+                                                            const newBreakdown = [...editingItem.weightBreakdown, val];
+                                                            const newWeight = newBreakdown.reduce((a, b) => a + b, 0);
+                                                            setEditingItem({
+                                                                ...editingItem,
+                                                                weightBreakdown: newBreakdown,
+                                                                weight: newWeight.toString(),
+                                                                bags: newBreakdown.length.toString(),
+                                                                amount: (newWeight * parseFloat(editingItem.price || "0")).toFixed(2)
+                                                            });
+                                                            e.currentTarget.value = "";
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                            <span className="text-[10px] text-muted-foreground">(Enter)</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">

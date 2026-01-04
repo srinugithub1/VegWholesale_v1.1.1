@@ -89,6 +89,7 @@ app.use((req, res, next) => {
       ALTER TABLE invoices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
       ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
       ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+      ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS weight_breakdown TEXT;
     `);
 
     log("Migration check complete: schema updated.");

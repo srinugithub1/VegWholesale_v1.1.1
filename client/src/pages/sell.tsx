@@ -66,6 +66,7 @@ interface SaleProduct {
   bags: number;
   price: number;
   available: number;
+  weightBreakdown?: number[];
 }
 
 interface SaleDraft {
@@ -171,6 +172,7 @@ function VehicleSalePane({
         bags: field === 'bags' ? value : 0,
         price: field === 'price' ? value : (product.salePrice || 0),
         available: inv.quantity,
+        weightBreakdown: field === 'weight' ? (value > 0 ? [value] : []) : [],
       }];
     }
 
@@ -218,13 +220,19 @@ function VehicleSalePane({
 
     let newProducts: SaleProduct[];
     if (exists) {
-      newProducts = draft.products.map(p =>
-        p.productId === productId ? {
-          ...p,
-          weight: p.weight + weightToAdd,
-          bags: (p.bags || 0) + 1
-        } : p
-      );
+      newProducts = draft.products.map(p => {
+        if (p.productId === productId) {
+          const currentBreakdown = p.weightBreakdown || [];
+          const newBreakdown = [...currentBreakdown, weightToAdd];
+          return {
+            ...p,
+            weight: newBreakdown.reduce((a, b) => a + b, 0),
+            bags: newBreakdown.length,
+            weightBreakdown: newBreakdown
+          };
+        }
+        return p;
+      });
     } else {
       newProducts = [...draft.products, {
         productId,
@@ -234,6 +242,7 @@ function VehicleSalePane({
         bags: 1,
         price: product.salePrice || 0,
         available: inv.quantity,
+        weightBreakdown: [weightToAdd],
       }];
     }
 
@@ -327,6 +336,7 @@ function VehicleSalePane({
           quantity: saleProduct.weight,
           unitPrice: saleProduct.price,
           total: saleProduct.weight * saleProduct.price,
+          weightBreakdown: JSON.stringify(saleProduct.weightBreakdown || []),
         }));
 
       const currentCustomerName = draft.customerName || customers.find(c => c.id === customerId)?.name || "";
@@ -509,13 +519,12 @@ function VehicleSalePane({
         </div>
 
         <div className="space-y-1">
-          <div className="grid grid-cols-12 gap-1 text-[10px] text-muted-foreground font-medium px-1">
+          <div className="grid grid-cols-12 gap-1 text-xs text-muted-foreground font-medium px-1 mb-2">
             <div className="col-span-3">Product</div>
-            <div className="col-span-2 text-center">Add Wt</div>
-            <div className="col-span-2 text-center">Total</div>
+            <div className="col-span-5 text-center">Add Weight</div>
             <div className="col-span-1 text-center">Bags</div>
             <div className="col-span-2 text-center">Price/KG</div>
-            <div className="col-span-2 text-right">Total</div>
+            <div className="col-span-1 text-right">Total</div>
           </div>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {availableProducts.map((item) => {
@@ -587,6 +596,23 @@ function VehicleSalePane({
           />
           <span className="text-xs">=</span>
           <span className="text-xs font-medium">₹{draft.hamaliCharge.toFixed(0)}</span>
+        </div>
+
+        {/* Bag Weight Breakdown */}
+        <div className="space-y-2 pt-2 border-t border-dashed">
+          {draft.products.filter(p => p.weight > 0).map(p => (
+            <div key={p.productId} className="flex flex-col gap-1">
+              <div className="text-[10px] font-medium text-muted-foreground">{p.productName}:</div>
+              <div className="flex flex-wrap gap-1">
+                {(p.weightBreakdown || []).map((w, idx) => (
+                  <Badge key={idx} variant="outline" className="h-5 px-1.5 text-[10px] gap-1 bg-background text-foreground hover:bg-background">
+                    <ShoppingBag className="h-3 w-3 text-muted-foreground" />
+                    {w.toFixed(1)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="pt-2 border-t space-y-1">
@@ -2014,17 +2040,17 @@ function ProductRow({
 
   return (
     <div className="grid grid-cols-12 gap-1 items-center">
-      <div className="col-span-3 text-xs truncate" title={item.product?.name}>
+      <div className="col-span-3 text-sm truncate font-medium" title={item.product?.name}>
         {item.product?.name}
       </div>
 
       {/* Add Weight Column */}
-      <div className="col-span-2 flex items-center gap-1">
+      <div className="col-span-5 flex items-center gap-1">
         <Input
           type="number"
           min="0"
           step="0.1"
-          className="h-6 text-xs text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full bg-yellow-50 dark:bg-yellow-900/10"
+          className="h-9 text-base text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none w-full bg-yellow-50 dark:bg-yellow-900/10 font-bold"
           value={addValue}
           placeholder="0"
           onChange={(e) => setAddValue(e.target.value)}
@@ -2043,13 +2069,12 @@ function ProductRow({
             title="Add Scale Weight"
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary"
+            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-primary"
             disabled={currentWeight === null}
             onClick={async () => {
               const val = currentWeight || 0;
               if (val > 0) {
-                // Trigger accumulation
-                // Also handle Gain/Loss logic here if needed (copied from previous logic)
+                // Trigger accumulation with gain/loss logic
                 const rounded = val;
                 const raw = rawWeight || 0;
                 if (raw > 0) {
@@ -2073,14 +2098,14 @@ function ProductRow({
               }
             }}
           >
-            <Scale className="h-3 w-3" />
+            <Scale className="h-5 w-5" />
           </Button>
         ) : (
           <Button
             title="Add Manually"
             variant="ghost"
             size="icon"
-            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-primary"
+            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-primary"
             onClick={() => {
               const val = parseFloat(addValue);
               if (!isNaN(val) && val > 0) {
@@ -2089,40 +2114,35 @@ function ProductRow({
               }
             }}
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="h-5 w-5" />
           </Button>
         )}
       </div>
 
-      {/* Total Weight Column */}
-      <div className="col-span-2 text-center text-xs font-medium">
-        {weight.toFixed(1)}
-      </div>
-
-      <div className="col-span-1">
+      <div className="col-span-1 text-center">
         <Input
           type="number"
           min="0"
           step="1"
-          className="h-6 text-xs text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="h-9 text-sm text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           value={bags || ""}
           placeholder="0"
-          onChange={(e) => updateProductField(item.productId, 'bags', parseInt(e.target.value) || 0)}
+          readOnly
         />
       </div>
       <div className="col-span-2">
         <Input
           type="number"
           min="0"
-          className={`h-6 text-xs text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors.products?.[item.productId]?.price ? "border-destructive ring-1 ring-destructive bg-destructive/10" : ""}`}
+          className={`h-9 text-sm text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors.products?.[item.productId]?.price ? "border-destructive ring-1 ring-destructive bg-destructive/10" : ""}`}
           title={errors.products?.[item.productId]?.price}
           value={price || ""}
           placeholder="0"
           onChange={(e) => updateProductField(item.productId, 'price', parseFloat(e.target.value) || 0)}
         />
       </div>
-      <div className="col-span-2 text-xs text-right font-medium">
-        {lineTotal > 0 ? `₹${lineTotal.toFixed(0)}` : "-"}
+      <div className="col-span-1 text-sm text-right font-medium flex items-center justify-end">
+        {lineTotal > 0 ? `${lineTotal.toFixed(0)}` : "-"}
       </div>
     </div>
   );
