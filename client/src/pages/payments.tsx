@@ -126,9 +126,17 @@ export default function Payments() {
     queryKey: ["/api/reports/customer-balances"],
   });
 
+  const [vendorHistoryFilter, setVendorHistoryFilter] = useState<string>("all");
+
   const { data: vendorPayments = [] } = useQuery<VendorPayment[]>({
     queryKey: ["/api/vendor-payments"],
   });
+
+  const filteredVendorPayments = useMemo(() => {
+    if (vendorHistoryFilter === "all") return vendorPayments;
+    return vendorPayments.filter(p => p.vendorId === vendorHistoryFilter);
+  }, [vendorPayments, vendorHistoryFilter]);
+
 
   const { data: customerPayments = [] } = useQuery<CustomerPaymentWithInvoice[]>({
     queryKey: ["/api/customer-payments"],
@@ -1252,9 +1260,9 @@ export default function Payments() {
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              // Filter history by vendor if needed, or open generic history
-                              // For now just logging, future enhancement can link to history tab
-                              setHistoryCustomerFilter("all"); // Reset or set to vendor specific if we had a filter
+                              setVendorHistoryFilter(vendor.id);
+                              // Smooth scroll to history section
+                              document.getElementById('vendor-history-section')?.scrollIntoView({ behavior: 'smooth' });
                             }}
                             className="h-8"
                           >
@@ -1270,9 +1278,22 @@ export default function Payments() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment History</CardTitle>
+          <Card id="vendor-history-section">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>
+                Payment History
+                {vendorHistoryFilter !== "all" && (
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    - {getVendorName(vendorHistoryFilter)}
+                  </span>
+                )}
+              </CardTitle>
+              {vendorHistoryFilter !== "all" && (
+                <Button variant="ghost" size="sm" onClick={() => setVendorHistoryFilter("all")}>
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Filter
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <Table>
@@ -1285,14 +1306,14 @@ export default function Payments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vendorPayments.length === 0 ? (
+                  {filteredVendorPayments.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                        No payment history
+                        No payment history found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    vendorPayments.map((payment) => (
+                    filteredVendorPayments.map((payment) => (
                       <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
                         <TableCell>{payment.date}</TableCell>
                         <TableCell>{getVendorName(payment.vendorId)}</TableCell>
