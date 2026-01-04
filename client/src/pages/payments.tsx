@@ -410,72 +410,50 @@ export default function Payments() {
       return sum + (edited?.bags || 0);
     }, 0);
 
-    const invoiceSubtotal = completedPaymentData.invoices.reduce((sum, inv) => {
+    const invoiceRows = completedPaymentData.invoices.flatMap(inv => {
       const edited = completedPaymentData.editedInvoices[inv.id];
-      const itemsTotal = edited?.items.reduce((s, i) => s + i.total, 0) || inv.subtotal;
-      return sum + itemsTotal;
-    }, 0);
+      const items = edited?.items || inv.items;
 
-    const grandTotal = invoiceSubtotal + totalHamali;
-    const amountPaid = completedPaymentData.amount;
-    const totalPaidIncludingThis = completedPaymentData.previouslyPaid + amountPaid;
-    const balanceRemaining = grandTotal - totalPaidIncludingThis;
-
-    const invoiceDetails = completedPaymentData.invoices.map(inv => {
-      const edited = completedPaymentData.editedInvoices[inv.id];
-      const itemsHtml = inv.items.map(item => {
+      return items.map((item, index) => {
+        const isFirstItem = index === 0;
         const editedItem = edited?.items.find(e => e.itemId === item.id);
         const price = editedItem?.unitPrice ?? item.unitPrice;
         const total = editedItem?.total ?? item.total;
+
+        const hamaliBags = edited?.bags || 0;
+        const hamaliRate = edited?.ratePerBag || 0;
+        const hamaliAmount = edited?.hamaliChargeAmount || inv.hamaliChargeAmount || 0;
+        const invoiceTotal = (edited?.items.reduce((s, i) => s + i.total, 0) || inv.subtotal) + hamaliAmount;
+
         return `
-          <tr>
-            <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0;">${item.product?.name || 'Unknown'}</td>
-            <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: center;">${item.quantity}</td>
-            <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right;">₹${price.toFixed(2)}</td>
-            <td style="padding: 6px 10px; border-bottom: 1px solid #e0e0e0; text-align: right; font-weight: 500;">₹${total.toFixed(2)}</td>
+          <tr style="border-bottom: 1px solid #e0e0e0;">
+            <td style="padding: 8px 10px; text-align: center; vertical-align: top;">
+              ${isFirstItem ? completedPaymentData.invoices.indexOf(inv) + 1 : ''}
+            </td>
+            <td style="padding: 8px 10px; vertical-align: top;">
+              ${isFirstItem ? `
+                <div style="font-weight: 600;">${inv.date}</div>
+                <div style="font-size: 11px; color: #666;">${inv.invoiceNumber}</div>
+                ${inv.shop ? `<span style="font-size: 10px; background: ${inv.shop === 45 ? '#fff7ed' : '#eff6ff'}; color: ${inv.shop === 45 ? '#c2410c' : '#1d4ed8'}; border: 1px solid ${inv.shop === 45 ? '#fed7aa' : '#bfdbfe'}; padding: 1px 4px; border-radius: 4px;">Shop ${inv.shop}</span>` : ''}
+              ` : ''}
+            </td>
+            <td style="padding: 8px 10px; vertical-align: top;">${item.product?.name || 'Unknown'}</td>
+            <td style="padding: 8px 10px; text-align: center; vertical-align: top;">${item.quantity}</td>
+            <td style="padding: 8px 10px; text-align: right; vertical-align: top;">₹${price.toFixed(2)}</td>
+            <td style="padding: 8px 10px; text-align: center; vertical-align: top;">
+              ${isFirstItem ? `
+                <div style="font-size: 12px;">
+                  ${hamaliBags} × ₹${hamaliRate}
+                </div>
+                <div style="font-weight: 600; font-size: 13px;">= ₹${hamaliAmount.toFixed(0)}</div>
+              ` : ''}
+            </td>
+            <td style="padding: 8px 10px; text-align: right; font-weight: 600; vertical-align: top;">
+              ${isFirstItem ? `₹${invoiceTotal.toFixed(2)}` : ''}
+            </td>
           </tr>
         `;
       }).join('');
-
-      const hamali = edited?.hamaliChargeAmount || inv.hamaliChargeAmount || 0;
-      const bags = edited?.bags || 0;
-      const subtotal = edited?.items.reduce((s, i) => s + i.total, 0) || inv.subtotal;
-
-      return `
-        <div style="margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
-          <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: #f5f5f5; border-bottom: 1px solid #ddd;">
-            <strong style="color: #333;">${inv.invoiceNumber}</strong>
-            <span style="color: #666;">${inv.date}</span>
-          </div>
-          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-            <thead>
-              <tr style="background: #fafafa;">
-                <th style="padding: 8px 10px; text-align: left; font-weight: 600; color: #555;">Product</th>
-                <th style="padding: 8px 10px; text-align: center; font-weight: 600; color: #555;">Qty</th>
-                <th style="padding: 8px 10px; text-align: right; font-weight: 600; color: #555;">Rate</th>
-                <th style="padding: 8px 10px; text-align: right; font-weight: 600; color: #555;">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
-          <div style="padding: 10px 12px; background: #fafafa; border-top: 1px solid #e0e0e0;">
-            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 4px;">
-              <span>Products Total:</span>
-              <span>₹${subtotal.toFixed(2)}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 4px;">
-              <span>Hamali (${bags} bags):</span>
-              <span>₹${hamali.toFixed(2)}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; color: #333; padding-top: 6px; border-top: 1px dashed #ddd;">
-              <span>Invoice Total:</span>
-              <span>₹${(subtotal + hamali).toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-      `;
     }).join('');
 
     const paymentMethodLabel = {
@@ -526,7 +504,7 @@ export default function Payments() {
       <body>
         <div class="header">
           <h1>PAYMENT RECEIPT</h1>
-          <p class="business-name">VegWholesale Business</p>
+          <p class="business-name">PSK Vegitables</p>
           <p class="receipt-date">${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
         
@@ -554,7 +532,22 @@ export default function Payments() {
         
         <div class="invoices-section">
           <h3>Invoice Details</h3>
-          ${invoiceDetails}
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="background: #fafafa; border-bottom: 2px solid #e0e0e0;">
+                <th style="padding: 8px 10px; text-align: center; font-weight: 600; color: #444; width: 40px;">S.No</th>
+                <th style="padding: 8px 10px; text-align: left; font-weight: 600; color: #444;">Date/Inv/Shop</th>
+                <th style="padding: 8px 10px; text-align: left; font-weight: 600; color: #444;">Product</th>
+                <th style="padding: 8px 10px; text-align: center; font-weight: 600; color: #444;">Qty</th>
+                <th style="padding: 8px 10px; text-align: right; font-weight: 600; color: #444;">Price/Unit</th>
+                <th style="padding: 8px 10px; text-align: center; font-weight: 600; color: #444;">Hamali</th>
+                <th style="padding: 8px 10px; text-align: right; font-weight: 600; color: #444;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${invoiceRows}
+            </tbody>
+          </table>
         </div>
         
         <div class="summary-box">
@@ -1191,11 +1184,11 @@ export default function Payments() {
                                       <div className="flex items-center justify-center gap-1">
                                         <Input
                                           type="number"
-                                          className="h-7 w-14 text-center text-sm px-1"
+                                          className="h-7 w-14 text-center text-sm px-1 bg-muted/50"
                                           value={edited?.bags ?? 0}
-                                          onChange={(e) => updateHamaliBags(invoice.id, parseInt(e.target.value) || 0)}
+                                          readOnly
                                           placeholder="B"
-                                          title="Bags"
+                                          title="Bags (Not Editable)"
                                         />
                                         <span className="text-xs text-muted-foreground">×</span>
                                         <Input
@@ -1216,7 +1209,15 @@ export default function Payments() {
                                       {totals.grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                                     </TableCell>
                                     <TableCell className="text-center">
-                                      <Badge variant={invoice.status === 'completed' ? 'default' : 'outline'} className="text-[10px] capitalize">
+                                      <Badge
+                                        variant={invoice.status === 'completed' ? 'default' : 'outline'}
+                                        className={`text-[10px] capitalize ${invoice.status === 'completed'
+                                            ? 'bg-green-100 text-green-700 hover:bg-green-100 border-green-200'
+                                            : invoice.status === 'pending'
+                                              ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-yellow-200'
+                                              : ''
+                                          }`}
+                                      >
                                         {invoice.status}
                                       </Badge>
                                     </TableCell>
@@ -1247,7 +1248,7 @@ export default function Payments() {
                       <div className="flex items-center justify-between border-t pt-2 bg-yellow-50 p-3 rounded-md border-yellow-100 shadow-sm mt-2">
                         <span className="text-lg font-bold text-yellow-900">Remaining Balance:</span>
                         <span className={`text-3xl font-bold font-mono ${customerSummary && customerSummary.remainingBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          {(customerSummary?.remainingBalance ?? grandTotalAllInvoices).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                          {(grandTotalAllInvoices - (customerSummary?.totalPayments || 0)).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                         </span>
                       </div>
                     </div>
