@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useShop } from "@/hooks/use-shop";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { Invoice, InvoiceItem, Customer, Vendor, Product, Vehicle } from "@shared/schema";
@@ -60,7 +61,8 @@ export default function CustomerEdit() {
     });
     const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>("all"); // Added Vehicle Filter
-    const [shopFilter, setShopFilter] = useState<string>("all"); // Added shop filter state
+
+    const { shop } = useShop(); // Use global shop context
     const [customerSearch, setCustomerSearch] = useState("");
 
     // Pagination State
@@ -139,10 +141,10 @@ export default function CustomerEdit() {
         }
 
         // Filter by Shop
-        if (shopFilter !== "all") {
+        if (shop !== "all") {
             filteredInvoices = filteredInvoices.filter(inv => {
                 const vehicle = vehicles.find(v => v.id === inv.vehicleId);
-                return vehicle && String(vehicle.shop) === shopFilter;
+                return vehicle && vehicle.shop === shop;
             });
         }
 
@@ -363,19 +365,7 @@ export default function CustomerEdit() {
                             </Select>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label>Shop</Label>
-                            <Select value={shopFilter} onValueChange={setShopFilter}>
-                                <SelectTrigger className="w-24">
-                                    <SelectValue placeholder="All" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All</SelectItem>
-                                    <SelectItem value="45">Shop 45</SelectItem>
-                                    <SelectItem value="50">Shop 50</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {/* Shop Filter Removed - Uses Global Toggle */}
 
                         <div className="space-y-2">
                             <Label>Customer Search</Label>

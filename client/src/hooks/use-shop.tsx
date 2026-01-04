@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
-type Shop = 42 | 50;
+type Shop = 42 | 50 | 'all';
 
 interface ShopContextType {
     shop: Shop;

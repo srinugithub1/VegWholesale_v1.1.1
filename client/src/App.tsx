@@ -103,8 +103,8 @@ function ProtectedApp() {
               <SidebarTrigger data-testid="button-sidebar-toggle" />
             </div>
 
-            {/* Shop Icons (Only on Sell Page) - Centered */}
-            {(location === '/sell') && (
+            {/* Shop Icons (Sell, Customer Edit, Reports) - Centered */}
+            {['/sell', '/customer-edit', '/reports'].includes(location) && (
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-8">
                 {/* Shop 42 */}
                 <div
@@ -129,6 +129,20 @@ function ProtectedApp() {
                   </div>
                   <span className={`text-xl font-bold transition-colors ${shop === 50 ? 'text-blue-700' : 'text-blue-700/70'}`}>50</span>
                 </div>
+
+                {/* Shop Both (Only on Reports) */}
+                {location === '/reports' && (
+                  <div
+                    className={`flex items-center gap-2 cursor-pointer group transition-all duration-300 ${shop === 'all' ? 'scale-110 opacity-100' : 'opacity-50 hover:opacity-80'}`}
+                    onClick={() => setShop('all')}
+                    title="All Shops"
+                  >
+                    <div className={`p-1.5 rounded-full transition-colors ${shop === 'all' ? 'bg-purple-100' : 'bg-purple-100/30'}`}>
+                      <Store className={`h-6 w-6 transition-colors ${shop === 'all' ? 'text-purple-600' : 'text-purple-600/70'}`} />
+                    </div>
+                    <span className={`text-xl font-bold transition-colors ${shop === 'all' ? 'text-purple-700' : 'text-purple-700/70'}`}>All</span>
+                  </div>
+                )}
               </div>
             )}
 

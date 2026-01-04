@@ -35,6 +35,7 @@ import {
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { useShop } from "@/hooks/use-shop";
 
 type DailySummary = {
   date: string;
@@ -70,6 +71,7 @@ export default function Reports() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("all");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
+  const { shop } = useShop();
 
   const startDate = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : "";
   const endDate = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : "";
@@ -128,9 +130,13 @@ export default function Reports() {
         const invoiceVendorId = inv.vendorId || vehicles.find(v => v.id === inv.vehicleId)?.vendorId;
         if (invoiceVendorId !== selectedVendorId) return false;
       }
+      if (shop !== 'all') {
+        const vehicle = vehicles.find(v => v.id === inv.vehicleId);
+        if (vehicle && vehicle.shop !== shop) return false;
+      }
       return true;
     }).sort((a, b) => b.date.localeCompare(a.date) || b.invoiceNumber.localeCompare(a.invoiceNumber));
-  }, [invoices, startDate, endDate, selectedVehicleId, selectedCustomerId, selectedVendorId, vehicles]);
+  }, [invoices, startDate, endDate, selectedVehicleId, selectedCustomerId, selectedVendorId, vehicles, shop]);
 
   const summary = useMemo(() => {
     const totalSales = filteredInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
