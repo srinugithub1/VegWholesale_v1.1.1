@@ -1023,25 +1023,27 @@ export default function Payments() {
 
               {step === 'select' && (
                 <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label>Customer</Label>
-                    <Select value={selectedCustomer} onValueChange={handleCustomerSelect}>
-                      <SelectTrigger data-testid="select-customer">
-                        <SelectValue placeholder="Select customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers.map((customer) => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            {customer.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {loadingInvoices && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Skeleton className="h-4 w-4 animate-spin rounded-full" />
-                      Loading invoices...
+                  {loadingInvoices ? (
+                    <div className="flex flex-col items-center justify-center py-12 space-y-4 text-muted-foreground">
+                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                      <p>Loading customer details...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label>Customer</Label>
+                      <Select value={selectedCustomer} onValueChange={handleCustomerSelect}>
+                        <SelectTrigger data-testid="select-customer">
+                          <SelectValue placeholder="Select customer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {customers.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              {customer.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">Select a customer to process payment</p>
                     </div>
                   )}
                 </div>
