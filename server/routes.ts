@@ -86,6 +86,28 @@ export async function registerRoutes(
     res.json(vendor);
   });
 
+  // Get all purchases for a specific vendor with balance summary
+  app.get("/api/vendors/:id/purchases", async (req, res) => {
+    try {
+      const vendorId = req.params.id;
+      const purchases = await storage.getPurchasesWithItemsByVendor(vendorId);
+      const balance = await storage.getVendorBalance(vendorId);
+
+      res.json({
+        purchases,
+        summary: {
+          totalPurchases: balance.totalPurchases,
+          totalPayments: balance.totalPayments,
+          totalReturns: balance.totalReturns,
+          balance: balance.balance
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching vendor purchases:", error);
+      res.status(500).json({ error: "Failed to fetch vendor data" });
+    }
+  });
+
   app.get("/api/vendors/:id/balance", async (req, res) => {
     const balance = await storage.getVendorBalance(req.params.id);
     res.json(balance);

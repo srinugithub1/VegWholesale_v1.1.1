@@ -101,6 +101,7 @@ export interface IStorage {
   getPurchase(id: string): Promise<Purchase | undefined>;
   createPurchase(purchase: InsertPurchase, items: InsertPurchaseItem[]): Promise<Purchase>;
   getPurchaseItems(purchaseId: string): Promise<PurchaseItem[]>;
+  getPurchasesWithItemsByVendor(vendorId: string): Promise<(Purchase & { items: PurchaseItem[] })[]>;
 
   getInvoices(): Promise<Invoice[]>;
   getInvoice(id: string): Promise<Invoice | undefined>;
@@ -380,6 +381,21 @@ export class DatabaseStorage implements IStorage {
 
   async getPurchaseItems(purchaseId: string): Promise<PurchaseItem[]> {
     return await db.select().from(purchaseItems).where(eq(purchaseItems.purchaseId, purchaseId));
+  }
+
+  async getPurchasesWithItemsByVendor(vendorId: string): Promise<(Purchase & { items: PurchaseItem[] })[]> {
+    const rows = await db.select().from(purchases).where(eq(purchases.vendorId, vendorId));
+    const purchaseIds = rows.map(r => r.id);
+
+    let allItems: PurchaseItem[] = [];
+    if (purchaseIds.length > 0) {
+      allItems = await db.select().from(purchaseItems).where(inArray(purchaseItems.purchaseId, purchaseIds));
+    }
+
+    return rows.map(purchase => ({
+      ...purchase,
+      items: allItems.filter(item => item.purchaseId === purchase.id)
+    }));
   }
 
   async getInvoices(): Promise<Invoice[]> {

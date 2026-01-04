@@ -80,7 +80,12 @@ export default function Payments() {
   const [hamaliNotes, setHamaliNotes] = useState("");
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  // Vendor Payment State
+  const [vendorPurchases, setVendorPurchases] = useState<PurchaseWithItems[]>([]);
+  const [vendorStep, setVendorStep] = useState<'select' | 'review' | 'completed'>('select');
+  const [completedVendorPaymentData, setCompletedVendorPaymentData] = useState<any>(null);
 
+  // Customer Payment State
   const [customerInvoices, setCustomerInvoices] = useState<InvoiceWithItems[]>([]);
   const [editedInvoices, setEditedInvoices] = useState<Record<string, EditedInvoice>>({});
   const [loadingInvoices, setLoadingInvoices] = useState(false);
@@ -137,6 +142,40 @@ export default function Payments() {
   const { data: hamaliCashPayments = [] } = useQuery<HamaliCashPayment[]>({
     queryKey: ["/api/hamali-cash"],
   });
+
+  const [vendorSummary, setVendorSummary] = useState<{
+    totalPurchases: number;
+    totalPayments: number;
+    totalReturns: number;
+    balance: number;
+  } | null>(null);
+
+  const loadVendorPurchases = async (vendorId: string) => {
+    try {
+      const res = await fetch(`/api/vendors/${vendorId}/purchases`);
+      if (!res.ok) throw new Error("Failed to fetch purchases");
+      const data = await res.json();
+
+      const purchases = data.purchases;
+      const summary = data.summary;
+
+      setVendorSummary(summary);
+      setVendorPaymentAmount(summary.balance > 0 ? String(summary.balance) : "");
+
+      const purchasesWithItems: PurchaseWithItems[] = purchases.map((purchase: any) => ({
+        ...purchase,
+        items: (purchase.items || []).map((item: any) => ({
+          ...item,
+          product: products.find(p => p.id === item.productId),
+        })),
+      }));
+
+      setVendorPurchases(purchasesWithItems);
+    } catch (error) {
+      console.error("Error loading vendor purchases:", error);
+      toast({ title: "Error", description: "Failed to load vendor purchases.", variant: "destructive" });
+    }
+  };
 
   const loadCustomerInvoices = async (customerId: string) => {
     console.log("Loading customer invoices for:", customerId);
@@ -279,6 +318,29 @@ export default function Payments() {
     }, 0);
   }, [editedInvoices]);
 
+  const handleVendorPaymentClick = (vendorId: string) => {
+    setSelectedVendor(vendorId);
+    setVendorStep('review');
+    setVendorDialogOpen(true);
+    loadVendorPurchases(vendorId);
+  };
+
+  const resetVendorDialog = () => {
+    setVendorStep('select');
+    setSelectedVendor("");
+    setVendorPurchases([]);
+    setVendorSummary(null);
+    setVendorPaymentAmount("");
+    setCompletedVendorPaymentData(null);
+  };
+
+  const handleVendorDialogClose = (open: boolean) => {
+    if (!open) {
+      resetVendorDialog();
+      setVendorDialogOpen(false);
+    }
+  };
+
   const saveInvoiceChanges = useMutation({
     mutationFn: async () => {
       for (const invoiceId of Object.keys(editedInvoices)) {
@@ -311,22 +373,44 @@ export default function Payments() {
     },
   });
 
+  const getVendorName = (id: string) => vendors.find(v => v.id === id)?.name || "Unknown Vendor";
+
   const createVendorPayment = useMutation({
     mutationFn: async (data: { vendorId: string; amount: number; paymentMethod: string; date: string }) => {
       return apiRequest("POST", "/api/vendor-payments", data);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/vendor-payments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/reports/vendor-balances"] });
-      setVendorDialogOpen(false);
-      setSelectedVendor("");
-      setVendorPaymentAmount("");
+
+      setCompletedVendorPaymentData({
+        vendorName: getVendorName(variables.vendorId),
+        amount: variables.amount,
+        totalPurchases: vendorSummary?.totalPurchases ?? 0,
+        previouslyPaid: vendorSummary?.totalPayments ?? 0,
+        balance: (vendorSummary?.totalPurchases ?? 0) - (vendorSummary?.totalPayments ?? 0) - (vendorSummary?.totalReturns ?? 0),
+        paymentMethod: variables.paymentMethod,
+        date: variables.date,
+        purchases: vendorPurchases
+      });
+      setVendorStep('completed');
       toast({ title: "Payment recorded", description: "Vendor payment has been recorded successfully." });
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to record payment.", variant: "destructive" });
     },
   });
+
+  const handleVendorPaymentSubmit = () => {
+    if (!selectedVendor || !vendorPaymentAmount || Number(vendorPaymentAmount) <= 0) return;
+
+    createVendorPayment.mutate({
+      vendorId: selectedVendor,
+      amount: Number(vendorPaymentAmount),
+      paymentMethod: vendorPaymentMethod,
+      date: new Date().toISOString().split('T')[0],
+    });
+  };
 
   const createCustomerPayment = useMutation({
     mutationFn: async (data: { customerId: string; invoiceId?: string; amount: number; paymentMethod: string; date: string }) => {
@@ -625,6 +709,52 @@ export default function Payments() {
     }
   };
 
+  const handlePrintVendorReceipt = () => {
+    if (!completedVendorPaymentData) return;
+
+    const receiptContent = `
+      <html>
+        <head>
+          <title>Payment Receipt</title>
+          <style>
+            body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+            .total-row { border-top: 1px dashed #000; margin-top: 10px; pt-2; font-weight: bold; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h3>VEG WHOLESALE</h3>
+            <p>Vendor Payment Receipt</p>
+          </div>
+          <div class="content">
+            <div class="row"><span>Date:</span> <span>${completedVendorPaymentData.date}</span></div>
+            <div class="row"><span>Vendor:</span> <span>${completedVendorPaymentData.vendorName}</span></div>
+            <div class="row"><span>Method:</span> <span>${completedVendorPaymentData.paymentMethod.toUpperCase()}</span></div>
+            <div class="row"><span>Total Purchases:</span> <span>₹${completedVendorPaymentData.totalPurchases.toLocaleString()}</span></div>
+            <div class="row"><span>Previous Paid:</span> <span>₹${completedVendorPaymentData.previouslyPaid.toLocaleString()}</span></div>
+            <div class="row total-row"><span>PAID NOW:</span> <span>₹${completedVendorPaymentData.amount.toLocaleString()}</span></div>
+            <div class="row"><span>Balance Due:</span> <span>₹${(completedVendorPaymentData.balance - completedVendorPaymentData.amount).toLocaleString()}</span></div>
+          </div>
+          <div class="footer">
+            <p>Thank you!</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '', 'width=400,height=600');
+    if (printWindow) {
+      printWindow.document.write(receiptContent);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }
+  };
+
   const printPaymentHistory = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -743,15 +873,7 @@ export default function Payments() {
     }
   };
 
-  const handleVendorPayment = () => {
-    if (!selectedVendor || !vendorPaymentAmount) return;
-    createVendorPayment.mutate({
-      vendorId: selectedVendor,
-      amount: parseFloat(vendorPaymentAmount),
-      paymentMethod: vendorPaymentMethod,
-      date: new Date().toISOString().split("T")[0],
-    });
-  };
+
 
   const handleFinalizeAndPay = async () => {
     if (!selectedCustomer) return;
@@ -783,7 +905,6 @@ export default function Payments() {
     });
   };
 
-  const getVendorName = (id: string) => vendors.find((v) => v.id === id)?.name || "Unknown";
   const getCustomerName = (id: string) => customers.find((c) => c.id === id)?.name || "Unknown";
 
   const totalVendorOutstanding = vendorBalances.reduce((sum, v) => sum + v.balance, 0);
@@ -865,72 +986,223 @@ export default function Payments() {
         </TabsList>
 
         <TabsContent value="vendors" className="space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={vendorDialogOpen} onOpenChange={setVendorDialogOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-add-vendor-payment">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Record Payment
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Record Vendor Payment</DialogTitle>
-                  <DialogDescription>Record a payment made to a vendor</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label>Vendor</Label>
-                    <Select value={selectedVendor} onValueChange={setSelectedVendor}>
-                      <SelectTrigger data-testid="select-vendor">
-                        <SelectValue placeholder="Select vendor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vendors.map((vendor) => (
-                          <SelectItem key={vendor.id} value={vendor.id}>
-                            {vendor.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Amount</Label>
-                    <Input
-                      type="number"
-                      value={vendorPaymentAmount}
-                      onChange={(e) => setVendorPaymentAmount(e.target.value)}
-                      placeholder="Enter amount"
-                      data-testid="input-vendor-payment-amount"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Payment Method</Label>
-                    <Select value={vendorPaymentMethod} onValueChange={setVendorPaymentMethod}>
-                      <SelectTrigger data-testid="select-payment-method">
-                        <SelectValue placeholder="Select method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank">Bank Transfer</SelectItem>
-                        <SelectItem value="upi">UPI</SelectItem>
-                        <SelectItem value="cheque">Cheque</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button
-                    onClick={handleVendorPayment}
-                    disabled={!selectedVendor || !vendorPaymentAmount || createVendorPayment.isPending}
-                    className="w-full"
-                    data-testid="button-submit-vendor-payment"
-                  >
-                    {createVendorPayment.isPending ? "Recording..." : "Record Payment"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <Dialog open={vendorDialogOpen} onOpenChange={handleVendorDialogClose}>
+            <DialogContent className="max-w-4xl max-h-[85vh] overflow-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {vendorStep === 'select' && 'Select Vendor'}
+                  {vendorStep === 'review' && `Review & Finalize - ${getVendorName(selectedVendor)}`}
+                  {vendorStep === 'completed' && 'Payment Completed'}
+                </DialogTitle>
+                <DialogDescription>
+                  {vendorStep === 'select' && 'Select a vendor to record payment'}
+                  {vendorStep === 'review' && 'Review purchases and record payment'}
+                  {vendorStep === 'completed' && 'Payment has been recorded successfully'}
+                </DialogDescription>
+              </DialogHeader>
 
+              {vendorStep === 'review' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setVendorDialogOpen(false)}>
+                        <X className="h-4 w-4 mr-1" /> Close
+                      </Button>
+                      <Badge variant="secondary" className="text-xs">{vendorPurchases.length} Purchase(s)</Badge>
+                    </div>
+                    {vendorSummary && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="text-muted-foreground font-medium">
+                          Total: <span className="font-mono text-base text-foreground">{vendorSummary.totalPurchases.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
+                        </span>
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md border border-green-200 shadow-sm flex items-center gap-1">
+                          <span className="text-xs font-semibold uppercase">Paid:</span>
+                          <span className="font-mono font-bold text-base">{vendorSummary.totalPayments.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
+                        </span>
+                        <span className={`${vendorSummary.balance > 0 ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-green-100 text-green-800 border-green-200"} px-2 py-1 rounded-md border shadow-sm flex items-center gap-1`}>
+                          <span className="text-xs font-semibold uppercase">Due:</span>
+                          <span className="font-mono font-bold text-base">{vendorSummary.balance.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {vendorSummary && vendorSummary.totalPayments > 0 ? (
+                    <div className="border rounded-md">
+                      <div className="p-4 space-y-4">
+                        <div className="text-sm text-muted-foreground mb-2">
+                          Products purchased from vendor
+                        </div>
+                        {vendorPurchases.map((purchase) => (
+                          <Card key={purchase.id} className="overflow-hidden">
+                            <CardHeader className="py-2 bg-muted/30">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <CardTitle className="text-sm">Purchase {purchase.id.slice(0, 8)}</CardTitle>
+                                <Badge variant="secondary" className="text-xs">{purchase.date}</Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="p-3 space-y-2">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="text-xs">Product</TableHead>
+                                    <TableHead className="text-xs text-center">Qty</TableHead>
+                                    <TableHead className="text-xs text-right">Rate</TableHead>
+                                    <TableHead className="text-xs text-right">Total</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {purchase.items.map((item) => (
+                                    <TableRow key={item.id}>
+                                      <TableCell className="text-sm">{item.product?.name || 'Unknown'}</TableCell>
+                                      <TableCell className="text-sm text-center">{item.quantity}</TableCell>
+                                      <TableCell className="text-sm text-right font-mono">₹{item.unitPrice}</TableCell>
+                                      <TableCell className="text-sm text-right font-mono">{item.total.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                              <div className="flex justify-end pt-2 border-t text-sm">
+                                <span className="font-semibold">
+                                  Total: <span className="font-mono text-primary">{purchase.totalAmount.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
+                                </span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border rounded-md overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/40 uppercase text-xs hover:bg-muted/40">
+                            <TableHead className="w-[50px] text-center font-bold text-black">S.No</TableHead>
+                            <TableHead className="w-[100px] font-bold text-black">Date</TableHead>
+                            <TableHead className="min-w-[150px] font-bold text-black">Product</TableHead>
+                            <TableHead className="w-[80px] text-center font-bold text-black">Qty</TableHead>
+                            <TableHead className="w-[100px] text-center font-bold text-black">Price/Unit</TableHead>
+                            <TableHead className="w-[120px] text-right font-bold text-black">Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {vendorPurchases.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                No purchases found for this vendor
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            vendorPurchases.map((purchase, index) => {
+                              const items = purchase.items || [];
+                              return items.map((item, itemIndex) => {
+                                const isFirstItem = itemIndex === 0;
+                                return (
+                                  <TableRow key={`${purchase.id}-${item.id}`} className={isFirstItem ? "border-t" : "border-0"}>
+                                    {isFirstItem && (
+                                      <>
+                                        <TableCell rowSpan={items.length} className="text-center align-top border-r bg-muted/5">{index + 1}</TableCell>
+                                        <TableCell rowSpan={items.length} className="align-top border-r bg-muted/5">
+                                          <div className="font-semibold">{purchase.date}</div>
+                                        </TableCell>
+                                      </>
+                                    )}
+                                    <TableCell className="align-top border-r">{item.product?.name || 'Unknown'}</TableCell>
+                                    <TableCell className="text-center align-top border-r">{item.quantity}</TableCell>
+                                    <TableCell className="text-center align-top border-r">₹{item.unitPrice}</TableCell>
+                                    <TableCell className="text-right align-top border-r font-mono">₹{item.total}</TableCell>
+                                  </TableRow>
+                                )
+                              })
+                            })
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
+                  <div className="grid gap-4 md:grid-cols-2 bg-muted/20 p-4 rounded-lg">
+                    <div className="space-y-2">
+                      <Label>Payment Method</Label>
+                      <Select value={vendorPaymentMethod} onValueChange={setVendorPaymentMethod}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="bank">Bank Transfer</SelectItem>
+                          <SelectItem value="upi">UPI</SelectItem>
+                          <SelectItem value="cheque">Cheque</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payment Amount (Enter amount to pay now)</Label>
+                      <Input
+                        type="number"
+                        placeholder="Enter payment amount"
+                        value={vendorPaymentAmount}
+                        onChange={(e) => setVendorPaymentAmount(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button variant="secondary" onClick={() => setVendorDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleVendorPaymentSubmit}
+                      disabled={!vendorPaymentAmount || Number(vendorPaymentAmount) <= 0 || createVendorPayment.isPending}
+                      className={Number(vendorPaymentAmount) > 0 ? "bg-green-600 hover:bg-green-700" : ""}
+                    >
+                      {createVendorPayment.isPending ? "Processing..." : `PAY: ₹${Number(vendorPaymentAmount || 0).toLocaleString("en-IN")}`}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {vendorStep === 'completed' && completedVendorPaymentData && (
+                <div className="flex flex-col items-center justify-center py-8 space-y-6">
+                  <div className="flex flex-col items-center space-y-2 text-center">
+                    <div className="h-16 w-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-2">
+                      <CheckCircle className="h-10 w-10" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-green-600">Payment Recorded Successfully!</h3>
+                    <p className="text-muted-foreground">
+                      Payment of ₹{completedVendorPaymentData.amount.toLocaleString("en-IN")} recorded for {completedVendorPaymentData.vendorName}
+                    </p>
+                  </div>
+
+                  <div className="w-full max-w-md bg-muted/30 p-6 rounded-lg border space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Date:</span>
+                      <span className="font-medium">{completedVendorPaymentData.date}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Payment Method:</span>
+                      <span className="font-medium capitalize">{completedVendorPaymentData.paymentMethod}</span>
+                    </div>
+                    <div className="my-2 border-t border-dashed" />
+                    <div className="flex justify-between font-medium">
+                      <span>Total Paid Now:</span>
+                      <span>₹{completedVendorPaymentData.amount.toLocaleString("en-IN")}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center gap-3 w-full">
+                    <Button variant="outline" onClick={() => {
+                      resetVendorDialog();
+                      setVendorDialogOpen(false);
+                    }}>
+                      Close
+                    </Button>
+                    <Button variant="outline" onClick={handlePrintVendorReceipt}>
+                      <Printer className="mr-2 h-4 w-4" /> Print Receipt
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
           <Card>
             <CardHeader>
               <CardTitle>Vendor Balances</CardTitle>
@@ -943,12 +1215,13 @@ export default function Payments() {
                     <TableHead className="text-right">Total Purchases</TableHead>
                     <TableHead className="text-right">Total Paid</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {vendorBalances.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                         No vendor data available
                       </TableCell>
                     </TableRow>
@@ -964,6 +1237,30 @@ export default function Payments() {
                         </TableCell>
                         <TableCell className="text-right font-mono font-semibold">
                           {vendor.balance.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button
+                            size="sm"
+                            variant={vendor.balance > 0 ? "destructive" : "outline"}
+                            onClick={() => handleVendorPaymentClick(vendor.id)}
+                            className="h-8"
+                          >
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Payment
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              // Filter history by vendor if needed, or open generic history
+                              // For now just logging, future enhancement can link to history tab
+                              setHistoryCustomerFilter("all"); // Reset or set to vendor specific if we had a filter
+                            }}
+                            className="h-8"
+                          >
+                            <Wallet className="mr-2 h-4 w-4" />
+                            History
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
