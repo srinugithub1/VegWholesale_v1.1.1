@@ -2062,6 +2062,13 @@ function ProductRow({
               }
             }
           }}
+          onBlur={() => {
+            const val = parseFloat(addValue);
+            if (!isNaN(val) && val > 0) {
+              accumulateWeightAndBags(item.productId, val);
+              setAddValue("");
+            }
+          }}
         />
         {isScaleConnected ? (
           <Button
@@ -2105,6 +2112,7 @@ function ProductRow({
             variant="ghost"
             size="icon"
             className="h-9 w-9 shrink-0 text-muted-foreground hover:text-primary"
+            onMouseDown={(e) => e.preventDefault()} // Prevent blur from firing before click
             onClick={() => {
               const val = parseFloat(addValue);
               if (!isNaN(val) && val > 0) {
