@@ -400,11 +400,6 @@ export default function Payments() {
       return;
     }
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast({ title: "Error", description: "Please allow popups to print", variant: "destructive" });
-      return;
-    }
 
     try {
       const totalHamali = completedPaymentData.invoices.reduce((sum, inv) => {
