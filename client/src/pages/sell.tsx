@@ -520,11 +520,10 @@ function VehicleSalePane({
 
         <div className="space-y-1">
           <div className="grid grid-cols-12 gap-1 text-xs text-muted-foreground font-medium px-1 mb-2">
-            <div className="col-span-3">Product</div>
-            <div className="col-span-5 text-center">Add Weight</div>
-            <div className="col-span-1 text-center">Bags</div>
-            <div className="col-span-2 text-center">Price/KG</div>
-            <div className="col-span-1 text-right">Total</div>
+            <div className="col-span-4">Product</div>
+            <div className="col-span-3 text-center">Add Weight</div>
+            <div className="col-span-2 text-center">Bags</div>
+            <div className="col-span-3 text-center">Price/KG</div>
           </div>
           <div className="space-y-1 max-h-40 overflow-y-auto">
             {availableProducts.map((item) => {
@@ -2040,12 +2039,12 @@ function ProductRow({
 
   return (
     <div className="grid grid-cols-12 gap-1 items-center">
-      <div className="col-span-3 text-sm truncate font-medium" title={item.product?.name}>
+      <div className="col-span-4 text-sm truncate font-medium" title={item.product?.name}>
         {item.product?.name}
       </div>
 
       {/* Add Weight Column */}
-      <div className="col-span-5 flex items-center gap-1">
+      <div className="col-span-3 flex items-center gap-1">
         <Input
           type="number"
           min="0"
@@ -2119,7 +2118,7 @@ function ProductRow({
         )}
       </div>
 
-      <div className="col-span-1 text-center">
+      <div className="col-span-2 text-center">
         <Input
           type="number"
           min="0"
@@ -2130,7 +2129,7 @@ function ProductRow({
           readOnly
         />
       </div>
-      <div className="col-span-2">
+      <div className="col-span-3">
         <Input
           type="number"
           min="0"
@@ -2140,9 +2139,6 @@ function ProductRow({
           placeholder="0"
           onChange={(e) => updateProductField(item.productId, 'price', parseFloat(e.target.value) || 0)}
         />
-      </div>
-      <div className="col-span-1 text-sm text-right font-medium flex items-center justify-end">
-        {lineTotal > 0 ? `${lineTotal.toFixed(0)}` : "-"}
       </div>
     </div>
   );
