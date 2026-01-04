@@ -1302,352 +1302,351 @@ export default function Payments() {
                       </Button>
                     </div>
                   </div>
-                  </div>
                 )}
 
 
-              {step === 'completed' && completedPaymentData && (
-                <ScrollArea className="flex-1">
-                  <div className="flex flex-col items-center justify-center space-y-6 py-6 px-4">
-                    <div className="rounded-full bg-primary/10 p-4">
-                      <CheckCircle className="h-12 w-12 text-primary" />
-                    </div>
+                {step === 'completed' && completedPaymentData && (
+                  <ScrollArea className="flex-1">
+                    <div className="flex flex-col items-center justify-center space-y-6 py-6 px-4">
+                      <div className="rounded-full bg-primary/10 p-4">
+                        <CheckCircle className="h-12 w-12 text-primary" />
+                      </div>
 
-                    <div className="text-center space-y-1">
-                      <h3 className="text-lg font-semibold">Payment Recorded Successfully</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Payment of {completedPaymentData.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })} received from {completedPaymentData.customerName}
-                      </p>
-                    </div>
+                      <div className="text-center space-y-1">
+                        <h3 className="text-lg font-semibold">Payment Recorded Successfully</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Payment of {completedPaymentData.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })} received from {completedPaymentData.customerName}
+                        </p>
+                      </div>
 
-                    <Card className="w-full max-w-sm">
-                      <CardContent className="pt-4 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Customer:</span>
-                          <span className="font-medium">{completedPaymentData.customerName}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Date:</span>
-                          <span className="font-medium">{completedPaymentData.date}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Method:</span>
-                          <span className="font-medium capitalize">{completedPaymentData.paymentMethod}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Invoice{completedPaymentData.invoices.length > 1 ? 's' : ''}:</span>
-                          <span className="font-medium font-mono text-xs">
-                            {completedPaymentData.invoices.map(inv => inv.invoiceNumber).join(', ')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm border-t pt-2">
-                          <span className="text-muted-foreground">Total Bags:</span>
-                          <span className="font-medium font-mono">
-                            {completedPaymentData.invoices.reduce((sum, inv) => {
-                              const edited = completedPaymentData.editedInvoices[inv.id];
-                              return sum + (edited?.bags || 0);
-                            }, 0)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Total Hamali:</span>
-                          <span className="font-medium font-mono">
-                            {completedPaymentData.invoices.reduce((sum, inv) => {
-                              const edited = completedPaymentData.editedInvoices[inv.id];
-                              return sum + (edited?.hamaliChargeAmount || inv.hamaliChargeAmount || 0);
-                            }, 0).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm border-t pt-2">
-                          <span className="text-muted-foreground">Grand Total:</span>
-                          <span className="font-medium font-mono">
-                            {completedPaymentData.grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                          </span>
-                        </div>
-                        {completedPaymentData.previouslyPaid > 0 && (
+                      <Card className="w-full max-w-sm">
+                        <CardContent className="pt-4 space-y-2">
                           <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Previously Paid:</span>
-                            <span className="font-medium font-mono text-green-600">
-                              -{completedPaymentData.previouslyPaid.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                            <span className="text-muted-foreground">Customer:</span>
+                            <span className="font-medium">{completedPaymentData.customerName}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Date:</span>
+                            <span className="font-medium">{completedPaymentData.date}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Method:</span>
+                            <span className="font-medium capitalize">{completedPaymentData.paymentMethod}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Invoice{completedPaymentData.invoices.length > 1 ? 's' : ''}:</span>
+                            <span className="font-medium font-mono text-xs">
+                              {completedPaymentData.invoices.map(inv => inv.invoiceNumber).join(', ')}
                             </span>
                           </div>
-                        )}
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">This Payment:</span>
-                          <span className="font-medium font-mono text-primary">
-                            {completedPaymentData.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                          </span>
-                        </div>
-                        <div className="flex justify-between border-t pt-2">
-                          <span className="font-medium">Remaining Balance:</span>
-                          <span className={`text-lg font-bold font-mono ${(completedPaymentData.grandTotal - completedPaymentData.previouslyPaid - completedPaymentData.amount) > 0 ? 'text-destructive' : 'text-primary'}`}>
-                            {(completedPaymentData.grandTotal - completedPaymentData.previouslyPaid - completedPaymentData.amount).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
+                          <div className="flex justify-between text-sm border-t pt-2">
+                            <span className="text-muted-foreground">Total Bags:</span>
+                            <span className="font-medium font-mono">
+                              {completedPaymentData.invoices.reduce((sum, inv) => {
+                                const edited = completedPaymentData.editedInvoices[inv.id];
+                                return sum + (edited?.bags || 0);
+                              }, 0)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Total Hamali:</span>
+                            <span className="font-medium font-mono">
+                              {completedPaymentData.invoices.reduce((sum, inv) => {
+                                const edited = completedPaymentData.editedInvoices[inv.id];
+                                return sum + (edited?.hamaliChargeAmount || inv.hamaliChargeAmount || 0);
+                              }, 0).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm border-t pt-2">
+                            <span className="text-muted-foreground">Grand Total:</span>
+                            <span className="font-medium font-mono">
+                              {completedPaymentData.grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                            </span>
+                          </div>
+                          {completedPaymentData.previouslyPaid > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Previously Paid:</span>
+                              <span className="font-medium font-mono text-green-600">
+                                -{completedPaymentData.previouslyPaid.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">This Payment:</span>
+                            <span className="font-medium font-mono text-primary">
+                              {completedPaymentData.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                            </span>
+                          </div>
+                          <div className="flex justify-between border-t pt-2">
+                            <span className="font-medium">Remaining Balance:</span>
+                            <span className={`text-lg font-bold font-mono ${(completedPaymentData.grandTotal - completedPaymentData.previouslyPaid - completedPaymentData.amount) > 0 ? 'text-destructive' : 'text-primary'}`}>
+                              {(completedPaymentData.grandTotal - completedPaymentData.previouslyPaid - completedPaymentData.amount).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={handlePrintReceipt}
-                        data-testid="button-print-receipt"
-                      >
-                        <Printer className="h-4 w-4 mr-2" />
-                        Print Receipt
-                      </Button>
-                      <Button
-                        onClick={() => handleCustomerDialogClose(false)}
-                        data-testid="button-close-payment"
-                      >
-                        Done
-                      </Button>
+                      <div className="flex gap-3">
+                        <Button
+                          variant="outline"
+                          onClick={handlePrintReceipt}
+                          data-testid="button-print-receipt"
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
+                          Print Receipt
+                        </Button>
+                        <Button
+                          onClick={() => handleCustomerDialogClose(false)}
+                          data-testid="button-close-payment"
+                        >
+                          Done
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </ScrollArea>
-              )}
-            </DialogContent>
-          </Dialog>
-        </div>
+                  </ScrollArea>
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Customer Balances</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead className="text-right">Total Invoices</TableHead>
-                  <TableHead className="text-right">Total Paid</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {customerBalances.length === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Customer Balances</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                      No customer data available
-                    </TableCell>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Total Invoices</TableHead>
+                    <TableHead className="text-right">Total Paid</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
                   </TableRow>
-                ) : (
-                  customerBalances.map((customer) => (
-                    <TableRow key={customer.id} data-testid={`row-customer-${customer.id}`}>
-                      <TableCell className="font-medium">{customer.name}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {customer.totalInvoices.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {customer.totalPayments.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-semibold">
-                        {customer.balance.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                </TableHeader>
+                <TableBody>
+                  {customerBalances.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                        No customer data available
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  ) : (
+                    customerBalances.map((customer) => (
+                      <TableRow key={customer.id} data-testid={`row-customer-${customer.id}`}>
+                        <TableCell className="font-medium">{customer.name}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {customer.totalInvoices.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {customer.totalPayments.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold">
+                          {customer.balance.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
-            <CardTitle>Payment History</CardTitle>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Select value={historyCustomerFilter} onValueChange={setHistoryCustomerFilter}>
-                <SelectTrigger className="w-48" data-testid="select-history-customer">
-                  <SelectValue placeholder="Filter by customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Customers</SelectItem>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => printPaymentHistory()}
-                disabled={filteredCustomerPayments.length === 0}
-                data-testid="button-print-payment-history"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Print
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCustomerPayments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No payment history
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredCustomerPayments.map((payment) => (
-                    <TableRow key={payment.id} data-testid={`row-customer-payment-${payment.id}`}>
-                      <TableCell>{payment.date}</TableCell>
-                      <TableCell>{getCustomerName(payment.customerId)}</TableCell>
-                      <TableCell>
-                        {payment.invoiceNumber ? (
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {payment.invoiceNumber}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="capitalize">{payment.paymentMethod}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {payment.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </TabsContent >
-
-      <TabsContent value="hamali" className="space-y-4">
-        <div className="flex justify-end">
-          <Dialog open={hamaliDialogOpen} onOpenChange={setHamaliDialogOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-add-hamali-payment">
-                <Plus className="h-4 w-4 mr-2" />
-                Record Hamali Cash
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Record Hamali Cash Payment</DialogTitle>
-                <DialogDescription>Record direct cash given for Hamali (not through invoice)</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label>Amount</Label>
-                  <Input
-                    type="number"
-                    value={hamaliAmount}
-                    onChange={(e) => setHamaliAmount(e.target.value)}
-                    placeholder="Enter amount"
-                    data-testid="input-hamali-amount"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Customer (Optional)</Label>
-                  <Select value={hamaliCustomerId} onValueChange={setHamaliCustomerId}>
-                    <SelectTrigger data-testid="select-hamali-customer">
-                      <SelectValue placeholder="Select customer (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No customer</SelectItem>
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes (Optional)</Label>
-                  <Input
-                    value={hamaliNotes}
-                    onChange={(e) => setHamaliNotes(e.target.value)}
-                    placeholder="Add notes"
-                    data-testid="input-hamali-notes"
-                  />
-                </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+              <CardTitle>Payment History</CardTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={historyCustomerFilter} onValueChange={setHistoryCustomerFilter}>
+                  <SelectTrigger className="w-48" data-testid="select-history-customer">
+                    <SelectValue placeholder="Filter by customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Customers</SelectItem>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button
-                  onClick={handleHamaliPayment}
-                  disabled={!hamaliAmount || createHamaliCashPayment.isPending}
-                  className="w-full"
-                  data-testid="button-submit-hamali-payment"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => printPaymentHistory()}
+                  disabled={filteredCustomerPayments.length === 0}
+                  data-testid="button-print-payment-history"
                 >
-                  {createHamaliCashPayment.isPending ? "Recording..." : "Record Payment"}
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print
                 </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Direct Hamali Cash Payments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {hamaliCashPayments.length === 0 ? (
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No direct Hamali cash payments recorded
-                    </TableCell>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Invoice</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
-                ) : (
-                  hamaliCashPayments.map((payment) => (
-                    <TableRow key={payment.id} data-testid={`row-hamali-payment-${payment.id}`}>
-                      <TableCell>{payment.date}</TableCell>
-                      <TableCell>{payment.customerId ? getCustomerName(payment.customerId) : "-"}</TableCell>
-                      <TableCell className="text-muted-foreground">{payment.notes || "-"}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {payment.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => deleteHamaliCashPayment.mutate(payment.id)}
-                          disabled={deleteHamaliCashPayment.isPending}
-                          data-testid={`button-delete-hamali-${payment.id}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                </TableHeader>
+                <TableBody>
+                  {filteredCustomerPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        No payment history
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-            {hamaliCashPayments.length > 0 && (
-              <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                <span className="text-muted-foreground">Total Direct Hamali Cash:</span>
-                <span className="text-xl font-bold font-mono" data-testid="text-hamali-cash-total">
-                  {hamaliCashPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs >
+                  ) : (
+                    filteredCustomerPayments.map((payment) => (
+                      <TableRow key={payment.id} data-testid={`row-customer-payment-${payment.id}`}>
+                        <TableCell>{payment.date}</TableCell>
+                        <TableCell>{getCustomerName(payment.customerId)}</TableCell>
+                        <TableCell>
+                          {payment.invoiceNumber ? (
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {payment.invoiceNumber}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="capitalize">{payment.paymentMethod}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {payment.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent >
+
+        <TabsContent value="hamali" className="space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={hamaliDialogOpen} onOpenChange={setHamaliDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-hamali-payment">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Record Hamali Cash
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Record Hamali Cash Payment</DialogTitle>
+                  <DialogDescription>Record direct cash given for Hamali (not through invoice)</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Amount</Label>
+                    <Input
+                      type="number"
+                      value={hamaliAmount}
+                      onChange={(e) => setHamaliAmount(e.target.value)}
+                      placeholder="Enter amount"
+                      data-testid="input-hamali-amount"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Customer (Optional)</Label>
+                    <Select value={hamaliCustomerId} onValueChange={setHamaliCustomerId}>
+                      <SelectTrigger data-testid="select-hamali-customer">
+                        <SelectValue placeholder="Select customer (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No customer</SelectItem>
+                        {customers.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes (Optional)</Label>
+                    <Input
+                      value={hamaliNotes}
+                      onChange={(e) => setHamaliNotes(e.target.value)}
+                      placeholder="Add notes"
+                      data-testid="input-hamali-notes"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleHamaliPayment}
+                    disabled={!hamaliAmount || createHamaliCashPayment.isPending}
+                    className="w-full"
+                    data-testid="button-submit-hamali-payment"
+                  >
+                    {createHamaliCashPayment.isPending ? "Recording..." : "Record Payment"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Direct Hamali Cash Payments</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {hamaliCashPayments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        No direct Hamali cash payments recorded
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    hamaliCashPayments.map((payment) => (
+                      <TableRow key={payment.id} data-testid={`row-hamali-payment-${payment.id}`}>
+                        <TableCell>{payment.date}</TableCell>
+                        <TableCell>{payment.customerId ? getCustomerName(payment.customerId) : "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{payment.notes || "-"}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {payment.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => deleteHamaliCashPayment.mutate(payment.id)}
+                            disabled={deleteHamaliCashPayment.isPending}
+                            data-testid={`button-delete-hamali-${payment.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              {hamaliCashPayments.length > 0 && (
+                <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                  <span className="text-muted-foreground">Total Direct Hamali Cash:</span>
+                  <span className="text-xl font-bold font-mono" data-testid="text-hamali-cash-total">
+                    {hamaliCashPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs >
     </div >
   );
 }
