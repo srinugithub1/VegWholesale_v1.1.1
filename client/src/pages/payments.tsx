@@ -142,30 +142,24 @@ export default function Payments() {
     setLoadingInvoices(true);
     try {
       const invoicesRes = await fetch(`/api/customers/${customerId}/invoices`);
+      if (!invoicesRes.ok) throw new Error("Failed to fetch invoices");
       const data = await invoicesRes.json();
-      const invoices: Invoice[] = data.invoices;
+      const invoices = data.invoices;
       const summary = data.summary;
 
       setCustomerSummary(summary);
       setCustomerPaymentAmount(summary.remainingBalance > 0 ? String(summary.remainingBalance) : "");
 
-      const invoicesWithItems: InvoiceWithItems[] = await Promise.all(
-        invoices.map(async (invoice) => {
-          const itemsRes = await fetch(`/api/invoices/${invoice.id}/items`);
-          const items: InvoiceItem[] = await itemsRes.json();
-          const itemsWithProducts = items.map(item => ({
-            ...item,
-            product: products.find(p => p.id === item.productId),
-          }));
-          return {
-            ...invoice,
-            items: itemsWithProducts,
-            originalSubtotal: invoice.subtotal,
-            originalHamali: invoice.hamaliChargeAmount || 0,
-            originalGrandTotal: invoice.grandTotal,
-          };
-        })
-      );
+      const invoicesWithItems: InvoiceWithItems[] = invoices.map((invoice: any) => ({
+        ...invoice,
+        items: (invoice.items || []).map((item: any) => ({
+          ...item,
+          product: products.find(p => p.id === item.productId),
+        })),
+        originalSubtotal: invoice.subtotal,
+        originalHamali: invoice.hamaliChargeAmount || 0,
+        originalGrandTotal: invoice.grandTotal,
+      }));
 
       setCustomerInvoices(invoicesWithItems);
 

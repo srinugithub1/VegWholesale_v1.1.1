@@ -402,10 +402,10 @@ export async function registerRoutes(
 
   app.get("/api/customers/:id/invoices", async (req, res) => {
     try {
-      const invoices = await storage.getInvoicesByCustomer(req.params.id);
+      const invoicesWithItems = await storage.getInvoicesWithItemsByCustomer(req.params.id);
       const balance = await storage.getCustomerBalance(req.params.id);
       res.json({
-        invoices,
+        invoices: invoicesWithItems,
         summary: {
           totalInvoices: balance.totalInvoices,
           totalPayments: balance.totalPayments,

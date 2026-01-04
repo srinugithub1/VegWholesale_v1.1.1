@@ -55,7 +55,7 @@ import {
   users,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -105,6 +105,7 @@ export interface IStorage {
   getInvoices(): Promise<Invoice[]>;
   getInvoice(id: string): Promise<Invoice | undefined>;
   getInvoicesByCustomer(customerId: string): Promise<(Invoice & { shop?: number | null })[]>;
+  getInvoicesWithItemsByCustomer(customerId: string): Promise<(Invoice & { shop?: number | null, items: InvoiceItem[] })[]>;
   createInvoice(invoice: InsertInvoice, items: InsertInvoiceItem[]): Promise<Invoice>;
   updateInvoice(id: string, updates: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   updateInvoiceItem(id: string, updates: { quantity?: number; unitPrice?: number; total?: number }): Promise<InvoiceItem | undefined>;
@@ -480,6 +481,29 @@ export class DatabaseStorage implements IStorage {
     return rows.map(({ invoice, shop }) => ({
       ...invoice,
       shop
+    }));
+  }
+
+  async getInvoicesWithItemsByCustomer(customerId: string): Promise<(Invoice & { shop?: number | null, items: InvoiceItem[] })[]> {
+    const rows = await db.select({
+      invoice: invoices,
+      shop: vehicles.shop,
+    })
+      .from(invoices)
+      .leftJoin(vehicles, eq(invoices.vehicleId, vehicles.id))
+      .where(eq(invoices.customerId, customerId));
+
+    const invoiceIds = rows.map(r => r.invoice.id);
+
+    let allItems: InvoiceItem[] = [];
+    if (invoiceIds.length > 0) {
+      allItems = await db.select().from(invoiceItems).where(inArray(invoiceItems.invoiceId, invoiceIds));
+    }
+
+    return rows.map(({ invoice, shop }) => ({
+      ...invoice,
+      shop,
+      items: allItems.filter(item => item.invoiceId === invoice.id)
     }));
   }
 
