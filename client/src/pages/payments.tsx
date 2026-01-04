@@ -1151,7 +1151,7 @@ export default function Payments() {
                           ) : (
                             customerInvoices.map((invoice, index) => {
                               const edited = editedInvoices[invoice.id];
-                              const items = edited?.items || invoice.items;
+                              const items = invoice.items; // ALWAYS iterate over original items to ensure product data and IDs exist
 
                               return items.map((item, itemIndex) => {
                                 const isFirstItem = itemIndex === 0;
