@@ -255,6 +255,15 @@ export default function Payments() {
     });
   };
 
+  const handleHamaliChange = (invoiceId: string, field: 'bags' | 'ratePerBag', value: string) => {
+    const numValue = parseFloat(value) || 0;
+    if (field === 'bags') {
+      updateHamaliBags(invoiceId, numValue);
+    } else if (field === 'ratePerBag') {
+      updateHamaliRate(invoiceId, numValue);
+    }
+  };
+
   const getInvoiceTotal = (invoiceId: string) => {
     const edited = editedInvoices[invoiceId];
     if (!edited) return { subtotal: 0, hamali: 0, grandTotal: 0 };
@@ -412,7 +421,8 @@ export default function Payments() {
 
       const invoiceRows = completedPaymentData.invoices.flatMap(inv => {
         const edited = completedPaymentData.editedInvoices?.[inv.id];
-        const items = edited?.items || inv.items || [];
+        // Always use original items to ensure product details are available
+        const items = inv.items || [];
 
         return items.map((item, index) => {
           const isFirstItem = index === 0;
@@ -791,6 +801,21 @@ export default function Payments() {
       </div>
     );
   }
+
+  const handleSaveChanges = () => {
+    saveInvoiceChanges.mutate();
+  };
+
+  const handleCustomerPaymentSubmit = () => {
+    if (!selectedCustomer || !customerPaymentAmount || Number(customerPaymentAmount) <= 0) return;
+
+    createCustomerPayment.mutate({
+      customerId: selectedCustomer,
+      amount: Number(customerPaymentAmount),
+      paymentMethod: customerPaymentMethod,
+      date: new Date().toISOString().split('T')[0],
+    });
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -1314,7 +1339,7 @@ export default function Payments() {
                         }}>
                           New Payment
                         </Button>
-                        <Button variant="outline" size="sm" onClick={printReceipt}>
+                        <Button variant="outline" size="sm" onClick={handlePrintReceipt}>
                           <Printer className="mr-2 h-4 w-4" /> Print Receipt
                         </Button>
                       </div>
@@ -1326,16 +1351,16 @@ export default function Payments() {
                         <Button
                           variant="secondary"
                           onClick={handleSaveChanges}
-                          disabled={recordCustomerPayment.isPending}
+                          disabled={saveInvoiceChanges.isPending}
                         >
                           <Save className="mr-2 h-4 w-4" /> Save Changes
                         </Button>
                         <Button
                           onClick={handleCustomerPaymentSubmit}
-                          disabled={!customerPaymentAmount || Number(customerPaymentAmount) <= 0 || recordCustomerPayment.isPending}
+                          disabled={!customerPaymentAmount || Number(customerPaymentAmount) <= 0 || createCustomerPayment.isPending}
                           className={Number(customerPaymentAmount) > 0 ? "bg-green-600 hover:bg-green-700" : ""}
                         >
-                          {recordCustomerPayment.isPending ? "Processing..." : `PAID: ₹${Number(customerPaymentAmount || 0).toLocaleString("en-IN")}`}
+                          {createCustomerPayment.isPending ? "Processing..." : `PAID: ₹${Number(customerPaymentAmount || 0).toLocaleString("en-IN")}`}
                         </Button>
                       </div>
                     )}
@@ -1360,7 +1385,7 @@ export default function Payments() {
                     </span>
                   </div>
                   <div className="flex gap-4 pt-4">
-                    <Button variant="outline" onClick={printReceipt}>
+                    <Button variant="outline" onClick={handlePrintReceipt}>
                       <Printer className="mr-2 h-4 w-4" /> Print Receipt
                     </Button>
                     <Button onClick={() => {
