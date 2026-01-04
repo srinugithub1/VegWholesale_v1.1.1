@@ -2126,7 +2126,7 @@ function ProductRow({
           className="h-9 text-sm text-center px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           value={bags || ""}
           placeholder="0"
-          readOnly
+          onChange={(e) => updateProductField(item.productId, 'bags', parseFloat(e.target.value) || 0)}
         />
       </div>
       <div className="col-span-3">
