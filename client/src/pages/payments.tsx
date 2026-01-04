@@ -139,11 +139,13 @@ export default function Payments() {
   });
 
   const loadCustomerInvoices = async (customerId: string) => {
+    console.log("Loading customer invoices for:", customerId);
     setLoadingInvoices(true);
     try {
       const invoicesRes = await fetch(`/api/customers/${customerId}/invoices`);
       if (!invoicesRes.ok) throw new Error("Failed to fetch invoices");
       const data = await invoicesRes.json();
+      console.log("Invoices fetched:", data);
       const invoices = data.invoices;
       const summary = data.summary;
 
