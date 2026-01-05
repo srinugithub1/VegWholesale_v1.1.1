@@ -123,6 +123,7 @@ function EditUserDialog({ user }: { user: UserType }) {
                     <SelectContent>
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="payment">Payment</SelectItem>
                       <SelectItem value="restricted_admin">Restricted Admin</SelectItem>
                     </SelectContent>
                   </Select>
@@ -259,6 +260,7 @@ function AddUserDialog() {
                     <SelectContent>
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="payment">Payment</SelectItem>
                       <SelectItem value="restricted_admin">Restricted Admin</SelectItem>
                     </SelectContent>
                   </Select>
