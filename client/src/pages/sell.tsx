@@ -1334,39 +1334,41 @@ export default function Sell() {
             <Badge variant="secondary" className="text-xs">{selectedVehicleIds.size} selected</Badge>
           )}
 
-          {/* Weighing Scale Integration */}
-          <div className="flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1 ml-2">
-            <div className="flex items-center gap-1 mr-1 border-r pr-2 border-border/50">
-              <Label htmlFor="demo-mode-sell" className="text-[10px] text-muted-foreground cursor-pointer font-normal">Demo</Label>
-              <Switch
-                id="demo-mode-sell"
-                className="h-3 w-5 scale-75"
-                checked={scale.isDemoMode}
-                onCheckedChange={scale.toggleDemoMode}
-              />
-            </div>
-            <Scale className="h-4 w-4 text-muted-foreground" />
-            {scale.isConnected ? (
-              <>
-                <Badge variant="outline" className="bg-background text-primary font-mono">
-                  {scale.currentWeight !== null ? scale.currentWeight.toFixed(3) : "---"} KG
-                </Badge>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={scale.disconnect} title="Disconnect Scale">
-                  <Unplug className="h-3 w-3 text-destructive" />
+          {/* Weighing Scale Integration - Hidden for admin and restricted_admin */}
+          {!['admin', 'restricted_admin'].includes(user?.role || '') && (
+            <div className="flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1 ml-2">
+              <div className="flex items-center gap-1 mr-1 border-r pr-2 border-border/50">
+                <Label htmlFor="demo-mode-sell" className="text-[10px] text-muted-foreground cursor-pointer font-normal">Demo</Label>
+                <Switch
+                  id="demo-mode-sell"
+                  className="h-3 w-5 scale-75"
+                  checked={scale.isDemoMode}
+                  onCheckedChange={scale.toggleDemoMode}
+                />
+              </div>
+              <Scale className="h-4 w-4 text-muted-foreground" />
+              {scale.isConnected ? (
+                <>
+                  <Badge variant="outline" className="bg-background text-primary font-mono">
+                    {scale.currentWeight !== null ? scale.currentWeight.toFixed(3) : "---"} KG
+                  </Badge>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={scale.disconnect} title="Disconnect Scale">
+                    <Unplug className="h-3 w-3 text-destructive" />
+                  </Button>
+                </>
+              ) : (
+                <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={scale.connect}>
+                  <Plug className="h-3 w-3 mr-1" />
+                  Connect Scale
                 </Button>
-              </>
-            ) : (
-              <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={scale.connect}>
-                <Plug className="h-3 w-3 mr-1" />
-                Connect Scale
-              </Button>
-            )}
-            {scale.error && (
-              <span className="text-xs text-destructive max-w-[150px] truncate" title={scale.error}>
-                {scale.error}
-              </span>
-            )}
-          </div>
+              )}
+              {scale.error && (
+                <span className="text-xs text-destructive max-w-[150px] truncate" title={scale.error}>
+                  {scale.error}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {selectedVehicleIds.size > 0 && (
           <Button
