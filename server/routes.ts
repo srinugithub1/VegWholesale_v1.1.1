@@ -513,6 +513,37 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/customer-payments/:id", async (req, res) => {
+    try {
+      // Use partial schema for updates or just validate specific fields
+      // Using partial of insert schema
+      const data = insertCustomerPaymentSchema.partial().parse(req.body);
+
+      const updatedPayment = await storage.updateCustomerPayment(req.params.id, data);
+      res.json(updatedPayment);
+    } catch (error) {
+      // if not found
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+      res.status(400).json({ error: "Invalid payment data" });
+    }
+  });
+
+  app.patch("/api/vendor-payments/:id", async (req, res) => {
+    try {
+      const data = insertVendorPaymentSchema.partial().parse(req.body);
+      const updatedPayment = await storage.updateVendorPayment(req.params.id, data);
+      res.json(updatedPayment);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+      res.status(400).json({ error: "Invalid payment data" });
+    }
+  });
+
+
   // Company Settings
   app.get("/api/company-settings", async (req, res) => {
     const settings = await storage.getCompanySettings();
