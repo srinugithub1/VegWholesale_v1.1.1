@@ -68,7 +68,7 @@ function ProtectedApp() {
 
     if (isRestrictedAdmin) {
       // Allowed routes for restricted admin
-      const allowed = ['/', '/stock', '/reports'];
+      const allowed = ['/', '/stock', '/reports', '/payments'];
       // Also allow sub-paths if necessary, but wouter location is exact path usually.
       // If we visit a route not in allowed, redirect to Dashboard (/)
       if (!allowed.includes(location)) {

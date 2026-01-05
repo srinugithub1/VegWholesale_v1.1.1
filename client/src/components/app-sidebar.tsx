@@ -104,7 +104,7 @@ const transactionItems = [
     title: "Payments",
     url: "/payments",
     icon: CreditCard,
-    roles: ["admin", "payment"],
+    roles: ["admin", "payment", "restricted_admin"],
   },
 ];
 
