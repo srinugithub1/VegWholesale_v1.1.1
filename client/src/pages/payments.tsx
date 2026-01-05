@@ -1290,6 +1290,19 @@ export default function Payments() {
                             <CreditCard className="mr-2 h-4 w-4" />
                             Payment
                           </Button>
+                          {/* <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setVendorHistoryFilter(vendor.id);
+                              // Smooth scroll to history section
+                              document.getElementById('vendor-history-section')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="h-8"
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </Button> */}
                           <Button
                             size="sm"
                             variant="outline"
@@ -1856,6 +1869,18 @@ export default function Payments() {
                           >
                             Payment
                           </Button>
+                          {/* <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setHistoryCustomerFilter(customer.id);
+                              setHistoryDialogOpen(true);
+                            }}
+                            className="h-8"
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </Button> */}
                           <Button
                             size="sm"
                             variant="outline"
