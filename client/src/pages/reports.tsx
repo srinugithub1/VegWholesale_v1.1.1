@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Package, ArrowUpRight, Receipt, CreditCard, Download, Calendar, Filter, Truck, Users, Scale, ShoppingBag, FileText, BarChart3 } from "lucide-react";
+import { TrendingUp, Package, ArrowUpRight, Receipt, CreditCard, Download, Calendar, Filter, Truck, Users, Scale, ShoppingBag, FileText, BarChart3, LayoutDashboard } from "lucide-react";
 import type { Product, Invoice, Customer, Vehicle, InvoiceItem, Vendor, CustomerPayment } from "@shared/schema";
 import { generateDetailedReport } from "@/lib/pdf-generator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -556,181 +556,210 @@ export default function Reports() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 h-full flex flex-col">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-semibold" data-testid="text-page-title">
           Sales Reports
         </h1>
-        <div className="flex items-center gap-2">
-          {/* CSV Download buttons removed */}
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Opening Balance</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-xl font-bold font-mono ${summary.openingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-opening-balance">
-              {formatCurrency(summary.openingBalance)}
-            </div>
-            <p className="text-xs text-muted-foreground">Outstanding before period</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Payments Received</CardTitle>
-            <CreditCard className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold font-mono text-green-600 dark:text-green-500" data-testid="text-period-payments">
-              {formatCurrency(summary.paymentsInPeriod)}
-            </div>
-            <p className="text-xs text-muted-foreground">During selected period</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Closing Balance</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-xl font-bold font-mono ${summary.closingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-closing-balance">
-              {formatCurrency(summary.closingBalance)}
-            </div>
-            <p className="text-xs text-muted-foreground">Outstanding after period</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">
-              Total Sales
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold font-mono text-primary" data-testid="text-total-sales">
-              {formatCurrency(summary.totalSales)}
-            </div>
-            <p className="text-xs text-muted-foreground">{summary.invoiceCount} sales</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Product Sales
-            </CardTitle>
-            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold font-mono" data-testid="text-product-sales">
-              {formatCurrency(summary.totalSubtotal)}
-            </div>
-            <p className="text-xs text-muted-foreground">Without Hamali</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Hamali Charges
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold font-mono" data-testid="text-hamali-total">
-              {formatCurrency(summary.totalHamali)}
-            </div>
-            <p className="text-xs text-muted-foreground">{summary.invoicesWithHamali} sales with Hamali</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Weight
-            </CardTitle>
-            <Scale className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold font-mono" data-testid="text-total-weight">
-              {formatWeight(summary.totalWeight)}
-            </div>
-            <p className="text-xs text-muted-foreground">Sold</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg per Sale
-            </CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold font-mono" data-testid="text-avg-sale">
-              {formatCurrency(summary.invoiceCount > 0 ? summary.totalSales / summary.invoiceCount : 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">Per transaction</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Paid
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold font-mono text-green-600 dark:text-green-500" data-testid="text-total-paid">
-              {formatCurrency(summary.totalPaid)}
-            </div>
-            <p className="text-xs text-muted-foreground">Received from customers</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Remaining
-            </CardTitle>
-            <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-xl font-bold font-mono ${summary.totalRemaining > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-total-remaining">
-              {formatCurrency(summary.totalRemaining)}
-            </div>
-            <p className="text-xs text-muted-foreground">Outstanding balance</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="sales" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="sales" data-testid="tab-sales">
-            <FileText className="h-4 w-4 mr-1" />
-            Sales Details
+      <Tabs defaultValue="dashboard" className="space-y-4 w-full h-full flex flex-col">
+        <TabsList className="w-full grid grid-cols-4 h-12 bg-muted/20 p-1">
+          <TabsTrigger value="dashboard" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
+            <LayoutDashboard className="h-4 w-4 mr-2" />
+            Dashboard
           </TabsTrigger>
-          <TabsTrigger value="daily" data-testid="tab-daily">
-            <Calendar className="h-4 w-4 mr-1" />
+          <TabsTrigger value="sales" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
+            <FileText className="h-4 w-4 mr-2" />
+            Sales Report
+          </TabsTrigger>
+          <TabsTrigger value="daily" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
+            <Calendar className="h-4 w-4 mr-2" />
             Daily Summary
           </TabsTrigger>
-          <TabsTrigger value="charts" data-testid="tab-charts">
-            <BarChart3 className="h-4 w-4 mr-1" />
+          <TabsTrigger value="charts" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
+            <BarChart3 className="h-4 w-4 mr-2" />
             Charts
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="sales" className="space-y-4">
+        <TabsContent value="dashboard" className="space-y-6 animate-in fade-in duration-500">
+          <FilterSection />
+
+          {/* Top Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                <CardTitle className="text-sm font-medium text-primary">Opening Balance</CardTitle>
+                <TrendingUp className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold font-mono ${summary.openingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-opening-balance">
+                  {formatCurrency(summary.openingBalance)}
+                </div>
+                <p className="text-xs text-muted-foreground">Outstanding before period</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                <CardTitle className="text-sm font-medium text-primary">Payments Received</CardTitle>
+                <CreditCard className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold font-mono text-green-600 dark:text-green-500" data-testid="text-period-payments">
+                  {formatCurrency(summary.paymentsInPeriod)}
+                </div>
+                <p className="text-xs text-muted-foreground">During selected period</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                <CardTitle className="text-sm font-medium text-primary">Closing Balance</CardTitle>
+                <TrendingUp className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold font-mono ${summary.closingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-closing-balance">
+                  {formatCurrency(summary.closingBalance)}
+                </div>
+                <p className="text-xs text-muted-foreground">Outstanding after period</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Detailed Metrics Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Sales</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold font-mono text-primary" data-testid="text-total-sales">
+                  {formatCurrency(summary.totalSales)}
+                </div>
+                <p className="text-xs text-muted-foreground">{summary.invoiceCount} sales</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Product Sales</CardTitle>
+                <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold font-mono" data-testid="text-product-sales">
+                  {formatCurrency(summary.totalSubtotal)}
+                </div>
+                <p className="text-xs text-muted-foreground">Without Hamali</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Hamali Charges</CardTitle>
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold font-mono" data-testid="text-hamali-total">
+                  {formatCurrency(summary.totalHamali)}
+                </div>
+                <p className="text-xs text-muted-foreground">{summary.invoicesWithHamali} sales with Hamali</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Weight</CardTitle>
+                <Scale className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold font-mono" data-testid="text-total-weight">
+                  {formatWeight(summary.totalWeight)}
+                </div>
+                <p className="text-xs text-muted-foreground">Sold</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Sales Trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chartData.length === 0 ? (
+                  <div className="h-64 flex items-center justify-center text-muted-foreground">
+                    No data to display
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={chartData}>
+                      <XAxis dataKey="date" fontSize={11} />
+                      <YAxis fontSize={11} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Bar dataKey="sales" fill={CHART_COLORS[0]} name="Sales" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="hamali" fill={CHART_COLORS[1]} name="Hamali" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Sales Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {salesBreakdownData.length === 0 ? (
+                  <div className="h-64 flex items-center justify-center text-muted-foreground">
+                    No data to display
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={salesBreakdownData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        {salesBreakdownData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sales" className="space-y-4 animate-in fade-in duration-500">
           <FilterSection />
           <Card>
             <CardHeader className="pb-3">
@@ -829,7 +858,7 @@ export default function Reports() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="daily" className="space-y-4">
+        <TabsContent value="daily" className="space-y-4 animate-in fade-in duration-500">
           <FilterSection />
           <Card>
             <CardHeader className="pb-3">
@@ -904,7 +933,7 @@ export default function Reports() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="charts" className="space-y-4">
+        <TabsContent value="charts" className="space-y-4 animate-in fade-in duration-500">
           <FilterSection />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
