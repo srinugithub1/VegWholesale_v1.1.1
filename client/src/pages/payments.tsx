@@ -61,6 +61,18 @@ interface EditedItem {
   total: number;
 }
 
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+
+const ITEMS_PER_PAGE = 10;
+
 interface EditedInvoice {
   invoiceId: string;
   bags: number;
@@ -101,6 +113,8 @@ export default function Payments() {
   const [customerInvoices, setCustomerInvoices] = useState<InvoiceWithItems[]>([]);
   const [editedInvoices, setEditedInvoices] = useState<Record<string, EditedInvoice>>({});
   const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [vendorPage, setVendorPage] = useState(1);
+  const [customerPage, setCustomerPage] = useState(1);
   const [customerSummary, setCustomerSummary] = useState<{
     totalInvoices: number;
     totalPayments: number;
@@ -992,44 +1006,7 @@ export default function Payments() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">
-          Payments
-        </h1>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Vendor Outstanding
-            </CardTitle>
-            <Wallet className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold font-mono" data-testid="text-vendor-outstanding">
-              {totalVendorOutstanding.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-            </div>
-            <p className="text-xs text-muted-foreground">Amount to pay vendors</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Customer Receivable
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold font-mono" data-testid="text-customer-receivable">
-              {totalCustomerReceivable.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-            </div>
-            <p className="text-xs text-muted-foreground">Amount to receive from customers</p>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="p-6 space-y-6 h-full flex flex-col">
 
       <Dialog open={!!editingPayment} onOpenChange={(open) => !open && setEditingPayment(null)}>
         <DialogContent>
@@ -1117,11 +1094,11 @@ export default function Payments() {
       </Dialog>
 
 
-      <Tabs defaultValue="dashboard" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
+      <Tabs defaultValue="dashboard" className="space-y-4 w-full h-full flex flex-col">
+        <TabsList className="w-full grid grid-cols-3 h-12 bg-muted/20 p-1">
+          <TabsTrigger value="dashboard" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">Dashboard</TabsTrigger>
+          <TabsTrigger value="transactions" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">Transactions</TabsTrigger>
+          <TabsTrigger value="reports" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">Reports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard">
@@ -1380,48 +1357,81 @@ export default function Payments() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        vendorBalances.map((vendor) => (
-                          <TableRow key={vendor.id} data-testid={`row-vendor-${vendor.id}`}>
-                            <TableCell className="font-medium">{vendor.name}</TableCell>
-                            <TableCell className="text-right font-mono">
-                              {vendor.totalPurchases.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {vendor.totalPayments.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                            </TableCell>
-                            <TableCell className="text-right font-mono font-semibold">
-                              {vendor.balance.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                            </TableCell>
-                            <TableCell className="text-right space-x-2">
-                              <Button
-                                size="sm"
-                                variant={vendor.balance > 0 ? "destructive" : "outline"}
-                                onClick={() => handleVendorPaymentClick(vendor.id)}
-                                className="h-8"
-                              >
-                                <CreditCard className="mr-2 h-4 w-4" />
-                                Payment
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setVendorHistoryFilter(vendor.id);
-                                  setVendorHistoryDialogOpen(true);
-                                }}
-                                className="h-8"
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit
-                              </Button>
+                        vendorBalances
+                          .slice((vendorPage - 1) * ITEMS_PER_PAGE, vendorPage * ITEMS_PER_PAGE)
+                          .map((vendor) => (
+                            <TableRow key={vendor.id} data-testid={`row-vendor-${vendor.id}`}>
+                              <TableCell className="font-medium">{vendor.name}</TableCell>
+                              <TableCell className="text-right font-mono">
+                                {vendor.totalPurchases.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                              </TableCell>
+                              <TableCell className="text-right font-mono">
+                                {vendor.totalPayments.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-semibold">
+                                {vendor.balance.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                              </TableCell>
+                              <TableCell className="text-right space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant={vendor.balance > 0 ? "destructive" : "outline"}
+                                  onClick={() => handleVendorPaymentClick(vendor.id)}
+                                  className="h-8"
+                                >
+                                  <CreditCard className="mr-2 h-4 w-4" />
+                                  Payment
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setVendorHistoryFilter(vendor.id);
+                                    setVendorHistoryDialogOpen(true);
+                                  }}
+                                  className="h-8"
+                                >
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit
+                                </Button>
 
-                            </TableCell>
-                          </TableRow>
-                        ))
+                              </TableCell>
+                            </TableRow>
+                          ))
                       )}
-
                     </TableBody>
                   </Table>
+
+                  {vendorBalances.length > ITEMS_PER_PAGE && (
+                    <div className="mt-4">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setVendorPage(p => Math.max(1, p - 1))}
+                              className={vendorPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          {Array.from({ length: Math.ceil(vendorBalances.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                            <PaginationItem key={i}>
+                              <PaginationLink
+                                isActive={vendorPage === i + 1}
+                                onClick={() => setVendorPage(i + 1)}
+                                className="cursor-pointer"
+                              >
+                                {i + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setVendorPage(p => Math.min(Math.ceil(vendorBalances.length / ITEMS_PER_PAGE), p + 1))}
+                              className={vendorPage === Math.ceil(vendorBalances.length / ITEMS_PER_PAGE) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -1959,6 +1969,7 @@ export default function Payments() {
                     <TableBody>
                       {customerBalances
                         .filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()))
+                        .slice((customerPage - 1) * ITEMS_PER_PAGE, customerPage * ITEMS_PER_PAGE)
                         .map((customer) => (
                           <TableRow key={customer.id} data-testid={`row-customer-${customer.id}`}>
                             <TableCell className="font-medium">{customer.name}</TableCell>
@@ -1974,11 +1985,11 @@ export default function Payments() {
                             <TableCell className="text-right space-x-2">
                               <Button
                                 size="sm"
-                                onClick={() => {
-                                  handleCustomerSelect(customer.id);
-                                  setCustomerDialogOpen(true);
-                                }}
+                                variant={customer.balance > 0 ? "default" : "outline"}
+                                className={customer.balance > 0 ? "bg-green-600 hover:bg-green-700" : ""}
+                                onClick={() => handleCustomerPaymentClick(customer.id)}
                               >
+                                <CreditCard className="mr-2 h-4 w-4" />
                                 Payment
                               </Button>
                               <Button
@@ -1988,12 +1999,10 @@ export default function Payments() {
                                   setHistoryCustomerFilter(customer.id);
                                   setHistoryDialogOpen(true);
                                 }}
-                                className="h-8"
                               >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
                               </Button>
-
                             </TableCell>
                           </TableRow>
                         ))}
@@ -2006,6 +2015,38 @@ export default function Payments() {
                       )}
                     </TableBody>
                   </Table>
+
+                  {customerBalances.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())).length > ITEMS_PER_PAGE && (
+                    <div className="mt-4">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCustomerPage(p => Math.max(1, p - 1))}
+                              className={customerPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          {/* We limit the number of page links shown to avoid clutter if too many pages. For now showing all for simplicity or simplified view */}
+                          {/* Simplified pagination for potentially large lists: Just show Prev, Next and Current Page info, OR use ellipsis logic (complex to implement inline). 
+                               I will implement a simple Previous | Page X of Y | Next for robustness if list is huge.
+                               But User asked for pagination. I'll stick to simple numbered list for now, assuming not thousands of pages.
+                           */}
+                          <PaginationItem>
+                            <span className="px-4 text-sm text-muted-foreground">
+                              Page {customerPage} of {Math.ceil(customerBalances.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())).length / ITEMS_PER_PAGE)}
+                            </span>
+                          </PaginationItem>
+
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCustomerPage(p => Math.min(Math.ceil(customerBalances.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())).length / ITEMS_PER_PAGE), p + 1))}
+                              className={customerPage === Math.ceil(customerBalances.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())).length / ITEMS_PER_PAGE) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
