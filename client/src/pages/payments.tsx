@@ -375,6 +375,12 @@ export default function Payments() {
     }
   };
 
+  const handleCustomerPaymentClick = (customerId: string) => {
+    setSelectedCustomer(customerId);
+    setCustomerDialogOpen(true);
+    // Trigger any necessary data loading if handled by effects on selectedCustomer change
+  };
+
   const saveInvoiceChanges = useMutation({
     mutationFn: async () => {
       for (const invoiceId of Object.keys(editedInvoices)) {
