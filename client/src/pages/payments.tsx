@@ -1117,7 +1117,6 @@ export default function Payments() {
         <TabsList>
           <TabsTrigger value="vendors" data-testid="tab-vendors">Vendor Payments</TabsTrigger>
           <TabsTrigger value="customers" data-testid="tab-customers">Customer Payments</TabsTrigger>
-          <TabsTrigger value="hamali" data-testid="tab-hamali">Hamali Cash</TabsTrigger>
         </TabsList>
 
         <TabsContent value="vendors" className="space-y-4">
@@ -1991,127 +1990,7 @@ export default function Payments() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="hamali" className="space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={hamaliDialogOpen} onOpenChange={setHamaliDialogOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-add-hamali-payment">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Record Hamali Cash
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Record Hamali Cash Payment</DialogTitle>
-                  <DialogDescription>Record direct cash given for Hamali (not through invoice)</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label>Amount</Label>
-                    <Input
-                      type="number"
-                      value={hamaliAmount}
-                      onChange={(e) => setHamaliAmount(e.target.value)}
-                      placeholder="Enter amount"
-                      data-testid="input-hamali-amount"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Customer (Optional)</Label>
-                    <Select value={hamaliCustomerId} onValueChange={setHamaliCustomerId}>
-                      <SelectTrigger data-testid="select-hamali-customer">
-                        <SelectValue placeholder="Select customer (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No customer</SelectItem>
-                        {customers.map((customer) => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            {customer.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Notes (Optional)</Label>
-                    <Input
-                      value={hamaliNotes}
-                      onChange={(e) => setHamaliNotes(e.target.value)}
-                      placeholder="Add notes"
-                      data-testid="input-hamali-notes"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleHamaliPayment}
-                    disabled={!hamaliAmount || createHamaliCashPayment.isPending}
-                    className="w-full"
-                    data-testid="button-submit-hamali-payment"
-                  >
-                    {createHamaliCashPayment.isPending ? "Recording..." : "Record Payment"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Direct Hamali Cash Payments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {hamaliCashPayments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        No direct Hamali cash payments recorded
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    hamaliCashPayments.map((payment) => (
-                      <TableRow key={payment.id} data-testid={`row-hamali-payment-${payment.id}`}>
-                        <TableCell>{payment.date}</TableCell>
-                        <TableCell>{payment.customerId ? getCustomerName(payment.customerId) : "-"}</TableCell>
-                        <TableCell className="text-muted-foreground">{payment.notes || "-"}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          {payment.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => deleteHamaliCashPayment.mutate(payment.id)}
-                            disabled={deleteHamaliCashPayment.isPending}
-                            data-testid={`button-delete-hamali-${payment.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              {hamaliCashPayments.length > 0 && (
-                <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                  <span className="text-muted-foreground">Total Direct Hamali Cash:</span>
-                  <span className="text-xl font-bold font-mono" data-testid="text-hamali-cash-total">
-                    {hamaliCashPayments.reduce((sum, p) => sum + p.amount, 0).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs >
     </div >
   );
