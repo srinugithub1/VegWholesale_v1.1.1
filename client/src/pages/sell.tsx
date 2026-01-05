@@ -21,6 +21,7 @@ import { useShop } from "@/hooks/use-shop";
 // I will use multi_replace_file_content.
 
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -856,6 +857,7 @@ function SaleSuccessDialog({
 
 export default function Sell() {
   const scale = useScale();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { shop } = useShop();
