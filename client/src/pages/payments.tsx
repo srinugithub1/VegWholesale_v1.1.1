@@ -1780,8 +1780,26 @@ export default function Payments() {
                         <TableCell>{payment.date}</TableCell>
                         <TableCell>{getCustomerName(payment.customerId)}</TableCell>
                         <TableCell className="capitalize">{payment.paymentMethod}</TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right font-mono flex items-center justify-end gap-2">
                           {payment.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => {
+                              setEditingPayment({
+                                id: payment.id,
+                                type: 'customer',
+                                amount: payment.amount.toString(),
+                                date: payment.date,
+                                method: payment.paymentMethod,
+                                notes: payment.notes || ""
+                              });
+                              setHistoryDialogOpen(false); // Close history so edit dialog can open (or keep open if stacked, but better to swap)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
