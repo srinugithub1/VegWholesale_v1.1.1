@@ -377,8 +377,9 @@ export default function Payments() {
 
   const handleCustomerPaymentClick = (customerId: string) => {
     setSelectedCustomer(customerId);
+    setStep('review');
     setCustomerDialogOpen(true);
-    // Trigger any necessary data loading if handled by effects on selectedCustomer change
+    loadCustomerInvoices(customerId);
   };
 
   const saveInvoiceChanges = useMutation({
