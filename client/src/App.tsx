@@ -77,13 +77,7 @@ function ProtectedApp() {
       return;
     }
 
-    if (user.role === 'payment') {
-      const allowed = ['/payments'];
-      if (!allowed.includes(location)) {
-        setLocation('/payments');
-      }
-      return;
-    }
+
 
     // Regular User
     const allowed = ['/sell', '/customer-edit'];
@@ -97,12 +91,8 @@ function ProtectedApp() {
     "--sidebar-width-icon": "3rem",
   };
 
-  if (!isAdmin && !isRestrictedAdmin && user?.role !== 'payment' && location !== '/sell' && location !== '/customer-edit') {
+  if (!isAdmin && !isRestrictedAdmin && location !== '/sell' && location !== '/customer-edit') {
     return null; // Don't render restricted content while redirecting
-  }
-
-  if (user?.role === 'payment' && location !== '/payments') {
-    return null;
   }
 
   return (
