@@ -84,6 +84,7 @@ export default function Payments() {
   const [vendorPurchases, setVendorPurchases] = useState<PurchaseWithItems[]>([]);
   const [vendorStep, setVendorStep] = useState<'select' | 'review' | 'completed'>('select');
   const [completedVendorPaymentData, setCompletedVendorPaymentData] = useState<any>(null);
+  const [editingPayment, setEditingPayment] = useState<{ id: string, type: 'vendor' | 'customer', amount: string, date: string, method: string, notes?: string } | null>(null);
 
   // Customer Payment State
   const [customerInvoices, setCustomerInvoices] = useState<InvoiceWithItems[]>([]);
@@ -406,6 +407,39 @@ export default function Payments() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to record payment.", variant: "destructive" });
+    },
+  });
+
+  const updateVendorPayment = useMutation({
+    mutationFn: async (data: { id: string; amount: number; paymentMethod: string; date: string; notes?: string }) => {
+      const res = await apiRequest("PATCH", `/api/vendor-payments/${data.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/vendor-balances"] });
+      // Also invalidate specific vendor purchases logic if necessary, though balance is derived
+      toast({ title: "Payment Updated", description: "Vendor payment has been updated successfully." });
+      setEditingPayment(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateCustomerPayment = useMutation({
+    mutationFn: async (data: { id: string; amount: number; paymentMethod: string; date: string; notes?: string }) => {
+      const res = await apiRequest("PATCH", `/api/customer-payments/${data.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customer-payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/customer-balances"] });
+      toast({ title: "Payment Updated", description: "Customer payment has been updated successfully." });
+      setEditingPayment(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Update Failed", description: error.message, variant: "destructive" });
     },
   });
 

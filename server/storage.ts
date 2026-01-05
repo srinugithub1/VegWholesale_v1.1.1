@@ -118,10 +118,12 @@ export interface IStorage {
 
   getVendorPayments(vendorId?: string): Promise<VendorPayment[]>;
   createVendorPayment(payment: InsertVendorPayment): Promise<VendorPayment>;
+  updateVendorPayment(id: string, payment: Partial<InsertVendorPayment>): Promise<VendorPayment | undefined>;
   getVendorBalance(vendorId: string): Promise<{ totalPurchases: number; totalPayments: number; totalReturns: number; balance: number }>;
 
   getCustomerPayments(customerId?: string): Promise<CustomerPayment[]>;
   createCustomerPayment(payment: InsertCustomerPayment): Promise<CustomerPayment>;
+  updateCustomerPayment(id: string, payment: Partial<InsertCustomerPayment>): Promise<CustomerPayment | undefined>;
   getCustomerBalance(customerId: string): Promise<{ totalInvoices: number; totalPayments: number; balance: number }>;
 
   getCompanySettings(): Promise<CompanySettings | undefined>;
@@ -565,6 +567,15 @@ export class DatabaseStorage implements IStorage {
     return payment;
   }
 
+  async updateVendorPayment(id: string, updateData: Partial<InsertVendorPayment>): Promise<VendorPayment | undefined> {
+    const [updated] = await db
+      .update(vendorPayments)
+      .set(updateData)
+      .where(eq(vendorPayments.id, id))
+      .returning();
+    return updated;
+  }
+
   async getVendorBalance(vendorId: string): Promise<{ totalPurchases: number; totalPayments: number; totalReturns: number; balance: number }> {
     const purchaseResult = await db.select({ total: sql<number>`COALESCE(SUM(${purchases.totalAmount}), 0)` })
       .from(purchases)
@@ -600,6 +611,15 @@ export class DatabaseStorage implements IStorage {
   async createCustomerPayment(insertPayment: InsertCustomerPayment): Promise<CustomerPayment> {
     const [payment] = await db.insert(customerPayments).values(insertPayment).returning();
     return payment;
+  }
+
+  async updateCustomerPayment(id: string, updateData: Partial<InsertCustomerPayment>): Promise<CustomerPayment | undefined> {
+    const [updated] = await db
+      .update(customerPayments)
+      .set(updateData)
+      .where(eq(customerPayments.id, id))
+      .returning();
+    return updated;
   }
 
   async getCustomerBalance(customerId: string): Promise<{ totalInvoices: number; totalPayments: number; balance: number }> {
