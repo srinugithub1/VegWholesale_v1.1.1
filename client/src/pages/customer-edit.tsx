@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
     Dialog,
     DialogContent,
@@ -31,9 +31,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useShop } from "@/hooks/use-shop";
 import { format } from "date-fns";
-import { DateRange } from "react-day-picker";
 import { Invoice, InvoiceItem, Customer, Vendor, Product, Vehicle } from "@shared/schema";
-import { Loader2, Search, Filter, Edit, Save, ArrowUpDown, ArrowLeft, ArrowRight, Check, ChevronsUpDown, X, ShoppingBag } from "lucide-react";
+import { Loader2, Search, Filter, Edit, Save, ArrowUpDown, ArrowLeft, ArrowRight, Check, ChevronsUpDown, X, ShoppingBag, Calendar } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import {
@@ -55,10 +54,8 @@ export default function CustomerEdit() {
     const queryClient = useQueryClient();
 
     // --- State ---
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: new Date(),
-        to: new Date(),
-    });
+    const [fromDate, setFromDate] = useState<Date | undefined>(new Date());
+    const [toDate, setToDate] = useState<Date | undefined>(new Date());
     const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
     const [selectedVehicleId, setSelectedVehicleId] = useState<string>("all"); // Added Vehicle Filter
 
@@ -105,12 +102,12 @@ export default function CustomerEdit() {
         // Filter by Date
         let filteredInvoices = invoices;
 
-        if (dateRange?.from) {
-            const fromStr = format(dateRange.from, 'yyyy-MM-dd');
+        if (fromDate) {
+            const fromStr = format(fromDate, 'yyyy-MM-dd');
             filteredInvoices = filteredInvoices.filter(inv => inv.date >= fromStr);
         }
-        if (dateRange?.to) {
-            const toStr = format(dateRange.to, 'yyyy-MM-dd');
+        if (toDate) {
+            const toStr = format(toDate, 'yyyy-MM-dd');
             filteredInvoices = filteredInvoices.filter(inv => inv.date <= toStr);
         }
 
@@ -200,7 +197,7 @@ export default function CustomerEdit() {
         // SORTING: Updated Record First (Descending)
         return mappedData.sort((a, b) => b.updatedDate.getTime() - a.updatedDate.getTime());
 
-    }, [invoices, invoiceItems, customers, vendors, vehicles, products, dateRange, selectedVendorId, selectedVehicleId, customerSearch, loadingInvoices, loadingItems]);
+    }, [invoices, invoiceItems, customers, vendors, vehicles, products, fromDate, toDate, selectedVendorId, selectedVehicleId, customerSearch, loadingInvoices, loadingItems]);
 
     // --- Pagination Logic ---
     const totalPages = Math.ceil(tableData.length / itemsPerPage);
@@ -331,8 +328,55 @@ export default function CustomerEdit() {
                 <CardContent>
                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="space-y-2">
-                            <Label>Date Range</Label>
-                            <DatePickerWithRange date={dateRange} setDate={setDateRange} className="w-[300px]" />
+                            <Label>From Date</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-[160px] justify-start text-left font-normal",
+                                            !fromDate && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <Calendar className="mr-2 h-4 w-4" />
+                                        {fromDate ? format(fromDate, "dd/MM/yyyy") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <CalendarComponent
+                                        mode="single"
+                                        selected={fromDate}
+                                        onSelect={setFromDate}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>To Date</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-[160px] justify-start text-left font-normal",
+                                            !toDate && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <Calendar className="mr-2 h-4 w-4" />
+                                        {toDate ? format(toDate, "dd/MM/yyyy") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <CalendarComponent
+                                        mode="single"
+                                        selected={toDate}
+                                        onSelect={setToDate}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
                         </div>
 
                         <div className="space-y-2">
@@ -386,7 +430,8 @@ export default function CustomerEdit() {
                                 setSelectedVendorId("all");
                                 setSelectedVehicleId("all");
                                 setCustomerSearch("");
-                                setDateRange({ from: new Date(), to: new Date() });
+                                setFromDate(new Date());
+                                setToDate(new Date());
                             }}
                         >
                             Reset
