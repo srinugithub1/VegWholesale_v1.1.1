@@ -58,7 +58,7 @@ function ProtectedApp() {
   const { shop, setShop } = useShop();
   const { user, logoutMutation } = useAuth();
   const isAdmin = user?.role === "admin";
-  const isRestrictedAdmin = user?.role === "restricted_admin";
+  const isPaymentUser = user?.role === "payment";
 
   // Redirect based on role permissions
   useEffect(() => {
@@ -69,30 +69,35 @@ function ProtectedApp() {
     if (isRestrictedAdmin) {
       // Allowed routes for restricted admin
       const allowed = ['/', '/stock', '/reports', '/payments'];
-      // Also allow sub-paths if necessary, but wouter location is exact path usually.
-      // If we visit a route not in allowed, redirect to Dashboard (/)
       if (!allowed.includes(location)) {
         setLocation('/');
       }
       return;
     }
 
-
+    if (isPaymentUser) {
+      if (location !== '/payments') {
+        setLocation('/payments');
+      }
+      return;
+    }
 
     // Regular User
     const allowed = ['/sell', '/customer-edit'];
     if (!allowed.includes(location)) {
       setLocation('/sell');
     }
-  }, [user, isAdmin, isRestrictedAdmin, location, setLocation]);
+  }, [user, isAdmin, isRestrictedAdmin, isPaymentUser, location, setLocation]);
 
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
-  if (!isAdmin && !isRestrictedAdmin && location !== '/sell' && location !== '/customer-edit') {
-    return null; // Don't render restricted content while redirecting
+  // Prevent rendering if redirecting
+  if (isPaymentUser && location !== '/payments') return null;
+  if (!isAdmin && !isRestrictedAdmin && !isPaymentUser && location !== '/sell' && location !== '/customer-edit') {
+    return null;
   }
 
   return (
