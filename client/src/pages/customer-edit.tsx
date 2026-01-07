@@ -379,34 +379,132 @@ export default function CustomerEdit() {
                             </Popover>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-2 flex flex-col">
                             <Label>Vendor</Label>
-                            <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-                                <SelectTrigger className="w-48">
-                                    <SelectValue placeholder="All Vendors" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Vendors</SelectItem>
-                                    {vendors.map(v => (
-                                        <SelectItem key={v.id} value={v.id.toString()}>{v.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={cn(
+                                            "w-48 justify-between",
+                                            selectedVendorId === "all" && "text-muted-foreground"
+                                        )}
+                                    >
+                                        {selectedVendorId !== "all"
+                                            ? vendors.find((v) => v.id.toString() === selectedVendorId)?.name
+                                            : "All Vendors"}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[200px] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search vendor..." h-9 />
+                                        <CommandList>
+                                            <CommandEmpty>No vendor found.</CommandEmpty>
+                                            <CommandGroup>
+                                                <CommandItem
+                                                    value="all"
+                                                    onSelect={() => setSelectedVendorId("all")}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            selectedVendorId === "all"
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
+                                                        )}
+                                                    />
+                                                    All Vendors
+                                                </CommandItem>
+                                                {vendors.map((vendor) => (
+                                                    <CommandItem
+                                                        value={vendor.name}
+                                                        key={vendor.id}
+                                                        onSelect={() => {
+                                                            setSelectedVendorId(vendor.id.toString());
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                selectedVendorId === vendor.id.toString()
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {vendor.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-2 flex flex-col">
                             <Label>Vehicle</Label>
-                            <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
-                                <SelectTrigger className="w-48">
-                                    <SelectValue placeholder="All Vehicles" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Vehicles</SelectItem>
-                                    {vehicles.map(v => (
-                                        <SelectItem key={v.id} value={v.id.toString()}>{v.number} ({v.type})</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={cn(
+                                            "w-48 justify-between",
+                                            selectedVehicleId === "all" && "text-muted-foreground"
+                                        )}
+                                    >
+                                        {selectedVehicleId !== "all"
+                                            ? vehicles.find((v) => v.id.toString() === selectedVehicleId)?.number
+                                            : "All Vehicles"}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[200px] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search vehicle..." h-9 />
+                                        <CommandList>
+                                            <CommandEmpty>No vehicle found.</CommandEmpty>
+                                            <CommandGroup>
+                                                <CommandItem
+                                                    value="all"
+                                                    onSelect={() => setSelectedVehicleId("all")}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            selectedVehicleId === "all"
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
+                                                        )}
+                                                    />
+                                                    All Vehicles
+                                                </CommandItem>
+                                                {vehicles.map((vehicle) => (
+                                                    <CommandItem
+                                                        value={vehicle.number}
+                                                        key={vehicle.id}
+                                                        onSelect={() => {
+                                                            setSelectedVehicleId(vehicle.id.toString());
+                                                        }}
+                                                    >
+                                                        <Check
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                selectedVehicleId === vehicle.id.toString()
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {vehicle.number} ({vehicle.type})
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
 
                         {/* Shop Filter Removed - Uses Global Toggle */}
@@ -504,7 +602,7 @@ export default function CustomerEdit() {
 
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
-                        <div className="flex items-center justify-end p-4 border-t gap-2">
+                        <div className="flex items-center justify-center p-4 border-t gap-2">
                             <Button
                                 variant="outline"
                                 size="sm"
