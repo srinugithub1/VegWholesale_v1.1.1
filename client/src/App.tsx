@@ -58,6 +58,7 @@ function ProtectedApp() {
   const { shop, setShop } = useShop();
   const { user, logoutMutation } = useAuth();
   const isAdmin = user?.role === "admin";
+  const isRestrictedAdmin = user?.role === "restricted_admin";
   const isPaymentUser = user?.role === "payment";
 
   // Redirect based on role permissions
