@@ -26,73 +26,20 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2, Edit } from "lucide-react";
+import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2, Edit, AlertTriangle } from "lucide-react";
 import { useScale } from "@/hooks/use-scale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Vehicle, Product, VehicleInventory, Vendor, Customer, Invoice } from "@shared/schema";
 import { format } from "date-fns";
 
-const productItemSchema = z.object({
-  productId: z.string(),
-  quantity: z.number().min(0),
-  bags: z.number().min(0).optional(),
-});
+// ... (schemas)
 
-const vehicleFormSchema = z.object({
-  vehicleNumber: z.string().min(1, "Vehicle number is required"),
-  vehicleType: z.string().min(1, "Vehicle type is required"),
-  capacity: z.string().optional(),
-  driverName: z.string().optional(),
-  driverPhone: z.string().optional(),
-  vendorId: z.string().optional(),
-  newVendorName: z.string().optional(),
-});
-
-interface NewProduct {
+interface CustomerWithBalance {
+  id: string;
   name: string;
-  unit: string;
-  purchasePrice: number;
-  quantity: number;
-  bags: number;
+  balance: number;
 }
-
-type ProductItem = z.infer<typeof productItemSchema>;
-type VehicleFormValues = z.infer<typeof vehicleFormSchema>;
-
-interface SaleProduct {
-  productId: string;
-  productName: string;
-  unit: string;
-  weight: number;
-  bags: number;
-  price: number;
-  available: number;
-  weightBreakdown?: number[];
-}
-
-interface SaleDraft {
-  products: SaleProduct[];
-  customerName: string;
-  customerPhone: string;
-  selectedCustomerId: string;
-  hamaliCharge: number;
-  hamaliRatePerBag: number;
-}
-
-interface VehicleSalePaneProps {
-  vehicle: Vehicle;
-  inventory: VehicleInventory[];
-  products: Product[];
-  customers: Customer[];
-  vendors: Vendor[];
-  draft: SaleDraft;
-  onUpdateDraft: (draft: SaleDraft) => void;
-  onClose: () => void;
-  onSaleComplete: (invoice: Invoice) => void;
-  currentWeight: number | null;
-  rawWeight: number | null;
-  isScaleConnected: boolean;
-}
+// ... (VehicleSalePaneProps)
 
 function VehicleSalePane({
   vehicle,
@@ -110,6 +57,11 @@ function VehicleSalePane({
 }: VehicleSalePaneProps) {
   const { toast } = useToast();
   const [errors, setErrors] = useState<{ customer?: string; products?: Record<string, { price?: string }> }>({});
+
+  const { data: customerBalances = [] } = useQuery<CustomerWithBalance[]>({
+    queryKey: ["/api/reports/customer-balances"],
+    enabled: !!draft.selectedCustomerId && draft.selectedCustomerId !== "new"
+  });
 
   const validateForm = () => {
     const newErrors: { customer?: string; products?: Record<string, { price?: string }> } = {};
@@ -517,6 +469,29 @@ function VehicleSalePane({
               </div>
             )}
           </div>
+          {/* Credit Limit Alert */}
+          {draft.selectedCustomerId && draft.selectedCustomerId !== "new" && (
+            (() => {
+              const balanceData = customerBalances.find(c => c.id === draft.selectedCustomerId);
+              // Use a lower threshold or the requested 50,000
+              const threshold = 50000;
+              const balance = balanceData ? balanceData.balance : 0;
+              if (balance > threshold) {
+                return (
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-md p-2 flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <span className="font-semibold text-destructive">Credit Limit Warning!</span>
+                      <p className="text-destructive/80">
+                        Balance: ₹{balance.toLocaleString()} (Exceeds ₹{threshold.toLocaleString()})
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()
+          )}
         </div>
 
         <div className="space-y-1">
@@ -534,39 +509,28 @@ function VehicleSalePane({
               const price = draftProduct?.price || item.product?.salePrice || 0;
               const lineTotal = weight * price;
 
-              // Local state for the "Add" input isn't strictly needed if we just use the Input for transient values OR manual entry.
-              // To enable "type and add", we need a local state or use a ref.
-              // But for simplicity with React, let's keep it controlled but separate from 'weight'.
-              // Actually, to make it simple:
-              // The Input displays "0" or "Scale Value".
-              // If Scale connected -> Input = scale.currentWeight.
-              // If User types -> It overrides.
-              // Clicking "+" or Scale Icon -> Adds Input Value to Draft Weight, then resets Input to 0 (if manual) or Scale Value.
-
-              // We need a way to track "manual input" vs "auto scale".
-              // Let's assume the Input is UNBOUND or bound to a transient state.
-              // Since we are mapping, we can't easily add state hook inside map.
-              // We should extract this row to a component OR use a state object keyed by productId.
-
-              // Refactoring to a sub-component is cleaner but I'll try to stick to inline for minimal change if possible.
-              // I'll add a state `addWeights` to VehicleSalePane.
+              // Low Stock Check
+              const reorderLevel = item.product?.reorderLevel || 10;
+              const isLowStock = item.quantity <= reorderLevel;
 
               return (
-                <ProductRow
-                  key={item.productId}
-                  item={item}
-                  weight={weight}
-                  bags={bags}
-                  price={price}
-                  lineTotal={lineTotal}
-                  vehicle={vehicle}
-                  isScaleConnected={isScaleConnected}
-                  currentWeight={currentWeight}
-                  rawWeight={rawWeight}
-                  errors={errors}
-                  updateProductField={updateProductField}
-                  accumulateWeightAndBags={accumulateWeightAndBags}
-                />
+                <div key={item.productId} className={isLowStock ? "bg-red-50 dark:bg-red-950/10 rounded-sm" : ""}>
+                  <ProductRow
+                    item={item}
+                    weight={weight}
+                    bags={bags}
+                    price={price}
+                    lineTotal={lineTotal}
+                    vehicle={vehicle}
+                    isScaleConnected={isScaleConnected}
+                    currentWeight={currentWeight}
+                    rawWeight={rawWeight}
+                    errors={errors}
+                    updateProductField={updateProductField}
+                    accumulateWeightAndBags={accumulateWeightAndBags}
+                    isLowStock={isLowStock} // Pass this if ProductRow needs to show an icon, or just wrap it as above
+                  />
+                </div>
               );
             })}
             {availableProducts.length === 0 && (
