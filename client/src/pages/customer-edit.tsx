@@ -141,7 +141,7 @@ export default function CustomerEdit() {
         if (shop !== "all") {
             filteredInvoices = filteredInvoices.filter(inv => {
                 const vehicle = vehicles.find(v => v.id === inv.vehicleId);
-                return vehicle && vehicle.shop === shop;
+                return vehicle && String(vehicle.shop) === String(shop);
             });
         }
 
