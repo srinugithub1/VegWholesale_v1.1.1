@@ -32,14 +32,73 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Vehicle, Product, VehicleInventory, Vendor, Customer, Invoice } from "@shared/schema";
 import { format } from "date-fns";
 
-// ... (schemas)
+const productItemSchema = z.object({
+  productId: z.string(),
+  quantity: z.number().min(0),
+  bags: z.number().min(0).optional(),
+});
+
+const vehicleFormSchema = z.object({
+  vehicleNumber: z.string().min(1, "Vehicle number is required"),
+  vehicleType: z.string().min(1, "Vehicle type is required"),
+  capacity: z.string().optional(),
+  driverName: z.string().optional(),
+  driverPhone: z.string().optional(),
+  vendorId: z.string().optional(),
+  newVendorName: z.string().optional(),
+});
+
+interface NewProduct {
+  name: string;
+  unit: string;
+  purchasePrice: number;
+  quantity: number;
+  bags: number;
+}
+
+type ProductItem = z.infer<typeof productItemSchema>;
+type VehicleFormValues = z.infer<typeof vehicleFormSchema>;
+
+interface SaleProduct {
+  productId: string;
+  productName: string;
+  unit: string;
+  weight: number;
+  bags: number;
+  price: number;
+  available: number;
+  weightBreakdown?: number[];
+}
+
+interface SaleDraft {
+  products: SaleProduct[];
+  customerName: string;
+  customerPhone: string;
+  selectedCustomerId: string;
+  hamaliCharge: number;
+  hamaliRatePerBag: number;
+}
+
+interface VehicleSalePaneProps {
+  vehicle: Vehicle;
+  inventory: VehicleInventory[];
+  products: Product[];
+  customers: Customer[];
+  vendors: Vendor[];
+  draft: SaleDraft;
+  onUpdateDraft: (draft: SaleDraft) => void;
+  onClose: () => void;
+  onSaleComplete: (invoice: Invoice) => void;
+  currentWeight: number | null;
+  rawWeight: number | null;
+  isScaleConnected: boolean;
+}
 
 interface CustomerWithBalance {
   id: string;
   name: string;
   balance: number;
 }
-// ... (VehicleSalePaneProps)
 
 function VehicleSalePane({
   vehicle,
