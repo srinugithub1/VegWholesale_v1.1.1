@@ -197,7 +197,7 @@ export default function CustomerEdit() {
         // SORTING: Updated Record First (Descending)
         return mappedData.sort((a, b) => b.updatedDate.getTime() - a.updatedDate.getTime());
 
-    }, [invoices, invoiceItems, customers, vendors, vehicles, products, fromDate, toDate, selectedVendorId, selectedVehicleId, customerSearch, loadingInvoices, loadingItems]);
+    }, [invoices, invoiceItems, customers, vendors, vehicles, products, fromDate, toDate, selectedVendorId, selectedVehicleId, customerSearch, loadingInvoices, loadingItems, shop]);
 
     // --- Pagination Logic ---
     const totalPages = Math.ceil(tableData.length / itemsPerPage);
