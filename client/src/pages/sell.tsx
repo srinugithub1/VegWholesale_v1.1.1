@@ -158,6 +158,7 @@ function VehicleSalePane({
           product,
           weight: draftProduct?.weight || 0,
           price: draftProduct?.price || product?.salePrice || 0,
+          weightBreakdown: draftProduct?.weightBreakdown || [],
         };
       })
       .filter(item => item.product);
@@ -587,6 +588,7 @@ function VehicleSalePane({
                     errors={errors}
                     updateProductField={updateProductField}
                     accumulateWeightAndBags={accumulateWeightAndBags}
+                    removeWeightFromProduct={removeWeightFromProduct}
                     isLowStock={isLowStock} // Pass this if ProductRow needs to show an icon, or just wrap it as above
                   />
                 </div>
@@ -621,22 +623,7 @@ function VehicleSalePane({
           <span className="text-xs font-medium">₹{draft.hamaliCharge.toFixed(0)}</span>
         </div>
 
-        {/* Bag Weight Breakdown */}
-        <div className="space-y-2 pt-2 border-t border-dashed">
-          {draft.products.filter(p => p.weight > 0).map(p => (
-            <div key={p.productId} className="flex flex-col gap-1">
-              <div className="text-[10px] font-medium text-muted-foreground">{p.productName}:</div>
-              <div className="flex flex-wrap gap-1">
-                {(p.weightBreakdown || []).map((w, idx) => (
-                  <Badge key={idx} variant="outline" className="h-5 px-1.5 text-[10px] gap-1 bg-background text-foreground hover:bg-background">
-                    <ShoppingBag className="h-3 w-3 text-muted-foreground" />
-                    {w.toFixed(1)}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Bag Weight Breakdown - Moved to ProductRow */}
 
         <div className="pt-2 border-t space-y-1">
           <div className="flex items-center justify-between text-xs">
@@ -2039,7 +2026,9 @@ function ProductRow({
   rawWeight,
   errors,
   updateProductField,
-  accumulateWeightAndBags
+  updateProductField,
+  accumulateWeightAndBags,
+  removeWeightFromProduct
 }: {
   item: any,
   weight: number,
@@ -2052,7 +2041,8 @@ function ProductRow({
   rawWeight: number | null,
   errors: any,
   updateProductField: (id: string, field: 'weight' | 'bags' | 'price', val: number) => void,
-  accumulateWeightAndBags: (id: string, val: number) => void
+  accumulateWeightAndBags: (id: string, val: number) => void,
+  removeWeightFromProduct: (id: string, index: number) => void
 }) {
   // Local state for "Add Weight" input
   const [addValue, setAddValue] = useState<string>("");
