@@ -269,6 +269,36 @@ function VehicleSalePane({
     });
   };
 
+  const removeWeightFromProduct = (productId: string, index: number) => {
+    const draftProduct = draft.products.find(p => p.productId === productId);
+    if (!draftProduct || !draftProduct.weightBreakdown) return;
+
+    const newBreakdown = [...draftProduct.weightBreakdown];
+    newBreakdown.splice(index, 1);
+
+    const newWeight = newBreakdown.reduce((a, b) => a + b, 0);
+    const newBags = newBreakdown.length; // 1 weight = 1 bag
+
+    const newProducts = draft.products.map(p =>
+      p.productId === productId ? {
+        ...p,
+        weight: newWeight,
+        bags: newBags,
+        weightBreakdown: newBreakdown
+      } : p
+    );
+
+    // Recalculate totals
+    const newTotalBags = newProducts.reduce((sum, p) => sum + (p.bags || 0), 0);
+    const newHamaliCharge = newTotalBags * draft.hamaliRatePerBag;
+
+    onUpdateDraft({
+      ...draft,
+      products: newProducts,
+      hamaliCharge: newHamaliCharge,
+    });
+  };
+
   const handleCustomerChange = (value: string) => {
     if (value === "new") {
       onUpdateDraft({ ...draft, selectedCustomerId: "new", customerName: "", customerPhone: "" });
