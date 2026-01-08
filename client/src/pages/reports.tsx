@@ -71,6 +71,8 @@ export default function Reports() {
   const [fromDate, setFromDate] = useState<Date | undefined>(new Date());
   const [toDate, setToDate] = useState<Date | undefined>(new Date());
   const [showAllVehicles, setShowAllVehicles] = useState(false);
+  const [showAllCustomers, setShowAllCustomers] = useState(false);
+  const [showAllVendors, setShowAllVendors] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("all");
@@ -477,13 +479,46 @@ export default function Reports() {
     // Filter vehicles by date range unless "Show All" is clicked
     const filteredVehicles = useMemo(() => {
       if (showAllVehicles) return vehicles;
-      if (!startDate && !endDate) return vehicles;
+      if (!startDate && !endDate) return vehicles; // No date selected vs all? Let's assume filter
       return vehicles.filter(v => {
-        // Filter by entryDate
         if (!v.entryDate) return false;
         return v.entryDate >= startDate && v.entryDate <= endDate;
       });
     }, [vehicles, showAllVehicles, startDate, endDate]);
+
+    // Filter Customers based on ACTIVITY in the date range
+    const filteredCustomers = useMemo(() => {
+      if (showAllCustomers) return customers;
+      if (!startDate && !endDate) return customers;
+
+      // Get IDs of customers who have invoices in this range
+      const activeCustomerIds = new Set(invoices
+        .filter(inv => inv.date >= startDate && inv.date <= endDate)
+        .map(inv => inv.customerId));
+
+      return customers.filter(c => activeCustomerIds.has(c.id));
+    }, [customers, showAllCustomers, invoices, startDate, endDate]);
+
+    // Filter Vendors based on ACTIVITY in the date range (invoices linked to vendor)
+    const filteredVendors = useMemo(() => {
+      if (showAllVendors) return vendors;
+      if (!startDate && !endDate) return vendors;
+
+      // Get IDs of vendors directly on invoices or via vehicles on invoices
+      const activeVendorIds = new Set<string>();
+      invoices
+        .filter(inv => inv.date >= startDate && inv.date <= endDate)
+        .forEach(inv => {
+          if (inv.vendorId) activeVendorIds.add(inv.vendorId);
+          if (inv.vehicleId) {
+            const v = vehicles.find(veh => veh.id === inv.vehicleId);
+            if (v && v.vendorId) activeVendorIds.add(v.vendorId);
+          }
+        });
+
+      return vendors.filter(v => activeVendorIds.has(v.id));
+    }, [vendors, showAllVendors, invoices, vehicles, startDate, endDate]);
+
 
     return (
       <Card className="mb-4">
@@ -500,7 +535,7 @@ export default function Reports() {
         <CardContent>
           <div className="flex items-end gap-4 flex-wrap">
             {/* Date From */}
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>From Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -524,7 +559,7 @@ export default function Reports() {
             </div>
 
             {/* Date To */}
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>To Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -548,7 +583,7 @@ export default function Reports() {
             </div>
 
             {/* Vehicle Filter */}
-            <div className="space-y-2 flex flex-col">
+            <div className="flex flex-col gap-2">
               <Label>Vehicle</Label>
               <Popover open={openVehicle} onOpenChange={setOpenVehicle}>
                 <PopoverTrigger asChild>
@@ -571,6 +606,22 @@ export default function Reports() {
                       <CommandEmpty>No vehicle found.</CommandEmpty>
                       <CommandGroup>
                         <CommandItem
+                          value="toggle-history"
+                          onSelect={() => {
+                            setShowAllVehicles(!showAllVehicles);
+                            // Keep open to let user see change or select
+                          }}
+                          className="bg-muted/30 font-medium"
+                        >
+                          <div className={cn(
+                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                            showAllVehicles ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                          )}>
+                            <Check className={cn("h-4 w-4")} />
+                          </div>
+                          Show All History
+                        </CommandItem>
+                        <CommandItem
                           value="all"
                           onSelect={() => {
                             setSelectedVehicleId("all");
@@ -585,20 +636,6 @@ export default function Reports() {
                           />
                           All Vehicles
                         </CommandItem>
-                        {/* Show All Toggle as an Item if simpler, or just button */}
-                        {!showAllVehicles && (
-                          <CommandItem
-                            value="show-all-toggle"
-                            onSelect={() => {
-                              setShowAllVehicles(true);
-                              // Don't close, let them select now
-                            }}
-                            className="bg-muted/50 font-medium"
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Show All History
-                          </CommandItem>
-                        )}
                         {filteredVehicles.map((v) => (
                           <CommandItem
                             key={v.id}
@@ -625,7 +662,7 @@ export default function Reports() {
             </div>
 
             {/* Customer Filter */}
-            <div className="space-y-2 flex flex-col">
+            <div className="flex flex-col gap-2">
               <Label>Customer</Label>
               <Popover open={openCustomer} onOpenChange={setOpenCustomer}>
                 <PopoverTrigger asChild>
@@ -648,6 +685,21 @@ export default function Reports() {
                       <CommandEmpty>No customer found.</CommandEmpty>
                       <CommandGroup>
                         <CommandItem
+                          value="toggle-history-customer"
+                          onSelect={() => {
+                            setShowAllCustomers(!showAllCustomers);
+                          }}
+                          className="bg-muted/30 font-medium"
+                        >
+                          <div className={cn(
+                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                            showAllCustomers ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                          )}>
+                            <Check className={cn("h-4 w-4")} />
+                          </div>
+                          Show All History
+                        </CommandItem>
+                        <CommandItem
                           value="all"
                           onSelect={() => {
                             setSelectedCustomerId("all");
@@ -662,7 +714,7 @@ export default function Reports() {
                           />
                           All Customers
                         </CommandItem>
-                        {customers.map((c) => (
+                        {filteredCustomers.map((c) => (
                           <CommandItem
                             key={c.id}
                             value={c.name}
@@ -688,7 +740,7 @@ export default function Reports() {
             </div>
 
             {/* Vendor Filter */}
-            <div className="space-y-2 flex flex-col">
+            <div className="flex flex-col gap-2">
               <Label>Vendor</Label>
               <Popover open={openVendor} onOpenChange={setOpenVendor}>
                 <PopoverTrigger asChild>
@@ -711,6 +763,21 @@ export default function Reports() {
                       <CommandEmpty>No vendor found.</CommandEmpty>
                       <CommandGroup>
                         <CommandItem
+                          value="toggle-history-vendor"
+                          onSelect={() => {
+                            setShowAllVendors(!showAllVendors);
+                          }}
+                          className="bg-muted/30 font-medium"
+                        >
+                          <div className={cn(
+                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                            showAllVendors ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                          )}>
+                            <Check className={cn("h-4 w-4")} />
+                          </div>
+                          Show All History
+                        </CommandItem>
+                        <CommandItem
                           value="all"
                           onSelect={() => {
                             setSelectedVendorId("all");
@@ -725,7 +792,7 @@ export default function Reports() {
                           />
                           All Vendors
                         </CommandItem>
-                        {vendors.map((v) => (
+                        {filteredVendors.map((v) => (
                           <CommandItem
                             key={v.id}
                             value={v.name}
