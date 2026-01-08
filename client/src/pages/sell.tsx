@@ -2026,7 +2026,6 @@ function ProductRow({
   rawWeight,
   errors,
   updateProductField,
-  updateProductField,
   accumulateWeightAndBags,
   removeWeightFromProduct
 }: {
