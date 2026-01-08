@@ -41,7 +41,7 @@ const navigationItems = [
     title: "Sell",
     url: "/sell",
     icon: ShoppingBag,
-    roles: ["user"],
+    roles: ["user", "admin", "restricted_admin"],
   },
   {
     title: "Stock",
