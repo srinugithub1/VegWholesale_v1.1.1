@@ -15,7 +15,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Package, ArrowUpRight, Receipt, CreditCard, Download, Calendar, Filter, Truck, Users, Scale, ShoppingBag, FileText, BarChart3, LayoutDashboard } from "lucide-react";
+import { TrendingUp, Package, ArrowUpRight, Receipt, CreditCard, Download, Calendar, Filter, Truck, Users, Scale, ShoppingBag, FileText, BarChart3, LayoutDashboard, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import type { Product, Invoice, Customer, Vehicle, InvoiceItem, Vendor, CustomerPayment } from "@shared/schema";
 import { generateDetailedReport } from "@/lib/pdf-generator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,17 +68,18 @@ function downloadCSV(data: string[][], filename: string) {
 }
 
 export default function Reports() {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: new Date(),
-  });
+  const [fromDate, setFromDate] = useState<Date | undefined>(new Date());
+  const [toDate, setToDate] = useState<Date | undefined>(new Date());
+  const [showAllVehicles, setShowAllVehicles] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("all");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
   const { shop } = useShop();
 
-  const startDate = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : "";
-  const endDate = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : "";
+  const startDate = fromDate ? format(fromDate, 'yyyy-MM-dd') : "";
+  const endDate = toDate ? format(toDate, 'yyyy-MM-dd') : "";
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -296,6 +301,13 @@ export default function Reports() {
       });
   }, [filteredInvoices, invoiceItems, invoices, customers, vehicles, vendors, products]);
 
+  const paginatedReportItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return reportItems.slice(startIndex, startIndex + itemsPerPage);
+  }, [reportItems, currentPage]);
+
+  const totalPages = Math.ceil(reportItems.length / itemsPerPage);
+
   const reportSummary = useMemo(() => {
     if (reportItems.length === 0) return summary;
 
@@ -457,87 +469,306 @@ export default function Reports() {
     }
   };
 
-  const FilterSection = () => (
-    <Card className="mb-4">
-      <CardHeader className="pb-3 flex flex-row items-center justify-between">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Filter className="h-4 w-4" />
-          Filters
-        </CardTitle>
-        <Button variant="default" size="sm" onClick={downloadDetailedPDF} data-testid="button-download-pdf">
-          <FileText className="h-4 w-4 mr-1" />
-          PDF Report
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-end gap-4 flex-wrap">
-          <div className="space-y-2">
-            <Label>Date Range</Label>
-            <DatePickerWithRange date={dateRange} setDate={setDateRange} className="w-[300px]" />
+  const FilterSection = () => {
+    const [openVehicle, setOpenVehicle] = useState(false);
+    const [openCustomer, setOpenCustomer] = useState(false);
+    const [openVendor, setOpenVendor] = useState(false);
+
+    // Filter vehicles by date range unless "Show All" is clicked
+    const filteredVehicles = useMemo(() => {
+      if (showAllVehicles) return vehicles;
+      if (!startDate && !endDate) return vehicles;
+      return vehicles.filter(v => {
+        // Filter by entryDate
+        if (!v.entryDate) return false;
+        return v.entryDate >= startDate && v.entryDate <= endDate;
+      });
+    }, [vehicles, showAllVehicles, startDate, endDate]);
+
+    return (
+      <Card className="mb-4">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            Filters
+          </CardTitle>
+          <Button variant="default" size="sm" onClick={downloadDetailedPDF} data-testid="button-download-pdf">
+            <FileText className="h-4 w-4 mr-1" />
+            PDF Report
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-4 flex-wrap">
+            {/* Date From */}
+            <div className="space-y-2">
+              <Label>From Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={`w-[140px] pl-3 text-left font-normal ${!fromDate && "text-muted-foreground"}`}
+                  >
+                    {fromDate ? format(fromDate, "dd MMM yyyy") : <span>Pick a date</span>}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={fromDate}
+                    onSelect={setFromDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Date To */}
+            <div className="space-y-2">
+              <Label>To Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={`w-[140px] pl-3 text-left font-normal ${!toDate && "text-muted-foreground"}`}
+                  >
+                    {toDate ? format(toDate, "dd MMM yyyy") : <span>Pick a date</span>}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={toDate}
+                    onSelect={setToDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Vehicle Filter */}
+            <div className="space-y-2 flex flex-col">
+              <Label>Vehicle</Label>
+              <Popover open={openVehicle} onOpenChange={setOpenVehicle}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openVehicle}
+                    className="w-[200px] justify-between"
+                  >
+                    {selectedVehicleId === "all"
+                      ? "All Vehicles"
+                      : vehicles.find((v) => v.id === selectedVehicleId)?.number || "Select Vehicle..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search vehicle..." />
+                    <CommandList>
+                      <CommandEmpty>No vehicle found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="all"
+                          onSelect={() => {
+                            setSelectedVehicleId("all");
+                            setOpenVehicle(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedVehicleId === "all" ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          All Vehicles
+                        </CommandItem>
+                        {/* Show All Toggle as an Item if simpler, or just button */}
+                        {!showAllVehicles && (
+                          <CommandItem
+                            value="show-all-toggle"
+                            onSelect={() => {
+                              setShowAllVehicles(true);
+                              // Don't close, let them select now
+                            }}
+                            className="bg-muted/50 font-medium"
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Show All History
+                          </CommandItem>
+                        )}
+                        {filteredVehicles.map((v) => (
+                          <CommandItem
+                            key={v.id}
+                            value={v.number}
+                            onSelect={() => {
+                              setSelectedVehicleId(v.id);
+                              setOpenVehicle(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedVehicleId === v.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {v.number}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Customer Filter */}
+            <div className="space-y-2 flex flex-col">
+              <Label>Customer</Label>
+              <Popover open={openCustomer} onOpenChange={setOpenCustomer}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCustomer}
+                    className="w-[200px] justify-between"
+                  >
+                    {selectedCustomerId === "all"
+                      ? "All Customers"
+                      : customers.find((c) => c.id === selectedCustomerId)?.name || "Select Customer..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search customer..." />
+                    <CommandList>
+                      <CommandEmpty>No customer found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="all"
+                          onSelect={() => {
+                            setSelectedCustomerId("all");
+                            setOpenCustomer(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedCustomerId === "all" ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          All Customers
+                        </CommandItem>
+                        {customers.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={c.name}
+                            onSelect={() => {
+                              setSelectedCustomerId(c.id);
+                              setOpenCustomer(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedCustomerId === c.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {c.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Vendor Filter */}
+            <div className="space-y-2 flex flex-col">
+              <Label>Vendor</Label>
+              <Popover open={openVendor} onOpenChange={setOpenVendor}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openVendor}
+                    className="w-[200px] justify-between"
+                  >
+                    {selectedVendorId === "all"
+                      ? "All Vendors"
+                      : vendors.find((v) => v.id === selectedVendorId)?.name || "Select Vendor..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search vendor..." />
+                    <CommandList>
+                      <CommandEmpty>No vendor found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="all"
+                          onSelect={() => {
+                            setSelectedVendorId("all");
+                            setOpenVendor(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedVendorId === "all" ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          All Vendors
+                        </CommandItem>
+                        {vendors.map((v) => (
+                          <CommandItem
+                            key={v.id}
+                            value={v.name}
+                            onSelect={() => {
+                              setSelectedVendorId(v.id);
+                              setOpenVendor(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedVendorId === v.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {v.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {(selectedVehicleId !== "all" || selectedCustomerId !== "all" || selectedVendorId !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedVehicleId("all");
+                  setSelectedCustomerId("all");
+                  setSelectedVendorId("all");
+                }}
+                data-testid="button-clear-filters"
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label>Vehicle</Label>
-            <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId}>
-              <SelectTrigger className="w-44" data-testid="select-filter-vehicle">
-                <Truck className="h-4 w-4 mr-1" />
-                <SelectValue placeholder="All Vehicles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Vehicles</SelectItem>
-                {vehicles.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>{v.number}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Customer</Label>
-            <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-              <SelectTrigger className="w-44" data-testid="select-filter-customer">
-                <Users className="h-4 w-4 mr-1" />
-                <SelectValue placeholder="All Customers" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Customers</SelectItem>
-                {customers.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Vendor</Label>
-            <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-              <SelectTrigger className="w-44" data-testid="select-filter-vendor">
-                <Package className="h-4 w-4 mr-1" />
-                <SelectValue placeholder="All Vendors" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Vendors</SelectItem>
-                {vendors.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {(selectedVehicleId !== "all" || selectedCustomerId !== "all" || selectedVendorId !== "all") && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedVehicleId("all");
-                setSelectedCustomerId("all");
-                setSelectedVendorId("all");
-              }}
-              data-testid="button-clear-filters"
-            >
-              Clear Filters
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (invoicesLoading) {
     return (
@@ -797,7 +1028,7 @@ export default function Reports() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {reportItems.map((item) => (
+                      {paginatedReportItems.map((item) => (
                         <TableRow key={`${item.id}-${item.no}`} data-testid={`row-item-${item.id}`}>
                           <TableCell className="font-mono text-sm">{item.no}</TableCell>
                           <TableCell className="font-mono text-sm">{item.invoiceNumber}</TableCell>
