@@ -2194,6 +2194,25 @@ function ProductRow({
           onChange={(e) => updateProductField(item.productId, 'price', parseFloat(e.target.value) || 0)}
         />
       </div>
+      <div className="col-span-12 flex flex-wrap gap-1 mt-1 pl-1">
+        {(item.weightBreakdown || []).map((w: number, idx: number) => (
+          <Badge
+            key={idx}
+            variant="outline"
+            className="h-5 px-1 text-[10px] gap-1 bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800"
+          >
+            <ShoppingBag className="h-3 w-3 opacity-50" />
+            {w.toFixed(1)}
+            <button
+              onClick={() => removeWeightFromProduct(item.productId, idx)}
+              className="ml-1 rounded-full p-0.5 hover:bg-yellow-300/50 dark:hover:bg-yellow-700/50 focus:outline-none"
+              title="Remove weight"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        ))}
+      </div>
     </div>
   );
 }
