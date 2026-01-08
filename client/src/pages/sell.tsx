@@ -1376,8 +1376,8 @@ export default function Sell() {
             <Badge variant="secondary" className="text-xs">{selectedVehicleIds.size} selected</Badge>
           )}
 
-          {/* Weighing Scale Integration - Hidden for admin and restricted_admin */}
-          {!['admin', 'restricted_admin'].includes(user?.role || '') && (
+          {/* Weighing Scale Integration */}
+          {true && (
             <div className="flex items-center gap-2 bg-muted/50 rounded-md px-2 py-1 ml-2">
               <div className="flex items-center gap-1 mr-1 border-r pr-2 border-border/50">
                 <Label htmlFor="demo-mode-sell" className="text-[10px] text-muted-foreground cursor-pointer font-normal">Demo</Label>
