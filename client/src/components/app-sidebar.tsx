@@ -65,7 +65,7 @@ const navigationItems = [
     title: "Customer Edit",
     url: "/customer-edit",
     icon: UserCheck,
-    roles: ["admin", "user"],
+    roles: ["admin", "user", "restricted_admin"],
   },
   {
     title: "Vehicles",

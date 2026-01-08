@@ -69,7 +69,7 @@ function ProtectedApp() {
 
     if (isRestrictedAdmin) {
       // Allowed routes for restricted admin
-      const allowed = ['/', '/stock', '/reports', '/payments', '/sell'];
+      const allowed = ['/', '/stock', '/reports', '/payments', '/sell', '/customer-edit'];
       if (!allowed.includes(location)) {
         setLocation('/');
       }
