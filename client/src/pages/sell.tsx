@@ -2085,8 +2085,13 @@ function ProductRow({
 
   return (
     <div className="grid grid-cols-12 gap-1 items-center">
-      <div className="col-span-4 text-sm truncate font-medium" title={item.product?.name}>
-        {item.product?.name}
+      <div className="col-span-4 flex flex-col justify-center">
+        <span className="text-sm truncate font-medium" title={item.product?.name}>
+          {item.product?.name}
+        </span>
+        <span className="text-[10px] text-muted-foreground">
+          Avail: {item.quantity} {item.product?.unit}
+        </span>
       </div>
 
       {/* Add Weight Column */}
