@@ -154,7 +154,6 @@ export interface IStorage {
   getHamaliCashPayments(): Promise<HamaliCashPayment[]>;
   createHamaliCashPayment(payment: InsertHamaliCashPayment): Promise<HamaliCashPayment>;
   deleteHamaliCashPayment(id: string): Promise<boolean>;
-  deleteHamaliCashPayment(id: string): Promise<boolean>;
 
   // System Metrics
   getSystemMetricsHistory(limit?: number): Promise<SystemMetric[]>;
