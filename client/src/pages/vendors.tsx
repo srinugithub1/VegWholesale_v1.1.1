@@ -344,17 +344,22 @@ export default function Vendors() {
                 data-testid="input-search-vendors"
               />
             </div>
-            {isAdmin && selectedVendorIds.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDelete}
-                data-testid="button-bulk-delete"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Selected ({selectedVendorIds.length})
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground font-medium mr-4">
+                Total Records: {filteredVendors.length}
+              </div>
+              {isAdmin && selectedVendorIds.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  data-testid="button-bulk-delete"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected ({selectedVendorIds.length})
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
