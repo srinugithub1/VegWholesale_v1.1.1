@@ -31,14 +31,14 @@ import AuthPage from "@/pages/auth-page";
 import CustomerEdit from "@/pages/customer-edit";
 
 import AdminCloudStorage from "@/pages/admin-cloud-storage";
-import InvoicesPage from "@/pages/invoices";
+// import InvoicesPage from "@/pages/invoices";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/cloud-storage" component={AdminCloudStorage} />
-      <Route path="/invoices" component={InvoicesPage} />
+      {/* <Route path="/invoices" component={InvoicesPage} /> */}
       <Route path="/sell" component={Sell} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/customers" component={Customers} />
