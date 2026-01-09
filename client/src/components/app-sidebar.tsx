@@ -96,12 +96,6 @@ const transactionItems = [
     roles: ["admin"],
   },
   {
-    title: "Invoices",
-    url: "/invoices",
-    icon: FileText,
-    roles: ["admin"],
-  },
-  {
     title: "Returns",
     url: "/vendor-returns",
     icon: RotateCcw,
