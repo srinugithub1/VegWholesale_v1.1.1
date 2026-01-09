@@ -130,8 +130,8 @@ export default function InvoicesPage() {
     const totalPages = Math.ceil(total / limit);
 
     // Selection Handlers
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
+    const handleSelectAll = (checked: boolean | "indeterminate") => {
+        if (checked === true) {
             const ids = invoices.map((inv) => inv.id);
             setSelectedIds(ids);
         } else {
@@ -139,8 +139,8 @@ export default function InvoicesPage() {
         }
     };
 
-    const handleSelectRow = (id: string, checked: boolean) => {
-        if (checked) {
+    const handleSelectRow = (id: string, checked: boolean | "indeterminate") => {
+        if (checked === true) {
             setSelectedIds((prev) => [...prev, id]);
         } else {
             setSelectedIds((prev) => prev.filter((prevId) => prevId !== id));
@@ -306,7 +306,7 @@ export default function InvoicesPage() {
                                                     <TableCell>
                                                         <Checkbox
                                                             checked={selectedIds.includes(invoice.id)}
-                                                            onCheckedChange={(checked) => handleSelectRow(invoice.id, checked as boolean)}
+                                                            onCheckedChange={(checked) => handleSelectRow(invoice.id, checked)}
                                                         />
                                                     </TableCell>
                                                     <TableCell>{format(new Date(invoice.date), "dd/MM/yyyy")}</TableCell>
@@ -315,7 +315,7 @@ export default function InvoicesPage() {
                                                     <TableCell>
                                                         {invoice.shop ? (
                                                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${invoice.shop === 42 ? "bg-orange-100 text-orange-800" :
-                                                                    invoice.shop === 50 ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
+                                                                invoice.shop === 50 ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
                                                                 }`}>
                                                                 Shop {invoice.shop}
                                                             </span>
