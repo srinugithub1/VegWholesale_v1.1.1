@@ -66,17 +66,27 @@ export function ImportCustomersDialog() {
         reader.onload = (evt) => {
             try {
                 const bstr = evt.target?.result;
+                if (!bstr) return;
+
                 const wb = XLSX.read(bstr, { type: "binary" });
+                if (wb.SheetNames.length === 0) {
+                    toast({ title: "No sheets found in file", variant: "destructive" });
+                    setFile(null);
+                    return;
+                }
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json<ExcelRow>(ws, { header: 1 });
 
-                if (data.length > 0) {
-                    const headers = data[0] as string[];
-                    const rows = XLSX.utils.sheet_to_json<ExcelRow>(ws);
+                // Get data with header:1 to get raw array of arrays
+                const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+                if (rawData.length > 0) {
+                    const headers = (rawData[0] as any[]).map(h => String(h || ""));
+                    // Get data object for rows, starting from 2nd row
+                    const jsonData = XLSX.utils.sheet_to_json<ExcelRow>(ws);
 
                     setHeaders(headers);
-                    setRows(rows.slice(0, 5)); // Preview first 5 rows
+                    setRows(jsonData.slice(0, 5)); // Preview first 5 rows
 
                     // Auto-guess mapping
                     const newMapping = { ...mapping };
@@ -88,11 +98,19 @@ export function ImportCustomersDialog() {
                         if (lower.includes("add") || lower.includes("city")) newMapping.address = h;
                     });
                     setMapping(newMapping);
+                } else {
+                    toast({ title: "File is empty", variant: "destructive" });
+                    setFile(null);
                 }
             } catch (error) {
                 console.error("Error parsing excel:", error);
                 toast({ title: "Failed to parse file", variant: "destructive" });
+                setFile(null);
             }
+        };
+        reader.onerror = () => {
+            toast({ title: "Failed to read file", variant: "destructive" });
+            setFile(null);
         };
         reader.readAsBinaryString(selectedFile);
     };
@@ -109,38 +127,48 @@ export function ImportCustomersDialog() {
             // Re-read full file to get all rows
             const reader = new FileReader();
             reader.onload = async (evt) => {
-                const bstr = evt.target?.result;
-                const wb = XLSX.read(bstr, { type: "binary" });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const allRows = XLSX.utils.sheet_to_json<ExcelRow>(ws);
+                try {
+                    const bstr = evt.target?.result;
+                    if (!bstr) {
+                        setIsUploading(false);
+                        return;
+                    }
+                    const wb = XLSX.read(bstr, { type: "binary" });
+                    const wsname = wb.SheetNames[0];
+                    const ws = wb.Sheets[wsname];
+                    const allRows = XLSX.utils.sheet_to_json<ExcelRow>(ws);
 
-                const customersToImport: InsertCustomer[] = allRows.map((row) => ({
-                    name: String(row[mapping.name] || "").trim(),
-                    phone: String(row[mapping.phone] || "").trim(),
-                    email: mapping.email ? String(row[mapping.email] || "") : undefined,
-                    address: mapping.address ? String(row[mapping.address] || "") : undefined,
-                })).filter(c => c.name && c.phone); // Filter empty rows
+                    const customersToImport: InsertCustomer[] = allRows.map((row) => ({
+                        name: String(row[mapping.name] || "").trim(),
+                        phone: String(row[mapping.phone] || "").trim(),
+                        email: (mapping.email && mapping.email !== "skip_email_option") ? String(row[mapping.email] || "") : undefined,
+                        address: (mapping.address && mapping.address !== "skip_address_option") ? String(row[mapping.address] || "") : undefined,
+                    })).filter(c => c.name && c.phone); // Filter empty rows
 
-                if (customersToImport.length === 0) {
-                    toast({ title: "No valid customers found", variant: "destructive" });
+                    if (customersToImport.length === 0) {
+                        toast({ title: "No valid customers found", variant: "destructive" });
+                        setIsUploading(false);
+                        return;
+                    }
+
+                    await apiRequest("POST", "/api/customers/bulk", customersToImport);
+
+                    queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+                    toast({ title: `Successfully imported ${customersToImport.length} customers` });
+                    setOpen(false);
+                    setFile(null);
+                    setRows([]);
+                } catch (err: any) {
+                    console.error("Processing error:", err);
+                    toast({ title: "Failed to process file data", description: err.message, variant: "destructive" });
+                } finally {
                     setIsUploading(false);
-                    return;
                 }
-
-                await apiRequest("POST", "/api/customers/bulk", customersToImport);
-
-                queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-                toast({ title: `Successfully imported ${customersToImport.length} customers` });
-                setOpen(false);
-                setFile(null);
-                setRows([]);
-                setIsUploading(false);
             };
             reader.readAsBinaryString(file);
 
         } catch (error) {
-            console.error("Import error:", error);
+            console.error("Import start error:", error);
             toast({ title: "Import failed", variant: "destructive" });
             setIsUploading(false);
         }
@@ -219,7 +247,7 @@ export function ImportCustomersDialog() {
                                     <Select value={mapping.email} onValueChange={(v) => setMapping(p => ({ ...p, email: v }))}>
                                         <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">-- Skip --</SelectItem>
+                                            <SelectItem value="skip_email_option">-- Skip --</SelectItem>
                                             {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
@@ -229,7 +257,7 @@ export function ImportCustomersDialog() {
                                     <Select value={mapping.address} onValueChange={(v) => setMapping(p => ({ ...p, address: v }))}>
                                         <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">-- Skip --</SelectItem>
+                                            <SelectItem value="skip_address_option">-- Skip --</SelectItem>
                                             {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
