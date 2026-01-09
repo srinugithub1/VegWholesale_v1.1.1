@@ -487,7 +487,7 @@ export default function Products() {
                     {filteredProducts.map((product) => {
                       const isLowStock = product.currentStock <= (product.reorderLevel || 10);
                       return (
-                    return (
+
                         <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
                           {isAdmin && (
                             <TableCell>
