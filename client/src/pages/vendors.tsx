@@ -396,7 +396,7 @@ export default function Vendors() {
                   <TableHead>Email</TableHead>
                   <TableHead>Address</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
-                </TableRow>>
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedVendors.map((vendor) => (
