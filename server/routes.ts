@@ -226,6 +226,17 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/customers/bulk", async (req, res) => {
+    try {
+      const data = z.array(insertCustomerSchema).parse(req.body);
+      const customers = await storage.createCustomersBulk(data);
+      res.status(201).json(customers);
+    } catch (error) {
+      console.error("Bulk create error:", error);
+      res.status(400).json({ error: "Invalid bulk customer data" });
+    }
+  });
+
   app.patch("/api/customers/:id", async (req, res) => {
     try {
       const data = insertCustomerSchema.partial().parse(req.body);
