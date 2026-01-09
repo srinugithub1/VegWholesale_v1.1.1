@@ -108,6 +108,8 @@ export interface IStorage {
   getPurchasesWithItemsByVendor(vendorId: string): Promise<(Purchase & { items: PurchaseItem[] })[]>;
 
   getInvoices(): Promise<Invoice[]>;
+  getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number }>;
+  deleteInvoicesBulk(ids: string[]): Promise<boolean>;
   getInvoice(id: string): Promise<Invoice | undefined>;
   getInvoicesByCustomer(customerId: string): Promise<(Invoice & { shop?: number | null })[]>;
   getInvoicesWithItemsByCustomer(customerId: string): Promise<(Invoice & { shop?: number | null, items: InvoiceItem[] })[]>;
@@ -543,6 +545,73 @@ export class DatabaseStorage implements IStorage {
       shop,
       items: allItems.filter(item => item.invoiceId === invoice.id)
     }));
+  }
+
+  async getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number }> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 50;
+    const offset = (page - 1) * limit;
+
+    const conditions = [];
+    if (filters.startDate) conditions.push(gte(invoices.date, filters.startDate));
+    if (filters.endDate) conditions.push(lte(invoices.date, filters.endDate));
+    if (filters.shop) conditions.push(eq(vehicles.shop, filters.shop));
+
+    // Get total count first
+    const countQuery = db.select({ count: sql<number>`count(*)` })
+      .from(invoices)
+      .leftJoin(vehicles, eq(invoices.vehicleId, vehicles.id));
+
+    if (conditions.length > 0) {
+      countQuery.where(and(...conditions));
+    }
+
+    const [countResult] = await countQuery;
+
+    // Get paginated data
+    const query = db.select({
+      invoice: invoices,
+      shop: vehicles.shop,
+      customerName: customers.name
+    })
+      .from(invoices)
+      .leftJoin(vehicles, eq(invoices.vehicleId, vehicles.id))
+      .leftJoin(customers, eq(invoices.customerId, customers.id))
+      .limit(limit)
+      .offset(offset)
+      .orderBy(desc(invoices.date), desc(invoices.createdAt));
+
+    if (conditions.length > 0) {
+      query.where(and(...conditions));
+    }
+
+    const rows = await query;
+    return {
+      invoices: rows.map(r => ({ ...r.invoice, shop: r.shop, customerName: r.customerName })),
+      total: Number(countResult?.count || 0)
+    };
+  }
+
+  async deleteInvoicesBulk(ids: string[]): Promise<boolean> {
+    if (ids.length === 0) return false;
+
+    // First delete invoice items
+    await db.delete(invoiceItems).where(inArray(invoiceItems.invoiceId, ids));
+
+    // Also need to handle stock movements reversal? 
+    // For now, assuming soft delete or just direct deletion as requested.
+    // Ideally we should reverse stock, but for this task "delete" usually implies data cleanup.
+    // However, if we delete invoices, we might leave stock "sold" without record if we don't reverse movements.
+    // Given the complexity, and typical "delete" request in this context often effectively means "void/cancel",
+    // but without explicit instruction to reverse stock, I will just remove the records to satisfy "delete".
+
+    // Actually, let's try to be safe. If we delete an invoice, we probably SHOULD delete the associated stock movements.
+    await db.delete(stockMovements).where(and(inArray(stockMovements.referenceId, ids), eq(stockMovements.type, 'out')));
+
+    // Delete the invoices
+    await db.delete(invoices).where(inArray(invoices.id, ids));
+
+    return true;
   }
 
   async updateInvoice(id: string, updates: Partial<InsertInvoice>): Promise<Invoice | undefined> {

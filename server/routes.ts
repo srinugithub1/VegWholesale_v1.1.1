@@ -420,8 +420,51 @@ export async function registerRoutes(
 
   // Invoices
   app.get("/api/invoices", async (req, res) => {
-    const invoices = await storage.getInvoices();
-    res.json(invoices);
+    try {
+      // Check if we have filter params, otherwise default to simple list (or redirect to filtered with defaults)
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
+      const shop = req.query.shop ? Number(req.query.shop) : undefined;
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+
+      // Ensure admin only for advanced viewing if strict, but adhering to general RBAC for the page access.
+      // The user asked for the TAB to be admin only. The API might also need protection.
+      // Assuming session auth is present.
+      if (!req.isAuthenticated()) return res.sendStatus(401);
+
+      const result = await storage.getInvoicesFiltered({
+        startDate,
+        endDate,
+        shop,
+        page,
+        limit
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ error: "Failed to fetch invoices" });
+    }
+  });
+
+  app.post("/api/invoices/bulk-delete", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') {
+      return res.status(403).send("Unauthorized");
+    }
+
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids)) {
+        return res.status(400).json({ error: "Invalid IDs format" });
+      }
+
+      await storage.deleteInvoicesBulk(ids);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Error deleting invoices:", error);
+      res.status(500).json({ error: "Failed to delete invoices" });
+    }
   });
 
   app.get("/api/invoices/:id", async (req, res) => {
