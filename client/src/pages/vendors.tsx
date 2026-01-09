@@ -41,15 +41,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Search, Pencil, Trash2, Users, Phone, Mail, MapPin } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Users, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { insertVendorSchema, type Vendor, type InsertVendor } from "@shared/schema";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Vendors() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [deleteVendor, setDeleteVendor] = useState<Vendor | null>(null);
+  const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
 
   const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -115,6 +123,40 @@ export default function Vendors() {
       vendor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       vendor.phone.includes(searchQuery)
   );
+
+  const totalPages = Math.ceil(filteredVendors.length / itemsPerPage);
+  const paginatedVendors = filteredVendors.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const toggleSelectAll = () => {
+    if (selectedVendorIds.length === paginatedVendors.length) {
+      setSelectedVendorIds([]);
+    } else {
+      setSelectedVendorIds(paginatedVendors.map((v) => v.id));
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedVendorIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedVendorIds.length) return;
+
+    // Optimistic / Sequential delete
+    // In a real app, use a bulk delete API. Here we loop.
+    try {
+      await Promise.all(selectedVendorIds.map((id) => deleteMutation.mutateAsync(id)));
+      setSelectedVendorIds([]);
+      toast({ title: "Selected vendors deleted successfully" });
+    } catch (error) {
+      // Errors handled by mutation onError, but general toast here too
+    }
+  };
 
   const openEditDialog = (vendor: Vendor) => {
     setEditingVendor(vendor);
@@ -279,8 +321,8 @@ export default function Vendors() {
                     {createMutation.isPending || updateMutation.isPending
                       ? "Saving..."
                       : editingVendor
-                      ? "Update"
-                      : "Add Vendor"}
+                        ? "Update"
+                        : "Add Vendor"}
                   </Button>
                 </div>
               </form>
@@ -302,6 +344,17 @@ export default function Vendors() {
                 data-testid="input-search-vendors"
               />
             </div>
+            {isAdmin && selectedVendorIds.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                data-testid="button-bulk-delete"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected ({selectedVendorIds.length})
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -329,16 +382,34 @@ export default function Vendors() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isAdmin && (
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={paginatedVendors.length > 0 && selectedVendorIds.length === paginatedVendors.length}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Address</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
+                </TableRow>>
               </TableHeader>
               <TableBody>
-                {filteredVendors.map((vendor) => (
+                {paginatedVendors.map((vendor) => (
                   <TableRow key={vendor.id} data-testid={`row-vendor-${vendor.id}`}>
+                    {isAdmin && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedVendorIds.includes(vendor.id)}
+                          onCheckedChange={() => toggleSelection(vendor.id)}
+                          aria-label={`Select ${vendor.name}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{vendor.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -392,6 +463,33 @@ export default function Vendors() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2 py-4 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <div className="text-sm">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
