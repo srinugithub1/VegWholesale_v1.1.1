@@ -28,6 +28,7 @@ import {
   Scale,
   RotateCcw,
   ShoppingBag,
+  Database, // Imported Database icon
 } from "lucide-react";
 
 const navigationItems = [
@@ -36,6 +37,12 @@ const navigationItems = [
     url: "/",
     icon: LayoutDashboard,
     roles: ["admin", "restricted_admin"],
+  },
+  {
+    title: "Cloud Storage",
+    url: "/cloud-storage",
+    icon: Database,
+    roles: ["admin"],
   },
   {
     title: "Sell",

@@ -30,10 +30,13 @@ import VendorReturns from "@/pages/vendor-returns";
 import AuthPage from "@/pages/auth-page";
 import CustomerEdit from "@/pages/customer-edit";
 
+import AdminCloudStorage from "@/pages/admin-cloud-storage";
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/cloud-storage" component={AdminCloudStorage} />
       <Route path="/sell" component={Sell} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/customers" component={Customers} />

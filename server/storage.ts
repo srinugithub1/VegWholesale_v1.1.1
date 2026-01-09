@@ -53,9 +53,12 @@ import {
   vendorReturnItems,
   hamaliCashPayments,
   users,
+  type SystemMetric,
+  type InsertSystemMetric,
+  systemMetrics,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
+import { eq, and, gte, lte, inArray, sql, desc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -148,6 +151,11 @@ export interface IStorage {
   getHamaliCashPayments(): Promise<HamaliCashPayment[]>;
   createHamaliCashPayment(payment: InsertHamaliCashPayment): Promise<HamaliCashPayment>;
   deleteHamaliCashPayment(id: string): Promise<boolean>;
+  deleteHamaliCashPayment(id: string): Promise<boolean>;
+
+  // System Metrics
+  getSystemMetricsHistory(limit?: number): Promise<SystemMetric[]>;
+  upsertSystemMetric(metric: InsertSystemMetric): Promise<SystemMetric>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -893,6 +901,31 @@ export class DatabaseStorage implements IStorage {
   async deleteHamaliCashPayment(id: string): Promise<boolean> {
     const result = await db.delete(hamaliCashPayments).where(eq(hamaliCashPayments.id, id)).returning();
     return result.length > 0;
+  }
+
+  // System Metrics
+  async getSystemMetricsHistory(limit: number = 30): Promise<SystemMetric[]> {
+    return await db.select()
+      .from(systemMetrics)
+      .orderBy(desc(systemMetrics.date))
+      .limit(limit);
+  }
+
+  async upsertSystemMetric(metric: InsertSystemMetric): Promise<SystemMetric> {
+    const [existing] = await db.select().from(systemMetrics).where(eq(systemMetrics.date, metric.date));
+
+    if (existing) {
+      const [updated] = await db.update(systemMetrics)
+        .set({ dbSizeBytes: metric.dbSizeBytes })
+        .where(eq(systemMetrics.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(systemMetrics)
+        .values(metric)
+        .returning();
+      return created;
+    }
   }
 }
 

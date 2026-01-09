@@ -297,4 +297,15 @@ export const users = pgTable("users", {
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+// System Metrics - track database size usage daily
+export const systemMetrics = pgTable("system_metrics", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  date: text("date").notNull(), // YYYY-MM-DD
+  dbSizeBytes: real("db_size_bytes").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const insertSystemMetricSchema = createInsertSchema(systemMetrics).omit({ id: true, createdAt: true });
+export type InsertSystemMetric = z.infer<typeof insertSystemMetricSchema>;
+export type SystemMetric = typeof systemMetrics.$inferSelect;
+

@@ -15,13 +15,56 @@ import {
   insertHamaliCashPaymentSchema,
 } from "@shared/schema";
 import { hashPassword } from "./auth";
+import { hashPassword } from "./auth";
 import { z } from "zod";
+import fs from "fs";
+import path from "path";
+
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   // Users (for settings display)
+  // Admin only - Get Cloud Storage Stats (Database Size)
+  app.get("/api/admin/storage-stats", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+
+    try {
+      const dbPath = path.resolve(process.cwd(), "sqlite.db");
+      let usedBytes = 0;
+
+      try {
+        const stats = await fs.promises.stat(dbPath);
+        usedBytes = stats.size;
+      } catch (err) {
+        console.error("Error reading DB file size:", err);
+        // Fallback or ignore if file not found (unlikely for running app)
+      }
+
+      const today = new Date().toISOString().split("T")[0];
+
+      // Update history
+      await storage.upsertSystemMetric({
+        date: today,
+        dbSizeBytes: usedBytes,
+      });
+
+      const history = await storage.getSystemMetricsHistory(30);
+
+      res.json({
+        usedBytes,
+        totalBytes: 1024 * 1024 * 1024, // 1 GB simulated limit
+        history
+      });
+    } catch (error) {
+      console.error("Error fetching storage stats:", error);
+      res.status(500).json({ error: "Failed to fetch storage stats" });
+    }
+  });
+
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const users = await storage.getUsers();
