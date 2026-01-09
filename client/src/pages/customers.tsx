@@ -41,15 +41,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Search, Pencil, Trash2, UserCheck, Phone, Mail, MapPin } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, UserCheck, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { insertCustomerSchema, type Customer, type InsertCustomer } from "@shared/schema";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Customers() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
 
   const { data: customers = [], isLoading } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
@@ -115,6 +123,37 @@ export default function Customers() {
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.phone.includes(searchQuery)
   );
+
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  const paginatedCustomers = filteredCustomers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const toggleSelectAll = () => {
+    if (selectedCustomerIds.length === paginatedCustomers.length) {
+      setSelectedCustomerIds([]);
+    } else {
+      setSelectedCustomerIds(paginatedCustomers.map((c) => c.id));
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedCustomerIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedCustomerIds.length) return;
+    try {
+      await Promise.all(selectedCustomerIds.map((id) => deleteMutation.mutateAsync(id)));
+      setSelectedCustomerIds([]);
+      toast({ title: "Selected customers deleted successfully" });
+    } catch (error) {
+      // Errors handled by mutation onError
+    }
+  };
 
   const openEditDialog = (customer: Customer) => {
     setEditingCustomer(customer);
@@ -279,8 +318,8 @@ export default function Customers() {
                     {createMutation.isPending || updateMutation.isPending
                       ? "Saving..."
                       : editingCustomer
-                      ? "Update"
-                      : "Add Customer"}
+                        ? "Update"
+                        : "Add Customer"}
                   </Button>
                 </div>
               </form>
@@ -301,6 +340,22 @@ export default function Customers() {
                 className="pl-9"
                 data-testid="input-search-customers"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground font-medium mr-4">
+                Total Records: {filteredCustomers.length}
+              </div>
+              {isAdmin && selectedCustomerIds.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  data-testid="button-bulk-delete"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected ({selectedCustomerIds.length})
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -329,6 +384,15 @@ export default function Customers() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isAdmin && (
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={paginatedCustomers.length > 0 && selectedCustomerIds.length === paginatedCustomers.length}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Email</TableHead>
@@ -337,8 +401,17 @@ export default function Customers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCustomers.map((customer) => (
+                {paginatedCustomers.map((customer) => (
                   <TableRow key={customer.id} data-testid={`row-customer-${customer.id}`}>
+                    {isAdmin && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedCustomerIds.includes(customer.id)}
+                          onCheckedChange={() => toggleSelection(customer.id)}
+                          aria-label={`Select ${customer.name}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{customer.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -392,6 +465,33 @@ export default function Customers() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2 py-4 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <div className="text-sm">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
