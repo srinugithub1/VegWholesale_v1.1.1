@@ -729,8 +729,8 @@ function StockEditDialog({ vehicle, inventory, products }: { vehicle: Vehicle, i
       await Promise.all(updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/all-vehicle-inventories"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/vehicles"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/all-vehicle-inventories"] });
       toast({ title: "Stock Updated", description: "Vehicle inventory updated." });
       setOpen(false);
     },
