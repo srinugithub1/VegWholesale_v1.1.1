@@ -28,7 +28,7 @@ type StorageStats = {
 };
 
 export default function AdminCloudStorage() {
-    const { data, isLoading } = useQuery<StorageStats>({
+    const { data, isLoading, error } = useQuery<StorageStats>({
         queryKey: ["/api/admin/storage-stats"],
     });
 
@@ -36,6 +36,20 @@ export default function AdminCloudStorage() {
         return (
             <div className="flex items-center justify-center h-full min-h-[50vh]">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full min-h-[50vh] space-y-4">
+                <div className="text-destructive font-semibold text-lg">Failed to load storage stats</div>
+                <p className="text-muted-foreground">
+                    {(error as Error).message || "An unexpected error occurred."}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                    Note: If this is a new feature, you may need to update your database schema (run migrations).
+                </p>
             </div>
         );
     }
