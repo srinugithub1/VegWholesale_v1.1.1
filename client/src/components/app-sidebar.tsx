@@ -142,6 +142,10 @@ export function AppSidebar() {
   const isAdmin = user?.role === "admin" || user?.role === "restricted_admin";
 
   const filterItems = (items: typeof navigationItems) => {
+    if (!Array.isArray(items)) {
+      console.error("AppSidebar: filterItems received non-array:", items);
+      return [];
+    }
     return items.filter(item => item.roles.includes(user?.role || "user"));
   };
 
