@@ -638,6 +638,30 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/vehicles/:id/inventory/:productId", async (req, res) => {
+    try {
+      const vehicle = await storage.getVehicle(req.params.id);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+
+      const { quantity } = req.body;
+      if (typeof quantity !== 'number' || quantity < 0) {
+        return res.status(400).json({ error: "Invalid quantity" });
+      }
+
+      const inventory = await storage.updateVehicleInventory(
+        req.params.id,
+        req.params.productId,
+        quantity
+      );
+      res.json(inventory);
+    } catch (error) {
+      console.error("Error updating inventory:", error);
+      res.status(500).json({ error: "Failed to update inventory" });
+    }
+  });
+
   // Vendor Returns
   app.get("/api/vendor-returns", async (req, res) => {
     const { vendorId } = req.query;

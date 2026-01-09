@@ -136,6 +136,7 @@ export interface IStorage {
   deductVehicleInventory(vehicleId: string, productId: string, quantity: number, invoiceId?: string): Promise<VehicleInventory | undefined>;
   getVehicleInventoryMovements(vehicleId: string): Promise<VehicleInventoryMovement[]>;
   getAllVehicleInventoryMovements(): Promise<VehicleInventoryMovement[]>;
+  updateVehicleInventory(vehicleId: string, productId: string, quantity: number): Promise<VehicleInventory>;
 
   // Vendor Returns
   getVendorReturns(vendorId?: string): Promise<VendorReturn[]>;
@@ -763,6 +764,64 @@ export class DatabaseStorage implements IStorage {
 
   async getAllVehicleInventoryMovements(): Promise<VehicleInventoryMovement[]> {
     return await db.select().from(vehicleInventoryMovements);
+  }
+
+  async updateVehicleInventory(vehicleId: string, productId: string, newQuantity: number): Promise<VehicleInventory> {
+    const [existing] = await db.select().from(vehicleInventory)
+      .where(and(eq(vehicleInventory.vehicleId, vehicleId), eq(vehicleInventory.productId, productId)));
+
+    const oldQuantity = existing ? existing.quantity : 0;
+    const diff = newQuantity - oldQuantity;
+
+    if (diff === 0 && existing) return existing;
+
+    let inventoryRecord: VehicleInventory;
+
+    if (existing) {
+      const [updated] = await db.update(vehicleInventory)
+        .set({ quantity: newQuantity })
+        .where(and(eq(vehicleInventory.vehicleId, vehicleId), eq(vehicleInventory.productId, productId)))
+        .returning();
+      inventoryRecord = updated;
+    } else {
+      const [created] = await db.insert(vehicleInventory)
+        .values({ vehicleId, productId, quantity: newQuantity })
+        .returning();
+      inventoryRecord = created;
+    }
+
+    // Update product stock accordingly
+    // If diff is positive (added stock), we assume it came from outside or implies "loading" logic? 
+    // In current logic: "load" -> increases product stock?
+    // Wait, loadVehicleInventory calls updateProductStock(..., quantity, 'in').
+    // BUT usually 'loading' into a vehicle means taking FROM warehouse (if warehouse exists).
+    // Here, products have `currentStock`. 
+    // `createPurchase` increases product stock and optionally loads into vehicle.
+    // `createInvoice` decreases product stock (if selling from warehouse) or vehicle stock (if vehicleId).
+
+    // When manually updating vehicle stock:
+    // If we add to vehicle, does it come from warehouse? Or just "correction"?
+    // User interface says "Update Stock". Simpler to treat as correction.
+    // If we want to align with `loadVehicleInventory` (which does 'in'), let's assume it INCREASES total system stock too?
+    // `loadVehicleInventory` implementation:
+    // await this.updateProductStock(productId, quantity, 'in');
+
+    // So if we add to vehicle, we add to product total stock.
+    if (diff !== 0) {
+      await this.updateProductStock(productId, Math.abs(diff), diff > 0 ? 'in' : 'out');
+
+      const today = new Date().toISOString().split("T")[0];
+      await db.insert(vehicleInventoryMovements).values({
+        vehicleId,
+        productId,
+        type: diff > 0 ? 'load' : 'sale', // or 'correction'? sticking to 'load'/'sale' for existing UI compat or 'adjustment'
+        quantity: Math.abs(diff),
+        date: today,
+        notes: "Manual stock update",
+      });
+    }
+
+    return inventoryRecord;
   }
 
   // Vendor Returns Methods
