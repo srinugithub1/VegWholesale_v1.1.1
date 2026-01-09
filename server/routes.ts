@@ -15,10 +15,11 @@ import {
   insertHamaliCashPaymentSchema,
 } from "@shared/schema";
 import { hashPassword } from "./auth";
-import { hashPassword } from "./auth";
 import { z } from "zod";
 import fs from "fs";
 import path from "path";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 
 export async function registerRoutes(
@@ -33,26 +34,35 @@ export async function registerRoutes(
     }
 
     try {
-      const dbPath = path.resolve(process.cwd(), "sqlite.db");
       let usedBytes = 0;
 
       try {
-        const stats = await fs.promises.stat(dbPath);
-        usedBytes = stats.size;
+        // Query Postgres database size
+        const result = await db.execute(sql`SELECT pg_database_size(current_database()) as size`);
+        usedBytes = Number(result.rows[0].size);
       } catch (err) {
-        console.error("Error reading DB file size:", err);
-        // Fallback or ignore if file not found (unlikely for running app)
+        console.error("Error reading DB size:", err);
       }
 
       const today = new Date().toISOString().split("T")[0];
 
       // Update history
-      await storage.upsertSystemMetric({
-        date: today,
-        dbSizeBytes: usedBytes,
-      });
+      try {
+        await storage.upsertSystemMetric({
+          date: today,
+          dbSizeBytes: usedBytes,
+        });
+      } catch (err) {
+        // If table doesn't exist yet, just log and continue (UI has logic to warn)
+        console.error("Failed to upsert metrics (table might be missing):", err);
+      }
 
-      const history = await storage.getSystemMetricsHistory(30);
+      let history = [];
+      try {
+        history = await storage.getSystemMetricsHistory(30);
+      } catch (err) {
+        console.error("Failed to fetch history:", err);
+      }
 
       res.json({
         usedBytes,
