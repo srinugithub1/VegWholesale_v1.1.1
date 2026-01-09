@@ -964,7 +964,7 @@ export default function Sell() {
   });
 
   const { data: vehicleInventories = {} } = useQuery<Record<string, VehicleInventory[]>>({
-    queryKey: ["/api/all-vehicle-inventories", vehicles.map((v) => v.id).join(",")],
+    queryKey: ["/api/all-vehicle-inventories"],
     queryFn: async () => {
       if (vehicles.length === 0) return {};
       const results: Record<string, VehicleInventory[]> = {};
