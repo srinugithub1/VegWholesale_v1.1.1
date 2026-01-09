@@ -41,15 +41,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Search, Pencil, Trash2, Truck, Phone, User } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Truck, Phone, User, ChevronLeft, ChevronRight } from "lucide-react";
 import { insertVehicleSchema, type Vehicle, type InsertVehicle } from "@shared/schema";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Vehicles() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [deleteVehicle, setDeleteVehicle] = useState<Vehicle | null>(null);
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
 
   const { data: vehicles = [], isLoading } = useQuery<Vehicle[]>({
     queryKey: ["/api/vehicles"],
@@ -117,6 +125,38 @@ export default function Vehicles() {
       vehicle.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (vehicle.driverName?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage);
+  const paginatedVehicles = filteredVehicles.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const toggleSelectAll = () => {
+    if (selectedVehicleIds.length === paginatedVehicles.length) {
+      setSelectedVehicleIds([]);
+    } else {
+      setSelectedVehicleIds(paginatedVehicles.map((v) => v.id));
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedVehicleIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedVehicleIds.length) return;
+    try {
+      await Promise.all(selectedVehicleIds.map((id) => deleteMutation.mutateAsync(id)));
+      setSelectedVehicleIds([]);
+      toast({ title: "Selected vehicles deleted successfully" });
+    } catch (error) {
+      // Errors handled by mutation onError
+    }
+  };
+
 
   const openEditDialog = (vehicle: Vehicle) => {
     setEditingVehicle(vehicle);
@@ -302,8 +342,8 @@ export default function Vehicles() {
                     {createMutation.isPending || updateMutation.isPending
                       ? "Saving..."
                       : editingVehicle
-                      ? "Update"
-                      : "Add Vehicle"}
+                        ? "Update"
+                        : "Add Vehicle"}
                   </Button>
                 </div>
               </form>
@@ -324,6 +364,22 @@ export default function Vehicles() {
                 className="pl-9"
                 data-testid="input-search-vehicles"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground font-medium mr-4">
+                Total Records: {filteredVehicles.length}
+              </div>
+              {isAdmin && selectedVehicleIds.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  data-testid="button-bulk-delete"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected ({selectedVehicleIds.length})
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -352,6 +408,15 @@ export default function Vehicles() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isAdmin && (
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={paginatedVehicles.length > 0 && selectedVehicleIds.length === paginatedVehicles.length}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Vehicle Number</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Capacity</TableHead>
@@ -361,8 +426,17 @@ export default function Vehicles() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredVehicles.map((vehicle) => (
+                {paginatedVehicles.map((vehicle) => (
                   <TableRow key={vehicle.id} data-testid={`row-vehicle-${vehicle.id}`}>
+                    {isAdmin && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedVehicleIds.includes(vehicle.id)}
+                          onCheckedChange={() => toggleSelection(vehicle.id)}
+                          aria-label={`Select ${vehicle.number}`}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium font-mono">
                       {vehicle.number}
                     </TableCell>
@@ -416,6 +490,33 @@ export default function Vehicles() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2 py-4 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <div className="text-sm">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>

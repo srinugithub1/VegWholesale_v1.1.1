@@ -50,8 +50,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Search, Pencil, Trash2, Package, AlertTriangle } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { insertProductSchema, type Product, type InsertProduct } from "@shared/schema";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/hooks/use-auth";
+
 import { z } from "zod";
 
 const formSchema = insertProductSchema.extend({
@@ -66,11 +69,17 @@ type FormData = z.infer<typeof formSchema>;
 const units = ["KG", "Dozen", "Piece", "Bundle", "Crate", "Box", "Bag"];
 
 export default function Products() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -136,6 +145,37 @@ export default function Products() {
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const toggleSelectAll = () => {
+    if (selectedProductIds.length === paginatedProducts.length) {
+      setSelectedProductIds([]);
+    } else {
+      setSelectedProductIds(paginatedProducts.map((p) => p.id));
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedProductIds.length) return;
+    try {
+      await Promise.all(selectedProductIds.map((id) => deleteMutation.mutateAsync(id)));
+      setSelectedProductIds([]);
+      toast({ title: "Selected products deleted successfully" });
+    } catch (error) {
+      // Errors handled by mutation onError
+    }
+  };
 
   const openEditDialog = (product: Product) => {
     setEditingProduct(product);
@@ -357,8 +397,8 @@ export default function Products() {
                     {createMutation.isPending || updateMutation.isPending
                       ? "Saving..."
                       : editingProduct
-                      ? "Update"
-                      : "Add Product"}
+                        ? "Update"
+                        : "Add Product"}
                   </Button>
                 </div>
               </form>
@@ -381,126 +421,190 @@ export default function Products() {
                   data-testid="input-search-products"
                 />
               </div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-muted-foreground font-medium mr-4">
+                  Total Records: {filteredProducts.length}
+                </div>
+                {isAdmin && selectedProductIds.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    data-testid="button-bulk-delete"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Selected ({selectedProductIds.length})
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-hidden">
-          {filteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Package className="h-12 w-12 mb-4" />
-              <p className="text-lg font-medium">No products found</p>
-              <p className="text-sm">
-                {searchQuery
-                  ? "Try a different search term"
-                  : "Add your first product to get started"}
-              </p>
-              {!searchQuery && (
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={openCreateDialog}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Product
-                </Button>
-              )}
-            </div>
-          ) : (
-            <ScrollArea className="h-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead className="text-right">Purchase Price</TableHead>
-                    <TableHead className="text-right">Sale Price</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map((product) => {
-                    const isLowStock = product.currentStock <= (product.reorderLevel || 10);
+            {filteredProducts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Package className="h-12 w-12 mb-4" />
+                <p className="text-lg font-medium">No products found</p>
+                <p className="text-sm">
+                  {searchQuery
+                    ? "Try a different search term"
+                    : "Add your first product to get started"}
+                </p>
+                {!searchQuery && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={openCreateDialog}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Product
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <ScrollArea className="h-full">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {isAdmin && (
+                        <TableHead className="w-[50px]">
+                          <Checkbox
+                            checked={paginatedProducts.length > 0 && selectedProductIds.length === paginatedProducts.length}
+                            onCheckedChange={toggleSelectAll}
+                            aria-label="Select all"
+                          />
+                        </TableHead>
+                      )}
+                      <TableHead>Product</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead className="text-right">Purchase Price</TableHead>
+                      <TableHead className="text-right">Sale Price</TableHead>
+                      <TableHead className="text-right">Stock</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProducts.map((product) => {
+                      const isLowStock = product.currentStock <= (product.reorderLevel || 10);
+                      return (
                     return (
-                      <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="text-xs">
-                            {product.unit}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          ₹{product.purchasePrice.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          ₹{product.salePrice.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {product.currentStock.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {isLowStock ? (
-                            <div className="flex items-center gap-1 text-chart-2">
-                              <AlertTriangle className="h-3 w-3" />
-                              <span className="text-xs">Low</span>
-                            </div>
-                          ) : (
-                            <Badge variant="outline" className="text-xs">
-                              OK
-                            </Badge>
+                        <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
+                          {isAdmin && (
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedProductIds.includes(product.id)}
+                                onCheckedChange={() => toggleSelection(product.id)}
+                                aria-label={`Select ${product.name}`}
+                              />
+                            </TableCell>
                           )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(product)}
-                              data-testid={`button-edit-product-${product.id}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteProduct(product)}
-                              data-testid={`button-delete-product-${product.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
+                          <TableCell className="font-medium">{product.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">
+                              {product.unit}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            ₹{product.purchasePrice.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            ₹{product.salePrice.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {product.currentStock.toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            {isLowStock ? (
+                              <div className="flex items-center gap-1 text-chart-2">
+                                <AlertTriangle className="h-3 w-3" />
+                                <span className="text-xs">Low</span>
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="text-xs">
+                                OK
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog(product)}
+                                data-testid={`button-edit-product-${product.id}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeleteProduct(product)}
+                                data-testid={`button-delete-product-${product.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
               </Table>
-            </ScrollArea>
+        </ScrollArea>
+           
           )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <AlertDialog open={!!deleteProduct} onOpenChange={() => setDeleteProduct(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Product</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteProduct?.name}"? This action
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteProduct && deleteMutation.mutate(deleteProduct.id)}
-              className="bg-destructive text-destructive-foreground"
+        {/* Pagination Controls moved below ScrollArea or inside CardContent if preferred */}
+        {filteredProducts.length > 0 && totalPages > 1 && (
+          <div className="flex items-center justify-center space-x-2 py-4 mt-auto border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
             >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <div className="text-sm">
+              Page {currentPage} of {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+      </div >
+
+    <AlertDialog open={!!deleteProduct} onOpenChange={() => setDeleteProduct(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Product</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{deleteProduct?.name}"? This action
+            cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => deleteProduct && deleteMutation.mutate(deleteProduct.id)}
+            className="bg-destructive text-destructive-foreground"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </div >
   );
 }
