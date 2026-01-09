@@ -164,18 +164,24 @@ export default function Dashboard() {
 
   // Filter data by selected shop
   const { invoices, purchases, shopStock } = useMemo(() => {
-    const shopVehicles = vehicles.filter(v => v.shop === shop);
+    // Defensive checks for array data
+    const safeVehicles = Array.isArray(vehicles) ? vehicles : [];
+    const safeAllInvoices = Array.isArray(allInvoices) ? allInvoices : [];
+    const safeAllPurchases = Array.isArray(allPurchases) ? allPurchases : [];
+    const safeVehicleInventories = Array.isArray(vehicleInventories) ? vehicleInventories : [];
+
+    const shopVehicles = safeVehicles.filter(v => v.shop === shop);
     const shopVehicleIds = new Set(shopVehicles.map(v => v.id));
 
     // Filter invoices: Must have vehicleId and it must act match shop, or we might miss some?
     // Assuming strictly vehicle-based sales for now to separate shops.
-    const filteredInvoices = allInvoices.filter(i => i.vehicleId && shopVehicleIds.has(i.vehicleId));
+    const filteredInvoices = safeAllInvoices.filter(i => i.vehicleId && shopVehicleIds.has(i.vehicleId));
 
     // Filter purchases
-    const filteredPurchases = allPurchases.filter(p => p.vehicleId && shopVehicleIds.has(p.vehicleId));
+    const filteredPurchases = safeAllPurchases.filter(p => p.vehicleId && shopVehicleIds.has(p.vehicleId));
 
     // Filter stock (vehicle inventory)
-    const filteredInventory = vehicleInventories.filter(vi => shopVehicleIds.has(vi.vehicleId));
+    const filteredInventory = safeVehicleInventories.filter(vi => shopVehicleIds.has(vi.vehicleId));
 
     // Aggregate stock by product for this shop
     const stockMap = new Map<string, number>();
