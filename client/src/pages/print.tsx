@@ -19,7 +19,7 @@ export default function PrintCenter() {
   const [documentType, setDocumentType] = useState<"invoice" | "challan">("invoice");
 
   const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
-    queryKey: ["/api/invoices"],
+    queryKey: ["/api/invoices?limit=2000"],
   });
   const invoices = invoicesResult?.invoices || [];
 

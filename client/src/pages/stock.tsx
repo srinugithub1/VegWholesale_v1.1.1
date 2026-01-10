@@ -68,7 +68,7 @@ export default function Stock() {
   });
 
   const { data: invoicesResult } = useQuery<{ invoices: Invoice[], total: number }>({
-    queryKey: ["/api/invoices"],
+    queryKey: ["/api/invoices?limit=2000"],
   });
   const invoices = invoicesResult?.invoices || [];
 

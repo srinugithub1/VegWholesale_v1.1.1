@@ -141,7 +141,7 @@ export default function Dashboard() {
   });
 
   const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
-    queryKey: ["/api/invoices"],
+    queryKey: ["/api/invoices?limit=2000"],
   });
   const allInvoices = invoicesResult?.invoices || [];
 
