@@ -29,7 +29,8 @@ import {
   RotateCcw,
   ShoppingBag,
   Database,
-  Trash2, // Imported Trash2 icon
+  Trash2,
+  FileJson, // Imported FileJson icon for Tally
 } from "lucide-react";
 
 const navigationItems = [
@@ -139,6 +140,12 @@ const reportItems = [
     title: "Data Cleanup",
     url: "/admin/data",
     icon: Trash2,
+    roles: ["admin"],
+  },
+  {
+    title: "Tally Export",
+    url: "/admin/tally",
+    icon: FileJson,
     roles: ["admin"],
   },
 ];

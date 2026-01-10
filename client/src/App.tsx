@@ -32,6 +32,7 @@ import CustomerEdit from "@/pages/customer-edit";
 
 import AdminCloudStorage from "@/pages/admin-cloud-storage";
 import AdminDataManagement from "@/pages/admin-data";
+import TallyExport from "@/pages/tally-export";
 // import InvoicesPage from "@/pages/invoices";
 
 function Router() {
@@ -40,6 +41,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/cloud-storage" component={AdminCloudStorage} />
       <Route path="/admin/data" component={AdminDataManagement} />
+      <Route path="/admin/tally" component={TallyExport} />
       {/* <Route path="/invoices" component={InvoicesPage} /> */}
       <Route path="/sell" component={Sell} />
       <Route path="/vendors" component={Vendors} />
