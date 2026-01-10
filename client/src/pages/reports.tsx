@@ -128,7 +128,8 @@ export default function Reports() {
 
 
   const filteredInvoices = useMemo(() => {
-    return invoices.filter((inv) => {
+    const safeInvoices = Array.isArray(invoices) ? invoices : [];
+    return safeInvoices.filter((inv) => {
       if (startDate && inv.date < startDate) return false;
       if (endDate && inv.date > endDate) return false;
       if (selectedVehicleId !== "all" && inv.vehicleId !== selectedVehicleId) return false;
@@ -155,22 +156,28 @@ export default function Reports() {
     const invoicesWithHamali = filteredInvoices.filter(inv => inv.includeHamaliCharge && (inv.hamaliChargeAmount || 0) > 0).length;
 
     const filteredInvoiceIds = new Set(filteredInvoices.map(inv => inv.id));
-    const totalPaid = customerPayments
+
+    const safeCustomerPayments = Array.isArray(customerPayments) ? customerPayments : [];
+
+    const totalPaid = safeCustomerPayments
       .filter(p => p.invoiceId && filteredInvoiceIds.has(p.invoiceId))
       .reduce((sum, p) => sum + (p.amount || 0), 0);
     const totalRemaining = totalSales - totalPaid;
 
     // Calculate opening and closing balance for the date range
-    const salesBeforePeriod = invoices
+    // Need original safeInvoices reference here ideally, but using invoices prop directly with check
+    const safeAllInvoices = Array.isArray(invoices) ? invoices : [];
+
+    const salesBeforePeriod = safeAllInvoices
       .filter(inv => startDate && inv.date < startDate)
       .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
-    const paymentsBeforePeriod = customerPayments
+    const paymentsBeforePeriod = safeCustomerPayments
       .filter(p => startDate && p.date < startDate)
       .reduce((sum, p) => sum + (p.amount || 0), 0);
     const openingBalance = salesBeforePeriod - paymentsBeforePeriod;
 
     const salesInPeriod = filteredInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
-    const paymentsInPeriod = customerPayments
+    const paymentsInPeriod = safeCustomerPayments
       .filter(p => {
         if (startDate && p.date < startDate) return false;
         if (endDate && p.date > endDate) return false;
@@ -234,8 +241,9 @@ export default function Reports() {
 
   const reportItems = useMemo(() => {
     const relevantInvoiceIds = new Set(filteredInvoices.map(inv => inv.id));
+    const safeInvoiceItems = Array.isArray(invoiceItems) ? invoiceItems : [];
 
-    return invoiceItems
+    return safeInvoiceItems
       .filter(item => relevantInvoiceIds.has(item.invoiceId))
       .map((item, index) => {
         const invoice = invoices.find(inv => inv.id === item.invoiceId);

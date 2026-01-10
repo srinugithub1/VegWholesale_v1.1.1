@@ -100,7 +100,8 @@ export default function CustomerEdit() {
         if (loadingInvoices || loadingItems) return [];
 
         // Filter by Date
-        let filteredInvoices = invoices;
+        // Defensive check for invoices array
+        let filteredInvoices = Array.isArray(invoices) ? invoices : [];
 
         if (fromDate) {
             const fromStr = format(fromDate, 'yyyy-MM-dd');
@@ -147,22 +148,29 @@ export default function CustomerEdit() {
 
         const relevantIds = new Set(filteredInvoices.map(i => i.id));
 
-        const mappedData = invoiceItems
+        // Defensive checks for related data
+        const safeInvoiceItems = Array.isArray(invoiceItems) ? invoiceItems : [];
+        const safeCustomers = Array.isArray(customers) ? customers : [];
+        const safeVehicles = Array.isArray(vehicles) ? vehicles : [];
+        const safeVendors = Array.isArray(vendors) ? vendors : [];
+        const safeProducts = Array.isArray(products) ? products : [];
+
+        const mappedData = safeInvoiceItems
             .filter(item => relevantIds.has(item.invoiceId))
             .map(item => {
                 const invoice = invoices.find(i => i.id === item.invoiceId);
                 if (!invoice) return null;
 
-                const customer = customers.find(c => c.id === invoice.customerId);
+                const customer = safeCustomers.find(c => c.id === invoice.customerId);
                 const customerName = customer?.name || "Unknown";
 
                 if (customerSearch && !customerName.toLowerCase().includes(customerSearch.toLowerCase())) {
                     return null;
                 }
 
-                const vehicle = vehicles.find(v => v.id === invoice.vehicleId);
-                const vendor = vendors.find(v => v.id === (invoice.vendorId || vehicle?.vendorId));
-                const productName = products.find(p => p.id === item.productId)?.name || "Unknown";
+                const vehicle = safeVehicles.find(v => v.id === invoice.vehicleId);
+                const vendor = safeVendors.find(v => v.id === (invoice.vendorId || vehicle?.vendorId));
+                const productName = safeProducts.find(p => p.id === item.productId)?.name || "Unknown";
 
                 // Timestamps
                 const createdAt = (invoice as any).createdAt ? new Date((invoice as any).createdAt) : new Date(invoice.date);

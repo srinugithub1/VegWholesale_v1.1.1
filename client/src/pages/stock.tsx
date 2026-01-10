@@ -55,7 +55,8 @@ export default function Stock() {
 
   // Filter vehicles by selected shop
   const vehicles = useMemo(() => {
-    return allVehicles.filter(v => v.shop === shop);
+    const safeAllVehicles = Array.isArray(allVehicles) ? allVehicles : [];
+    return safeAllVehicles.filter(v => v.shop === shop);
   }, [allVehicles, shop]);
 
   const { data: allInventories = [] } = useQuery<VehicleInventory[]>({
@@ -72,13 +73,15 @@ export default function Stock() {
 
   // Filter inventories and movements by shop via vehicle
   const shopInventory = useMemo(() => {
+    const safeAllInventories = Array.isArray(allInventories) ? allInventories : [];
     const shopVehicleIds = new Set(vehicles.map(v => v.id));
-    return allInventories.filter(inv => shopVehicleIds.has(inv.vehicleId));
+    return safeAllInventories.filter(inv => shopVehicleIds.has(inv.vehicleId));
   }, [allInventories, vehicles]);
 
   const shopMovements = useMemo(() => {
+    const safeAllMovements = Array.isArray(allMovements) ? allMovements : [];
     const shopVehicleIds = new Set(vehicles.map(v => v.id));
-    return allMovements.filter(mov => shopVehicleIds.has(mov.vehicleId));
+    return safeAllMovements.filter(mov => shopVehicleIds.has(mov.vehicleId));
   }, [allMovements, vehicles]);
 
   const getProductName = (id: string) => products.find((p) => p.id === id)?.name || "Unknown";
@@ -175,7 +178,10 @@ export default function Stock() {
     // Wait, invoices table has vehicleId.
     const shopVehicleIds = new Set(vehicles.map(v => v.id));
 
-    const todaysSales = invoices
+    // Invoices defensive check
+    const safeInvoices = Array.isArray(invoices) ? invoices : [];
+
+    const todaysSales = safeInvoices
       .filter(inv => {
         // Filter by date
         const isToday = inv.date === new Date().toISOString().split("T")[0];

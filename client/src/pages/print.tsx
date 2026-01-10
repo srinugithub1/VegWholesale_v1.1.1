@@ -54,10 +54,11 @@ export default function PrintCenter() {
   const getVehicle = (id: string | null) => id ? vehicles.find((v) => v.id === id) : null;
   const getVendor = (id: string | null) => id ? vendors.find((v) => v.id === id) : null;
 
-  const selectedInvoiceData = invoices.find((i) => i.id === selectedInvoice);
+  const safeInvoices = Array.isArray(invoices) ? invoices : [];
+  const selectedInvoiceData = safeInvoices.find((i) => i.id === selectedInvoice);
   const customer = selectedInvoiceData ? getCustomer(selectedInvoiceData.customerId) : null;
   const vehicle = selectedInvoiceData ? getVehicle(selectedInvoiceData.vehicleId) : null;
-  const vendor = selectedInvoiceData 
+  const vendor = selectedInvoiceData
     ? (getVendor(selectedInvoiceData.vendorId) || (vehicle ? getVendor(vehicle.vendorId) : null))
     : null;
 
