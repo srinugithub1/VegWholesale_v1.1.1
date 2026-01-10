@@ -18,34 +18,40 @@ export default function PrintCenter() {
   const [selectedInvoice, setSelectedInvoice] = useState<string>("");
   const [documentType, setDocumentType] = useState<"invoice" | "challan">("invoice");
 
-  const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
+  const { data: rawInvoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
   });
+  const invoices = Array.isArray(rawInvoices) ? rawInvoices : [];
 
-  const { data: customers = [] } = useQuery<Customer[]>({
+  const { data: rawCustomers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
+  const customers = Array.isArray(rawCustomers) ? rawCustomers : [];
 
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: rawProducts = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
+  const products = Array.isArray(rawProducts) ? rawProducts : [];
 
-  const { data: vehicles = [] } = useQuery<Vehicle[]>({
+  const { data: rawVehicles = [] } = useQuery<Vehicle[]>({
     queryKey: ["/api/vehicles"],
   });
+  const vehicles = Array.isArray(rawVehicles) ? rawVehicles : [];
 
-  const { data: vendors = [] } = useQuery<Vendor[]>({
+  const { data: rawVendors = [] } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
+  const vendors = Array.isArray(rawVendors) ? rawVendors : [];
 
   const { data: companySettings } = useQuery<CompanySettings | null>({
     queryKey: ["/api/company-settings"],
   });
 
-  const { data: invoiceItems = [] } = useQuery<InvoiceItem[]>({
+  const { data: rawInvoiceItems = [] } = useQuery<InvoiceItem[]>({
     queryKey: ["/api/invoices", selectedInvoice, "items"],
     enabled: !!selectedInvoice,
   });
+  const invoiceItems = Array.isArray(rawInvoiceItems) ? rawInvoiceItems : [];
 
   const getCustomerName = (id: string) => customers.find((c) => c.id === id)?.name || "Unknown";
   const getCustomer = (id: string) => customers.find((c) => c.id === id);
@@ -54,8 +60,7 @@ export default function PrintCenter() {
   const getVehicle = (id: string | null) => id ? vehicles.find((v) => v.id === id) : null;
   const getVendor = (id: string | null) => id ? vendors.find((v) => v.id === id) : null;
 
-  const safeInvoices = Array.isArray(invoices) ? invoices : [];
-  const selectedInvoiceData = safeInvoices.find((i) => i.id === selectedInvoice);
+  const selectedInvoiceData = invoices.find((i) => i.id === selectedInvoice);
   const customer = selectedInvoiceData ? getCustomer(selectedInvoiceData.customerId) : null;
   const vehicle = selectedInvoiceData ? getVehicle(selectedInvoiceData.vehicleId) : null;
   const vendor = selectedInvoiceData

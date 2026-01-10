@@ -83,33 +83,40 @@ export default function Reports() {
   const startDate = fromDate ? format(fromDate, 'yyyy-MM-dd') : "";
   const endDate = toDate ? format(toDate, 'yyyy-MM-dd') : "";
 
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: rawProducts = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
+  const products = Array.isArray(rawProducts) ? rawProducts : [];
 
-  const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
+  const { data: rawInvoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
   });
+  const invoices = Array.isArray(rawInvoices) ? rawInvoices : [];
 
-  const { data: invoiceItems = [] } = useQuery<InvoiceItem[]>({
+  const { data: rawInvoiceItems = [] } = useQuery<InvoiceItem[]>({
     queryKey: ["/api/invoice-items"],
   });
+  const invoiceItems = Array.isArray(rawInvoiceItems) ? rawInvoiceItems : [];
 
-  const { data: customers = [] } = useQuery<Customer[]>({
+  const { data: rawCustomers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
+  const customers = Array.isArray(rawCustomers) ? rawCustomers : [];
 
-  const { data: vehicles = [] } = useQuery<Vehicle[]>({
+  const { data: rawVehicles = [] } = useQuery<Vehicle[]>({
     queryKey: ["/api/vehicles"],
   });
+  const vehicles = Array.isArray(rawVehicles) ? rawVehicles : [];
 
-  const { data: vendors = [] } = useQuery<Vendor[]>({
+  const { data: rawVendors = [] } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
+  const vendors = Array.isArray(rawVendors) ? rawVendors : [];
 
-  const { data: customerPayments = [] } = useQuery<CustomerPayment[]>({
+  const { data: rawCustomerPayments = [] } = useQuery<CustomerPayment[]>({
     queryKey: ["/api/customer-payments"],
   });
+  const customerPayments = Array.isArray(rawCustomerPayments) ? rawCustomerPayments : [];
 
   const getCustomerName = (id: string) => customers.find((c) => c.id === id)?.name || "Unknown";
   const getVendorName = (id: string | null) => vendors.find((v) => v.id === id)?.name || "-";
