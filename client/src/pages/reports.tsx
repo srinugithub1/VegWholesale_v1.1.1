@@ -88,10 +88,10 @@ export default function Reports() {
   });
   const products = Array.isArray(rawProducts) ? rawProducts : [];
 
-  const { data: rawInvoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
+  const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
     queryKey: ["/api/invoices"],
   });
-  const invoices = Array.isArray(rawInvoices) ? rawInvoices : [];
+  const invoices = invoicesResult?.invoices || [];
 
   const { data: rawInvoiceItems = [] } = useQuery<InvoiceItem[]>({
     queryKey: ["/api/invoice-items"],

@@ -18,10 +18,10 @@ export default function PrintCenter() {
   const [selectedInvoice, setSelectedInvoice] = useState<string>("");
   const [documentType, setDocumentType] = useState<"invoice" | "challan">("invoice");
 
-  const { data: rawInvoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
+  const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
     queryKey: ["/api/invoices"],
   });
-  const invoices = Array.isArray(rawInvoices) ? rawInvoices : [];
+  const invoices = invoicesResult?.invoices || [];
 
   const { data: rawCustomers = [] } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],

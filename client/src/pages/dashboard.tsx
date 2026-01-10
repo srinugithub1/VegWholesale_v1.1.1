@@ -140,9 +140,10 @@ export default function Dashboard() {
     queryKey: ["/api/products"],
   });
 
-  const { data: allInvoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
+  const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
     queryKey: ["/api/invoices"],
   });
+  const allInvoices = invoicesResult?.invoices || [];
 
   const { data: allPurchases = [], isLoading: purchasesLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],

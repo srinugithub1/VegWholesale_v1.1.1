@@ -84,9 +84,10 @@ export default function CustomerEdit() {
     } | null>(null);
 
     // --- Data Fetching ---
-    const { data: invoices = [], isLoading: loadingInvoices } = useQuery<Invoice[]>({
+    const { data: invoicesResult, isLoading: loadingInvoices } = useQuery<{ invoices: Invoice[], total: number }>({
         queryKey: ["/api/invoices"]
     });
+    const invoices = invoicesResult?.invoices || [];
     const { data: invoiceItems = [], isLoading: loadingItems } = useQuery<InvoiceItem[]>({
         queryKey: ["/api/invoice-items"]
     });

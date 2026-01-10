@@ -67,9 +67,10 @@ export default function Stock() {
     queryKey: ["/api/vehicle-inventory-movements"],
   });
 
-  const { data: invoices = [] } = useQuery<Invoice[]>({
+  const { data: invoicesResult } = useQuery<{ invoices: Invoice[], total: number }>({
     queryKey: ["/api/invoices"],
   });
+  const invoices = invoicesResult?.invoices || [];
 
   // Filter inventories and movements by shop via vehicle
   const shopInventory = useMemo(() => {
