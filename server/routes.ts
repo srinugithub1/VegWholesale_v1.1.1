@@ -75,6 +75,26 @@ export async function registerRoutes(
     }
   });
 
+  // Admin only - Clear Table Data
+  app.post("/api/admin/clear-table", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+
+    const { tableName } = req.body;
+    if (!tableName) {
+      return res.status(400).json({ error: "Table name is required" });
+    }
+
+    try {
+      await storage.clearTable(tableName);
+      res.json({ message: `Table ${tableName} cleared successfully` });
+    } catch (error: any) {
+      console.error("Error clearing table:", error);
+      res.status(500).json({ error: error.message || "Failed to clear table" });
+    }
+  });
+
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const users = await storage.getUsers();

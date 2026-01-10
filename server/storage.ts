@@ -158,6 +158,11 @@ export interface IStorage {
   // System Metrics
   getSystemMetricsHistory(limit?: number): Promise<SystemMetric[]>;
   upsertSystemMetric(metric: InsertSystemMetric): Promise<SystemMetric>;
+  getSystemMetricsHistory(limit?: number): Promise<SystemMetric[]>;
+  upsertSystemMetric(metric: InsertSystemMetric): Promise<SystemMetric>;
+
+  // Admin Data Management
+  clearTable(tableName: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -991,20 +996,73 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertSystemMetric(metric: InsertSystemMetric): Promise<SystemMetric> {
-    const [existing] = await db.select().from(systemMetrics).where(eq(systemMetrics.date, metric.date));
+    const [existing] = await db
+      .select()
+      .from(systemMetrics)
+      .where(eq(systemMetrics.date, metric.date));
 
     if (existing) {
-      const [updated] = await db.update(systemMetrics)
-        .set({ dbSizeBytes: metric.dbSizeBytes })
+      const [updated] = await db
+        .update(systemMetrics)
+        .set(metric)
         .where(eq(systemMetrics.id, existing.id))
         .returning();
       return updated;
-    } else {
-      const [created] = await db.insert(systemMetrics)
-        .values(metric)
-        .returning();
-      return created;
     }
+
+    const [created] = await db.insert(systemMetrics).values(metric).returning();
+    return created;
+  }
+
+  async clearTable(tableName: string): Promise<boolean> {
+    // Safety check - whitelist allowed tables
+    const allowedTables = [
+      "invoices", "purchases", "customers", "vendors",
+      "vehicles", "products", "stock_movements",
+      "customer_payments", "vendor_payments", "vendor_returns",
+      "hamali_cash_payments", "vehicle_inventory_movements",
+      "vehicle_inventory"
+    ];
+
+    if (!allowedTables.includes(tableName)) {
+      throw new Error(`Deletion of table '${tableName}' is not allowed.`);
+    }
+
+    // Handle dependencies first
+    if (tableName === "invoices") {
+      await db.delete(invoiceItems);
+      await db.delete(invoices);
+    } else if (tableName === "purchases") {
+      await db.delete(purchaseItems);
+      await db.delete(purchases);
+    } else if (tableName === "vendor_returns") {
+      await db.delete(vendorReturnItems);
+      await db.delete(vendorReturns);
+    } else if (tableName === "customers") {
+      await db.delete(customers);
+    } else if (tableName === "vendors") {
+      await db.delete(vendors);
+    } else if (tableName === "vehicles") {
+      await db.delete(vehicles);
+    } else if (tableName === "products") {
+      await db.delete(products);
+    } else if (tableName === "stock_movements") {
+      await db.delete(stockMovements);
+    } else if (tableName === "customer_payments") {
+      await db.delete(customerPayments);
+    } else if (tableName === "vendor_payments") {
+      await db.delete(vendorPayments);
+    } else if (tableName === "hamali_cash_payments") {
+      await db.delete(hamaliCashPayments);
+    } else if (tableName === "vehicle_inventory_movements") {
+      await db.delete(vehicleInventoryMovements);
+    } else if (tableName === "vehicle_inventory") {
+      await db.delete(vehicleInventory);
+    } else {
+      return false;
+    }
+
+    return true;
   }
 }
 

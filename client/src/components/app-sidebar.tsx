@@ -28,7 +28,8 @@ import {
   Scale,
   RotateCcw,
   ShoppingBag,
-  Database, // Imported Database icon
+  Database,
+  Trash2, // Imported Trash2 icon
 } from "lucide-react";
 
 const navigationItems = [
@@ -132,6 +133,12 @@ const reportItems = [
     title: "Settings",
     url: "/settings",
     icon: Settings,
+    roles: ["admin"],
+  },
+  {
+    title: "Data Cleanup",
+    url: "/admin/data",
+    icon: Trash2,
     roles: ["admin"],
   },
 ];
