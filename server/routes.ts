@@ -95,6 +95,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/table-stats", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+
+    try {
+      const stats = await storage.getTableStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching table stats:", error);
+      res.status(500).json({ error: "Failed to fetch table stats" });
+    }
+  });
+
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const users = await storage.getUsers();

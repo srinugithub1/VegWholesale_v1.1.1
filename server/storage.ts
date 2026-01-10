@@ -163,6 +163,7 @@ export interface IStorage {
 
   // Admin Data Management
   clearTable(tableName: string): Promise<boolean>;
+  getTableStats(): Promise<Record<string, { count: number; sizeBytes: number }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1063,6 +1064,40 @@ export class DatabaseStorage implements IStorage {
     }
 
     return true;
+  }
+
+  async getTableStats(): Promise<Record<string, { count: number; sizeBytes: number }>> {
+    const stats: Record<string, { count: number; sizeBytes: number }> = {};
+
+    // Whitelist allowed tables for stats (same as clearTable + maybe others if needed)
+    const allowedTables = [
+      "invoices", "purchases", "customers", "vendors",
+      "vehicles", "products", "stock_movements",
+      "customer_payments", "vendor_payments", "vendor_returns",
+      "hamali_cash_payments", "vehicle_inventory_movements",
+      "vehicle_inventory"
+    ];
+
+    for (const table of allowedTables) {
+      try {
+        // Get count
+        // Note: We use sql.raw because table names cannot be parameterized in identifiers easily without sql identifier helpers,
+        // but here we are using a strict whitelist so it is safe from injection.
+        const countResult = await db.execute(sql.raw(`SELECT count(*) as count FROM ${table}`));
+        const count = Number(countResult.rows[0].count);
+
+        // Get size
+        const sizeResult = await db.execute(sql.raw(`SELECT pg_total_relation_size('${table}') as size`));
+        const size = Number(sizeResult.rows[0].size);
+
+        stats[table] = { count, sizeBytes: size };
+      } catch (err) {
+        console.error(`Failed to get stats for table ${table}:`, err);
+        stats[table] = { count: 0, sizeBytes: 0 };
+      }
+    }
+
+    return stats;
   }
 }
 

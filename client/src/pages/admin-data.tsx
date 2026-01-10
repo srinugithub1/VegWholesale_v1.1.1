@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trash2, AlertTriangle, Database } from "lucide-react";
+import { Trash2, AlertTriangle, Database, FileText } from "lucide-react";
 
 type TableInfo = {
     id: string;
@@ -23,6 +23,8 @@ type TableInfo = {
     description: string;
     risk: "high" | "medium" | "low";
 };
+
+type TableStats = Record<string, { count: number; sizeBytes: number }>;
 
 const TABLES: TableInfo[] = [
     {
@@ -111,6 +113,10 @@ export default function AdminDataManagement() {
     const [confirmationInput, setConfirmationInput] = useState("");
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
+    const { data: stats } = useQuery<TableStats>({
+        queryKey: ["/api/admin/table-stats"]
+    });
+
     const clearTableMutation = useMutation({
         mutationFn: async (tableName: string) => {
             await apiRequest("POST", "/api/admin/clear-table", { tableName });
@@ -152,6 +158,14 @@ export default function AdminDataManagement() {
         setConfirmationInput("");
     };
 
+    const formatBytes = (bytes: number) => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
     return (
         <div className="p-8 space-y-8 max-w-7xl mx-auto">
             <div className="space-y-1">
@@ -170,27 +184,45 @@ export default function AdminDataManagement() {
             </Alert>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {TABLES.map((table) => (
-                    <Card key={table.id} className="border-l-4 border-l-transparent hover:border-l-primary transition-all">
-                        <CardHeader>
-                            <div className="flex justify-between items-start">
-                                <CardTitle className="text-lg">{table.label}</CardTitle>
-                                {table.risk === "high" && <Badge variant="destructive">High Risk</Badge>}
-                            </div>
-                            <CardDescription>{table.description}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Button
-                                variant="outline"
-                                className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                onClick={() => handleInitiateClear(table)}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Clear Data
-                            </Button>
-                        </CardContent>
-                    </Card>
-                ))}
+                {TABLES.map((table) => {
+                    const tableStats = stats?.[table.id];
+                    return (
+                        <Card key={table.id} className="border-l-4 border-l-transparent hover:border-l-primary transition-all">
+                            <CardHeader>
+                                <div className="flex justify-between items-start">
+                                    <CardTitle className="text-lg">{table.label}</CardTitle>
+                                    {table.risk === "high" && <Badge variant="destructive">High Risk</Badge>}
+                                </div>
+                                <CardDescription>{table.description}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="flex flex-col gap-1 p-2 bg-muted/50 rounded-md">
+                                        <span className="text-muted-foreground flex items-center gap-1">
+                                            <FileText className="h-3 w-3" /> Records
+                                        </span>
+                                        <span className="font-semibold text-lg">{tableStats?.count?.toLocaleString() ?? "-"}</span>
+                                    </div>
+                                    <div className="flex flex-col gap-1 p-2 bg-muted/50 rounded-md">
+                                        <span className="text-muted-foreground flex items-center gap-1">
+                                            <Database className="h-3 w-3" /> Size
+                                        </span>
+                                        <span className="font-semibold text-lg">{tableStats ? formatBytes(tableStats.sizeBytes) : "-"}</span>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    variant="outline"
+                                    className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={() => handleInitiateClear(table)}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Clear Data
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
             </div>
 
             <Dialog open={isConfirmOpen} onOpenChange={handleClose}>
