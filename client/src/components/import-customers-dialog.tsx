@@ -116,8 +116,8 @@ export function ImportCustomersDialog() {
     };
 
     const handleImport = async () => {
-        if (!file || !mapping.name || !mapping.phone) {
-            toast({ title: "Please map Name and Phone fields", variant: "destructive" });
+        if (!file || !mapping.name) {
+            toast({ title: "Please map Name column", variant: "destructive" });
             return;
         }
 
@@ -140,10 +140,10 @@ export function ImportCustomersDialog() {
 
                     const customersToImport: InsertCustomer[] = allRows.map((row) => ({
                         name: String(row[mapping.name] || "").trim(),
-                        phone: String(row[mapping.phone] || "").trim(),
+                        phone: (mapping.phone && mapping.phone !== "skip_phone_option") ? String(row[mapping.phone] || "").trim() : "",
                         email: (mapping.email && mapping.email !== "skip_email_option") ? String(row[mapping.email] || "") : undefined,
                         address: (mapping.address && mapping.address !== "skip_address_option") ? String(row[mapping.address] || "") : undefined,
-                    })).filter(c => c.name && c.phone); // Filter empty rows
+                    })).filter(c => c.name); // Filter empty rows (Phone is now optional)
 
                     if (customersToImport.length === 0) {
                         toast({ title: "No valid customers found", variant: "destructive" });
@@ -234,10 +234,11 @@ export function ImportCustomersDialog() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Map "Phone" Column <span className="text-red-500">*</span></Label>
+                                    <Label>Map "Phone" Column</Label>
                                     <Select value={mapping.phone} onValueChange={(v) => setMapping(p => ({ ...p, phone: v }))}>
                                         <SelectTrigger><SelectValue placeholder="Select column" /></SelectTrigger>
                                         <SelectContent>
+                                            <SelectItem value="skip_phone_option">-- Skip --</SelectItem>
                                             {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
@@ -296,7 +297,7 @@ export function ImportCustomersDialog() {
 
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                    <Button onClick={handleImport} disabled={!file || isUploading || !mapping.name || !mapping.phone}>
+                    <Button onClick={handleImport} disabled={!file || isUploading || !mapping.name}>
                         {isUploading ? "Importing..." : "Import Customers"}
                     </Button>
                 </DialogFooter>
