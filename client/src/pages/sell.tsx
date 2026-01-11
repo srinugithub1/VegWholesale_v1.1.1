@@ -2243,7 +2243,7 @@ function VehicleSaleHistory({ vehicleId }: { vehicleId: string }) {
   const LIMIT = 10;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/invoices", { vehicleId, page, limit: LIMIT }],
+    queryKey: [`/api/invoices?vehicleId=${vehicleId}&page=${page}&limit=${LIMIT}`],
     enabled: isOpen,
   });
 
