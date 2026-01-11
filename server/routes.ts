@@ -461,6 +461,7 @@ export async function registerRoutes(
       const shop = req.query.shop ? Number(req.query.shop) : undefined;
       const page = req.query.page ? Number(req.query.page) : 1;
       const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const vehicleId = req.query.vehicleId as string | undefined;
 
       // Ensure admin only for advanced viewing if strict, but adhering to general RBAC for the page access.
       // The user asked for the TAB to be admin only. The API might also need protection.
@@ -472,7 +473,8 @@ export async function registerRoutes(
         endDate,
         shop,
         page,
-        limit
+        limit,
+        vehicleId
       });
 
       res.json(result);

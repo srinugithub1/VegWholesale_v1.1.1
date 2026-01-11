@@ -552,7 +552,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number }> {
+  async getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number, vehicleId?: string }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number }> {
     const page = filters.page || 1;
     const limit = filters.limit || 50;
     const offset = (page - 1) * limit;
@@ -561,6 +561,7 @@ export class DatabaseStorage implements IStorage {
     if (filters.startDate) conditions.push(gte(invoices.date, filters.startDate));
     if (filters.endDate) conditions.push(lte(invoices.date, filters.endDate));
     if (filters.shop) conditions.push(eq(vehicles.shop, filters.shop));
+    if (filters.vehicleId) conditions.push(eq(invoices.vehicleId, filters.vehicleId));
 
     // Get total count first
     const countQuery = db.select({ count: sql<number>`count(*)` })
@@ -584,7 +585,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(customers, eq(invoices.customerId, customers.id))
       .limit(limit)
       .offset(offset)
-      .orderBy(desc(invoices.date), desc(invoices.createdAt));
+      .orderBy(desc(invoices.createdAt)); // Order by creation time to show recent first
 
     if (conditions.length > 0) {
       query.where(and(...conditions));

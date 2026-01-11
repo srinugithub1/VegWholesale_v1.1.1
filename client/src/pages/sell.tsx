@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2, Edit, AlertTriangle } from "lucide-react";
+import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2, Edit, AlertTriangle, ChevronRight, ChevronLeft } from "lucide-react";
 import { useScale } from "@/hooks/use-scale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Vehicle, Product, VehicleInventory, Vendor, Customer, Invoice } from "@shared/schema";
@@ -1467,32 +1467,34 @@ export default function Sell() {
 
           if (isSelected) {
             return (
-              <VehicleSalePane
-                key={vehicle.id}
-                vehicle={vehicle}
-                inventory={vehicleInventories[vehicle.id] || []}
-                products={products}
-                customers={customers}
-                vendors={vendors}
-                draft={saleDrafts[vehicle.id] || { products: [], customerName: "", selectedCustomerId: "", hamaliCharge: 0 }}
-                onUpdateDraft={(draft) => handleUpdateDraft(vehicle.id, draft)}
-                onClose={() => handleCloseSale(vehicle.id)}
-                onSaleComplete={(invoice) => {
-                  handleSaleComplete(vehicle.id, invoice);
-                  const currentTotal = inventory.reduce((sum, inv) => sum + inv.quantity, 0);
-                  const soldWeight = invoice.totalKgWeight || 0;
-                  if (currentTotal - soldWeight <= 0.1) {
-                    toast({
-                      title: "Vehicle Cleared",
-                      description: `Vehicle ${vehicle.number} is now empty.`,
-                      duration: 3000,
-                    });
-                  }
-                }}
-                currentWeight={scale.currentWeight}
-                rawWeight={scale.rawWeight}
-                isScaleConnected={scale.isConnected}
-              />
+              <div key={vehicle.id} className="flex h-auto max-h-[600px] gap-0 items-start">
+                <VehicleSalePane
+                  vehicle={vehicle}
+                  inventory={vehicleInventories[vehicle.id] || []}
+                  products={products}
+                  customers={customers}
+                  vendors={vendors}
+                  draft={saleDrafts[vehicle.id] || { products: [], customerName: "", selectedCustomerId: "", hamaliCharge: 0 }}
+                  onUpdateDraft={(draft) => handleUpdateDraft(vehicle.id, draft)}
+                  onClose={() => handleCloseSale(vehicle.id)}
+                  onSaleComplete={(invoice) => {
+                    handleSaleComplete(vehicle.id, invoice);
+                    const currentTotal = inventory.reduce((sum, inv) => sum + inv.quantity, 0);
+                    const soldWeight = invoice.totalKgWeight || 0;
+                    if (currentTotal - soldWeight <= 0.1) {
+                      toast({
+                        title: "Vehicle Cleared",
+                        description: `Vehicle ${vehicle.number} is now empty.`,
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  currentWeight={scale.currentWeight}
+                  rawWeight={scale.rawWeight}
+                  isScaleConnected={scale.isConnected}
+                />
+                <VehicleSaleHistory vehicleId={vehicle.id} />
+              </div>
             );
           }
 
@@ -2232,5 +2234,99 @@ function ProductRow({
         ))}
       </div>
     </div>
+  );
+}
+
+function VehicleSaleHistory({ vehicleId }: { vehicleId: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const LIMIT = 10;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/invoices", { vehicleId, page, limit: LIMIT }],
+    enabled: isOpen,
+  });
+
+  const invoices = data?.invoices || [];
+  const totalCount = data?.total || 0;
+
+  if (!isOpen) {
+    return (
+      <div className="h-full flex items-center bg-card border rounded-r-lg border-l-0 shadow-sm ml-[-4px] z-0">
+        <Button
+          variant="ghost"
+          className="h-24 w-6 p-0 rounded-l-none hover:bg-muted"
+          onClick={() => setIsOpen(true)}
+          title="View History"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Card className="flex flex-col w-80 h-auto border-l-0 rounded-l-none ml-[-4px] z-0 animate-in slide-in-from-left-2 shadow-md">
+      <CardHeader className="p-3 pb-2 border-b flex flex-row items-center justify-between space-y-0 bg-muted/20">
+        <div className="flex flex-col">
+          <CardTitle className="text-sm font-bold">Recent Customers</CardTitle>
+          <CardDescription className="text-xs">Total Records: {totalCount}</CardDescription>
+        </div>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsOpen(false)}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+      </CardHeader>
+      <CardContent className="p-0 flex-1 overflow-hidden flex flex-col min-h-[300px]">
+        <div className="grid grid-cols-12 gap-1 p-2 bg-muted/50 text-[10px] font-bold text-muted-foreground border-b text-center">
+          <div className="col-span-5 text-left pl-1">Name</div>
+          <div className="col-span-2">Bags</div>
+          <div className="col-span-2">Wght</div>
+          <div className="col-span-3">Amt</div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto max-h-[400px]">
+          {isLoading ? (
+            <div className="p-4 text-center text-xs">Loading...</div>
+          ) : invoices.length === 0 ? (
+            <div className="p-4 text-center text-xs text-muted-foreground">No recent sales</div>
+          ) : (
+            invoices.map((inv) => (
+              <div key={inv.id} className="grid grid-cols-12 gap-1 p-2 border-b text-xs items-center hover:bg-muted/30 text-center">
+                <div className="col-span-5 text-left truncate font-medium" title={inv.customerName || "Unknown"}>
+                  {inv.customerName || "Unknown"}
+                </div>
+                <div className="col-span-2">{inv.bags || 0}</div>
+                <div className="col-span-2">{(inv.totalKgWeight || 0).toFixed(1)}</div>
+                <div className="col-span-3 font-semibold">₹{Math.round(inv.grandTotal)}</div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="p-2 border-t flex items-center justify-between bg-muted/10 mt-auto">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            disabled={page <= 1}
+            onClick={() => setPage(p => p - 1)}
+          >
+            <ChevronLeft className="h-3 w-3" />
+          </Button>
+          <span className="text-[10px] text-muted-foreground">
+            Page {page} of {Math.max(1, Math.ceil(totalCount / LIMIT))}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            disabled={page >= Math.ceil(totalCount / LIMIT)}
+            onClick={() => setPage(p => p + 1)}
+          >
+            <ChevronRight className="h-3 w-3" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
