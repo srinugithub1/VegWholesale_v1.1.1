@@ -78,6 +78,56 @@ export function useScale() {
   const [rawData, setRawData] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [settings, setSettingsState] = useState<ScaleSettings>(loadLocalSettings);
+  const [isSharedConnection, setIsSharedConnection] = useState(false);
+  const lastMessageTimeRef = useRef<number>(0);
+  const channelRef = useRef<BroadcastChannel | null>(null);
+
+  // Initialize BroadcastChannel
+  useEffect(() => {
+    channelRef.current = new BroadcastChannel("veg-wholesale-scale");
+
+    const handleMessage = (event: MessageEvent) => {
+      const { type, payload } = event.data;
+      if (type === "SCALE_DATA") {
+        // If we received data from another tab, we are a follower
+        // But only if we are NOT connected directly (Leader)
+        if (!portRef.current) {
+          lastMessageTimeRef.current = Date.now();
+          if (!isConnected) setIsConnected(true);
+          if (!isSharedConnection) setIsSharedConnection(true);
+
+          setCurrentWeight(payload.rounded);
+          setRawWeight(payload.raw);
+          rawWeightRef.current = payload.raw;
+          setRawData(payload.rawData || `Shared: ${payload.raw}`);
+          setError(null);
+        }
+      }
+    };
+
+    channelRef.current.addEventListener("message", handleMessage);
+
+    // Heartbeat check for shared connection
+    const interval = setInterval(() => {
+      if (isSharedConnection && !portRef.current) {
+        if (Date.now() - lastMessageTimeRef.current > 3000) {
+          // Leader died
+          setIsConnected(false);
+          setIsSharedConnection(false);
+          setCurrentWeight(null);
+          setRawWeight(null);
+          setError("Shared connection lost.");
+        }
+      }
+    }, 1000);
+
+    return () => {
+      channelRef.current?.removeEventListener("message", handleMessage);
+      channelRef.current?.close();
+      clearInterval(interval);
+    };
+  }, [isConnected, isSharedConnection]);
+
 
   // Sync with server settings
   const { data: companySettings, refetch: refetchSettings } = useQuery<CompanySettings>({
@@ -226,6 +276,16 @@ export function useScale() {
                 setCurrentWeight(result.rounded);
                 setRawWeight(result.raw); // Update state for UI to react
                 rawWeightRef.current = result.raw; // Update ref for synchronous access if needed
+
+                // Broadcast to other tabs
+                channelRef.current?.postMessage({
+                  type: "SCALE_DATA",
+                  payload: {
+                    raw: result.raw,
+                    rounded: result.rounded,
+                    rawData: line
+                  }
+                });
               }
             }
           }
@@ -275,6 +335,16 @@ export function useScale() {
         setRawWeight(raw);
         rawWeightRef.current = raw;
         setRawData(`DEMO: ${raw.toFixed(3)} KG`);
+
+        // Broadcast Demo Data too!
+        channelRef.current?.postMessage({
+          type: "SCALE_DATA",
+          payload: {
+            raw: raw,
+            rounded: rounded,
+            rawData: `DEMO: ${raw.toFixed(3)} KG`
+          }
+        });
       }, 500);
     } else {
       if (demoIntervalRef.current) {
@@ -294,6 +364,9 @@ export function useScale() {
   const connect = useCallback(async () => {
     setError(null);
     setIsConnecting(true);
+
+    // If we are already a follower (shared connection), connecting explicitly overrides it.
+    setIsSharedConnection(false);
 
     if (isDemoMode) {
       // Simulate connection delay
@@ -352,6 +425,14 @@ export function useScale() {
 
   // Disconnect from scale
   const disconnect = useCallback(async () => {
+    // If we are just a follower, just reset state
+    if (isSharedConnection) {
+      setIsConnected(false);
+      setIsSharedConnection(false);
+      setCurrentWeight(null);
+      return;
+    }
+
     if (isDemoMode) {
       setIsConnected(false);
       setCurrentWeight(null);
@@ -384,10 +465,17 @@ export function useScale() {
       setIsConnected(false);
       portRef.current = null;
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, isSharedConnection]);
 
   // Send command to scale (e.g., "P" to request weight)
   const sendCommand = useCallback(async (command: string) => {
+    if (isSharedConnection) {
+      // Can't write from follower tag yet
+      // Ideally we would broadcast "COMMAND" to leader
+      console.warn("Cannot send command from shared connection yet");
+      return false;
+    }
+
     if (isDemoMode) {
       // In demo mode, just log it
       console.log("Demo scale command:", command);
@@ -408,7 +496,7 @@ export function useScale() {
       setError(`Send failed: ${(err as Error).message}`);
       return false;
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, isSharedConnection]);
 
   // Request weight reading (common command)
   const requestWeight = useCallback(() => {
@@ -439,6 +527,7 @@ export function useScale() {
     // State
     isConnected,
     isConnecting,
+    isSharedConnection,
     currentWeight,
     rawWeight: rawWeightRef.current, // Expose raw numeric weight
     rawData,

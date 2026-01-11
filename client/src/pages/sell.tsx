@@ -1404,10 +1404,11 @@ export default function Sell() {
               <Scale className="h-4 w-4 text-muted-foreground" />
               {scale.isConnected ? (
                 <>
-                  <Badge variant="outline" className="bg-background text-primary font-mono">
+                  <Badge variant="outline" className={`bg-background font-mono ${scale.isSharedConnection ? "text-amber-600 border-amber-200" : "text-primary"}`}>
                     {scale.currentWeight !== null ? scale.currentWeight.toFixed(3) : "---"} KG
+                    {scale.isSharedConnection && <span className="ml-1 text-[8px] uppercase">(Shared)</span>}
                   </Badge>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={scale.disconnect} title="Disconnect Scale">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={scale.disconnect} title={scale.isSharedConnection ? "Stop Listening" : "Disconnect Scale"}>
                     <Unplug className="h-3 w-3 text-destructive" />
                   </Button>
                 </>
