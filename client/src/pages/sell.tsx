@@ -2242,12 +2242,12 @@ function VehicleSaleHistory({ vehicleId }: { vehicleId: string }) {
   const [page, setPage] = useState(1);
   const LIMIT = 10;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: [`/api/invoices?vehicleId=${vehicleId}&page=${page}&limit=${LIMIT}`],
     enabled: isOpen,
   });
 
-  const invoices = data?.invoices || [];
+  const invoices = Array.isArray(data?.invoices) ? data.invoices : [];
   const totalCount = data?.total || 0;
 
   if (!isOpen) {
@@ -2287,17 +2287,19 @@ function VehicleSaleHistory({ vehicleId }: { vehicleId: string }) {
         <div className="flex-1 overflow-y-auto max-h-[400px]">
           {isLoading ? (
             <div className="p-4 text-center text-xs">Loading...</div>
+          ) : isError ? (
+            <div className="p-4 text-center text-xs text-destructive">Failed to load history</div>
           ) : invoices.length === 0 ? (
             <div className="p-4 text-center text-xs text-muted-foreground">No recent sales</div>
           ) : (
             invoices.map((inv) => (
-              <div key={inv.id} className="grid grid-cols-12 gap-1 p-2 border-b text-xs items-center hover:bg-muted/30 text-center">
-                <div className="col-span-5 text-left truncate font-medium" title={inv.customerName || "Unknown"}>
-                  {inv.customerName || "Unknown"}
+              <div key={inv?.id || Math.random()} className="grid grid-cols-12 gap-1 p-2 border-b text-xs items-center hover:bg-muted/30 text-center">
+                <div className="col-span-5 text-left truncate font-medium" title={inv?.customerName || "Unknown"}>
+                  {inv?.customerName || "Unknown"}
                 </div>
-                <div className="col-span-2">{inv.bags || 0}</div>
-                <div className="col-span-2">{(inv.totalKgWeight || 0).toFixed(1)}</div>
-                <div className="col-span-3 font-semibold">₹{Math.round(inv.grandTotal)}</div>
+                <div className="col-span-2">{inv?.bags || 0}</div>
+                <div className="col-span-2">{(inv?.totalKgWeight || 0).toFixed(1)}</div>
+                <div className="col-span-3 font-semibold">₹{Math.round(inv?.grandTotal || 0)}</div>
               </div>
             ))
           )}
