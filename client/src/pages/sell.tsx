@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -859,68 +860,73 @@ function SaleSuccessDialog({
   return (
     <>
       {/* Thermal Receipt - Visible only when printing */}
-      <div className="hidden print:block print:w-[80mm] print:mx-auto print:font-mono print:text-xs text-black">
-        <div className="text-center mb-4">
-          <h2 className="text-xl font-bold uppercase">{companySettings?.name || "VegWholesale"}</h2>
-          <p className="text-[10px]">{companySettings?.address || "Mandi"}</p>
-          <p className="text-[10px]">Phone: {companySettings?.phone || ""}</p>
-        </div>
-
-        <div className="border-b-2 border-dashed border-black pb-2 mb-2 space-y-1">
-          <div className="flex justify-between">
-            <span>Invoice:</span>
-            <span className="font-bold">{invoice.invoiceNumber}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Date:</span>
-            <span>{format(new Date(invoice.date), 'dd/MM/yyyy h:mm a')}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Customer:</span>
-            <span className="font-bold truncate max-w-[120px]">{saleDetails?.customerName || 'Cash Sale'}</span>
-          </div>
-        </div>
-
-        <div className="mb-2">
-          <div className="flex font-bold border-b border-black pb-1 mb-1">
-            <span className="w-16">Item</span>
-            <span className="w-10 text-right">Kg</span>
-            <span className="w-10 text-right">Rate</span>
-            <span className="flex-1 text-right">Amt</span>
-          </div>
-          {saleDetails?.items && saleDetails.items.map((item, idx) => (
-            <div key={idx} className="mb-2 border-b border-dashed border-gray-400 pb-1">
-              <div className="flex justify-between font-bold">
-                <span className="truncate w-16">{item.name}</span>
-                <span className="w-10 text-right">{item.weight}</span>
-                <span className="w-10 text-right">{item.price}</span>
-                <span className="flex-1 text-right">{item.total.toFixed(0)}</span>
-              </div>
-              {/* Optional: Show Bags count */}
-              <div className="text-[10px] italic">Bags: {item.bags}</div>
-
-              {/* Weight Breakdown */}
-              {item.weightBreakdown && item.weightBreakdown.length > 0 && (
-                <div className="mt-1 text-[9px] leading-tight">
-                  <span className="font-semibold">Weights:</span> {item.weightBreakdown.map(w => w.toFixed(1)).join(', ')}
-                </div>
-              )}
+      {createPortal(
+        <div className="hidden print:block print:fixed print:inset-0 print:bg-white print:z-[99999] print:p-0 print:m-0 text-black print:overflow-visible">
+          <div className="print:w-[80mm] print:mx-auto print:font-mono print:text-xs pt-4">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold uppercase">{companySettings?.name || "VegWholesale"}</h2>
+              <p className="text-[10px]">{companySettings?.address || "Mandi"}</p>
+              <p className="text-[10px]">Phone: {companySettings?.phone || ""}</p>
             </div>
-          ))}
-        </div>
 
-        <div className="border-t-2 border-dashed border-black pt-2 mt-2 space-y-1 font-bold text-sm">
-          <div className="flex justify-between">
-            <span>TOTAL:</span>
-            <span className="text-lg">Rs {invoice.grandTotal.toFixed(0)}</span>
+            <div className="border-b-2 border-dashed border-black pb-2 mb-2 space-y-1">
+              <div className="flex justify-between">
+                <span>Invoice:</span>
+                <span className="font-bold">{invoice.invoiceNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Date:</span>
+                <span>{format(new Date(invoice.date), 'dd/MM/yyyy h:mm a')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Customer:</span>
+                <span className="font-bold truncate max-w-[120px]">{saleDetails?.customerName || 'Cash Sale'}</span>
+              </div>
+            </div>
+
+            <div className="mb-2">
+              <div className="flex font-bold border-b border-black pb-1 mb-1">
+                <span className="w-16">Item</span>
+                <span className="w-10 text-right">Kg</span>
+                <span className="w-10 text-right">Rate</span>
+                <span className="flex-1 text-right">Amt</span>
+              </div>
+              {saleDetails?.items && saleDetails.items.map((item, idx) => (
+                <div key={idx} className="mb-2 border-b border-dashed border-gray-400 pb-1">
+                  <div className="flex justify-between font-bold">
+                    <span className="truncate w-16">{item.name}</span>
+                    <span className="w-10 text-right">{item.weight}</span>
+                    <span className="w-10 text-right">{item.price}</span>
+                    <span className="flex-1 text-right">{item.total.toFixed(0)}</span>
+                  </div>
+                  {/* Optional: Show Bags count */}
+                  <div className="text-[10px] italic">Bags: {item.bags}</div>
+
+                  {/* Weight Breakdown */}
+                  {item.weightBreakdown && item.weightBreakdown.length > 0 && (
+                    <div className="mt-1 text-[9px] leading-tight">
+                      <span className="font-semibold">Weights:</span> {item.weightBreakdown.map(w => w.toFixed(1)).join(', ')}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t-2 border-dashed border-black pt-2 mt-2 space-y-1 font-bold text-sm">
+              <div className="flex justify-between">
+                <span>TOTAL:</span>
+                <span className="text-lg">Rs {invoice.grandTotal.toFixed(0)}</span>
+              </div>
+            </div>
+
+            <div className="text-center mt-6 text-[10px] border-t border-black pt-2 mb-8">
+              <p>Thank You! Visit Again.</p>
+              <p className="mt-1">Powered by VegWholesale</p>
+            </div>
           </div>
-        </div>
-
-        <div className="text-center mt-6 text-[10px] border-t border-black pt-2">
-          <p>Thank You! Visit Again.</p>
-          <p className="mt-1">Powered by VegWholesale</p>
-        </div>
-      </div>
+        </div>,
+        document.body
+      )}
 
       {/* Screen Dialog - Hidden when printing */}
       <Dialog open={open} onOpenChange={onClose}>
