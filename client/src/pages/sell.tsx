@@ -823,34 +823,41 @@ function SaleSuccessDialog({
   if (!invoice) return null;
 
   const handleWhatsAppShare = () => {
-    // Constructing rich message
-    let message = `*🧾 VegWholesale Invoice* %0A`;
-    message += `──────────────────────%0A`;
-    message += `📅 *Date:* ${format(new Date(invoice.date), 'dd/MM/yyyy')} %0A`;
-    message += `🔢 *Invoice No:* ${invoice.invoiceNumber} %0A`;
-    if (saleDetails?.customerName) {
-      message += `👤 *Customer:* ${saleDetails.customerName} %0A`;
-    }
-    message += `──────────────────────%0A`;
-    message += `*Items:* %0A`;
+    // Constructing message to match thermal receipt style
+    let message = `*${(companySettings?.name || "VEGWHOLESALE").toUpperCase()}* %0A`;
+    message += `${companySettings?.address || "Mandi"} %0A`;
+    message += `Phone: ${companySettings?.phone || ""} %0A%0A`;
+
+    // Invoice Details
+    message += `Invoice: *${invoice.invoiceNumber}* %0A`;
+    message += `Date: ${format(new Date(invoice.date), 'dd/MM/yyyy h:mm a')} %0A`;
+    message += `Customer: *${saleDetails?.customerName || 'Cash Sale'}* %0A`;
+    message += `--------------------------------%0A`;
+
+    // Items
+    message += `Item       Kg   Rate   Amt %0A`;
+    message += `--------------------------------%0A`;
 
     if (saleDetails?.items) {
       saleDetails.items.forEach(item => {
-        message += `▪️ ${item.name}: ${item.weight}kg x ₹${item.price} = ₹${item.total.toFixed(0)} %0A`;
+        // First line: Name, Weight, Rate, Total
+        message += `*${item.name}*   ${item.weight}   ${item.price}   ${item.total.toFixed(0)} %0A`;
+        if (item.bags) {
+          message += `_Bags: ${item.bags}_ %0A`;
+        }
+        // Second line: Weights
+        if (item.weightBreakdown && item.weightBreakdown.length > 0) {
+          message += `Weights: ${item.weightBreakdown.map(w => w.toFixed(1)).join(', ')} %0A`;
+        }
+        message += `--------------------------------%0A`;
       });
     }
 
-    message += `──────────────────────%0A`;
-    message += `💰 *Grand Total: ₹${invoice.grandTotal.toFixed(0)}* %0A`;
-
-    if (invoice.status === 'completed') {
-      message += `✅ *PAID* %0A`;
-    } else {
-      message += `⏳ *PENDING* %0A`;
-    }
-
-    message += `──────────────────────%0A`;
-    message += `🙏 Thank you for your business!`;
+    // Totals
+    message += `*TOTAL:             Rs ${invoice.grandTotal.toFixed(0)}* %0A`;
+    message += `--------------------------------%0A`;
+    message += `Thank You! Visit Again. %0A`;
+    message += `Powered by VegWholesale`;
 
     // WhatsApp URL
     const url = `https://wa.me/?text=${message}`;
