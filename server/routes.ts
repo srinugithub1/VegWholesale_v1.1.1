@@ -546,6 +546,7 @@ export async function registerRoutes(
         quantity: z.number(),
         unitPrice: z.number(),
         total: z.number(),
+        weightBreakdown: z.string().optional(),
       })
     ),
   });

@@ -805,7 +805,7 @@ interface SaleSuccessDialogProps {
   invoice: Invoice | null;
   saleDetails: {
     customerName: string;
-    items: { name: string, weight: number, bags: number, price: number, total: number }[];
+    items: { name: string, weight: number, bags: number, price: number, total: number, weightBreakdown: number[] }[];
   } | null;
   open: boolean;
   onClose: () => void;
@@ -855,56 +855,130 @@ function SaleSuccessDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-              <span className="text-lg">✓</span>
-            </div>
-            Sale Completed Successfully!
-          </DialogTitle>
-          <DialogDescription>
-            Invoice <strong>{invoice.invoiceNumber}</strong> for <strong>{saleDetails?.customerName || 'Customer'}</strong>
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4 py-4">
-          <div className="flex flex-col items-center justify-center space-y-2 bg-muted/50 p-4 rounded-lg">
-            <span className="text-sm text-muted-foreground">Grand Total</span>
-            <span className="text-3xl font-bold text-primary">₹{invoice.grandTotal.toFixed(0)}</span>
-          </div>
-
-          {saleDetails?.items && (
-            <div className="text-xs space-y-1 border-t pt-2">
-              <p className="font-semibold mb-1">Items Summary:</p>
-              {saleDetails.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between">
-                  <span>{item.name} ({item.weight}kg)</span>
-                  <span>₹{item.total.toFixed(0)}</span>
-                </div>
-              ))}
-            </div>
-          )}
+    <>
+      {/* Thermal Receipt - Visible only when printing */}
+      <div className="hidden print:block print:w-[80mm] print:mx-auto print:font-mono print:text-xs text-black">
+        <div className="text-center mb-4">
+          <h2 className="text-xl font-bold uppercase">{companySettings?.name || "VegWholesale"}</h2>
+          <p className="text-[10px]">{companySettings?.address || "Mandi"}</p>
+          <p className="text-[10px]">Phone: {companySettings?.phone || ""}</p>
         </div>
 
-        <DialogFooter className="sm:justify-between gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => window.print()}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print
-            </Button>
-            <Button className="bg-[#25D366] hover:bg-[#128C7E] text-white" onClick={handleWhatsAppShare}>
-              <Share2 className="mr-2 h-4 w-4" />
-              WhatsApp
-            </Button>
+        <div className="border-b-2 border-dashed border-black pb-2 mb-2 space-y-1">
+          <div className="flex justify-between">
+            <span>Invoice:</span>
+            <span className="font-bold">{invoice.invoiceNumber}</span>
           </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <div className="flex justify-between">
+            <span>Date:</span>
+            <span>{format(new Date(invoice.date), 'dd/MM/yyyy h:mm a')}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Customer:</span>
+            <span className="font-bold truncate max-w-[120px]">{saleDetails?.customerName || 'Cash Sale'}</span>
+          </div>
+        </div>
+
+        <div className="mb-2">
+          <div className="flex font-bold border-b border-black pb-1 mb-1">
+            <span className="w-16">Item</span>
+            <span className="w-10 text-right">Kg</span>
+            <span className="w-10 text-right">Rate</span>
+            <span className="flex-1 text-right">Amt</span>
+          </div>
+          {saleDetails?.items && saleDetails.items.map((item, idx) => (
+            <div key={idx} className="mb-2 border-b border-dashed border-gray-400 pb-1">
+              <div className="flex justify-between font-bold">
+                <span className="truncate w-16">{item.name}</span>
+                <span className="w-10 text-right">{item.weight}</span>
+                <span className="w-10 text-right">{item.price}</span>
+                <span className="flex-1 text-right">{item.total.toFixed(0)}</span>
+              </div>
+              {/* Optional: Show Bags count */}
+              <div className="text-[10px] italic">Bags: {item.bags}</div>
+
+              {/* Weight Breakdown */}
+              {item.weightBreakdown && item.weightBreakdown.length > 0 && (
+                <div className="mt-1 text-[9px] leading-tight">
+                  <span className="font-semibold">Weights:</span> {item.weightBreakdown.map(w => w.toFixed(1)).join(', ')}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t-2 border-dashed border-black pt-2 mt-2 space-y-1 font-bold text-sm">
+          <div className="flex justify-between">
+            <span>TOTAL:</span>
+            <span className="text-lg">Rs {invoice.grandTotal.toFixed(0)}</span>
+          </div>
+        </div>
+
+        <div className="text-center mt-6 text-[10px] border-t border-black pt-2">
+          <p>Thank You! Visit Again.</p>
+          <p className="mt-1">Powered by VegWholesale</p>
+        </div>
+      </div>
+
+      {/* Screen Dialog - Hidden when printing */}
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-md print:hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                <span className="text-lg">✓</span>
+              </div>
+              Sale Completed Successfully!
+            </DialogTitle>
+            <DialogDescription>
+              Invoice <strong>{invoice.invoiceNumber}</strong> for <strong>{saleDetails?.customerName || 'Customer'}</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col items-center justify-center space-y-2 bg-muted/50 p-4 rounded-lg">
+              <span className="text-sm text-muted-foreground">Grand Total</span>
+              <span className="text-3xl font-bold text-primary">₹{invoice.grandTotal.toFixed(0)}</span>
+            </div>
+
+            {saleDetails?.items && (
+              <div className="text-xs space-y-1 border-t pt-2 max-h-[200px] overflow-y-auto">
+                <p className="font-semibold mb-1">Items Summary:</p>
+                {saleDetails.items.map((item, idx) => (
+                  <div key={idx} className="flex flex-col border-b border-border/50 pb-1 mb-1">
+                    <div className="flex justify-between">
+                      <span>{item.name} ({item.weight}kg)</span>
+                      <span>₹{item.total.toFixed(0)}</span>
+                    </div>
+                    {item.weightBreakdown && item.weightBreakdown.length > 0 && (
+                      <div className="text-[10px] text-muted-foreground truncate" title={item.weightBreakdown.join(', ')}>
+                        wts: {item.weightBreakdown.map(w => w.toFixed(1)).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="sm:justify-between gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => window.print()}>
+                <Printer className="mr-2 h-4 w-4" />
+                Print
+              </Button>
+              <Button className="bg-[#25D366] hover:bg-[#128C7E] text-white" onClick={handleWhatsAppShare}>
+                <Share2 className="mr-2 h-4 w-4" />
+                WhatsApp
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -919,7 +993,7 @@ export default function Sell() {
   const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
   const [lastSaleDetails, setLastSaleDetails] = useState<{
     customerName: string;
-    items: { name: string, weight: number, bags: number, price: number, total: number }[];
+    items: { name: string, weight: number, bags: number, price: number, total: number, weightBreakdown: number[] }[];
   } | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
@@ -1338,7 +1412,8 @@ export default function Sell() {
           weight: p.weight,
           bags: p.bags || 0,
           price: p.price,
-          total: p.weight * p.price
+          total: p.weight * p.price,
+          weightBreakdown: p.weightBreakdown || []
         }))
       });
     }
