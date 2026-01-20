@@ -809,13 +809,15 @@ interface SaleSuccessDialogProps {
   } | null;
   open: boolean;
   onClose: () => void;
+  companySettings: any;
 }
 
 function SaleSuccessDialog({
   invoice,
   saleDetails,
   open,
-  onClose
+  onClose,
+  companySettings
 }: SaleSuccessDialogProps) {
   if (!invoice) return null;
 
@@ -2130,6 +2132,7 @@ export default function Sell() {
         saleDetails={lastSaleDetails}
         open={showSuccessDialog}
         onClose={() => setShowSuccessDialog(false)}
+        companySettings={shop}
       />
     </div>
   );
