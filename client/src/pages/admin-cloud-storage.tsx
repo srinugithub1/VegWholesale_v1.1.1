@@ -74,6 +74,14 @@ export default function AdminCloudStorage() {
         sizeMB: Number((item.dbSizeBytes / (1024 * 1024)).toFixed(2))
     })).reverse(); // Reverse if server returns desc
 
+    // Fix for single data point or empty chart (prepend 0 point so area is visible)
+    if (historyData.length <= 1) {
+        historyData.unshift({
+            date: "Start",
+            sizeMB: 0
+        });
+    }
+
     return (
         <div className="p-8 space-y-8 max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
