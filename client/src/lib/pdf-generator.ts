@@ -36,6 +36,7 @@ export interface ReportData {
         // Stock Summary
         qtyReceived: number; // Weight
         qtySold: number;     // Weight
+        qtySoldBags: number; // Bags
         qtyRemaining: number; // Weight
     };
 }
@@ -202,6 +203,7 @@ export const generateDetailedReport = (data: ReportData) => {
         body: [
             [{ content: 'Total Quantity Received', styles: { fontStyle: 'bold' } }, `${data.summary.qtyReceived.toFixed(2)}`],
             [{ content: 'Total Quantity Sold', styles: { fontStyle: 'bold' } }, `${data.summary.qtySold.toFixed(2)}`],
+            [{ content: 'Total Bags Sold', styles: { fontStyle: 'bold', fillColor: [255, 255, 0] as [number, number, number] } }, `${data.summary.qtySoldBags}`],
             [{ content: 'Total Quantity Remaining', styles: { fontStyle: 'bold' } }, `${data.summary.qtyRemaining.toFixed(2)}`]
         ],
         styles: {

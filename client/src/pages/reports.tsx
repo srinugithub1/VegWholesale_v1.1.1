@@ -487,6 +487,7 @@ export default function Reports() {
         summary: {
           qtyReceived: vehicleTotalWeight,
           qtySold: totalSoldWeight,
+          qtySoldBags: totalSoldBags,
           qtyRemaining: vehicleTotalWeight - totalSoldWeight - (vehicleTotalLoss || 0),
           totalCredit,
           totalCash,
