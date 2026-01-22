@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Package, ArrowUpRight, Receipt, CreditCard, Download, Calendar, Filter, Truck, Users, Scale, ShoppingBag, FileText, BarChart3, LayoutDashboard, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus } from "lucide-react";
+import { TrendingUp, Package, ArrowUpRight, Receipt, CreditCard, Download, Calendar, Filter, Truck, Users, Scale, ShoppingBag, FileText, BarChart3, LayoutDashboard, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -78,6 +78,7 @@ export default function Reports() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("all");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
+  const [selectedProductId, setSelectedProductId] = useState<string>("all");
   const { shop } = useShop();
 
   const startDate = fromDate ? format(fromDate, 'yyyy-MM-dd') : "";
@@ -149,9 +150,15 @@ export default function Reports() {
         const vehicle = vehicles.find(v => v.id === inv.vehicleId);
         if (vehicle && vehicle.shop !== shop) return false;
       }
+      if (selectedProductId !== "all") {
+        const invoiceHasProduct = invoiceItems.some(item =>
+          item.invoiceId === inv.id && item.productId === selectedProductId
+        );
+        if (!invoiceHasProduct) return false;
+      }
       return true;
     }).sort((a, b) => b.date.localeCompare(a.date) || b.invoiceNumber.localeCompare(a.invoiceNumber));
-  }, [invoices, startDate, endDate, selectedVehicleId, selectedCustomerId, selectedVendorId, vehicles, shop]);
+  }, [invoices, startDate, endDate, selectedVehicleId, selectedCustomerId, selectedVendorId, selectedProductId, vehicles, shop, invoiceItems]);
 
   const summary = useMemo(() => {
     const totalSales = filteredInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
@@ -251,7 +258,10 @@ export default function Reports() {
     const safeInvoiceItems = Array.isArray(invoiceItems) ? invoiceItems : [];
 
     return safeInvoiceItems
-      .filter(item => relevantInvoiceIds.has(item.invoiceId))
+      .filter(item => {
+        if (selectedProductId !== "all" && item.productId !== selectedProductId) return false;
+        return relevantInvoiceIds.has(item.invoiceId);
+      })
       .map((item, index) => {
         const invoice = invoices.find(inv => inv.id === item.invoiceId);
 
@@ -316,7 +326,7 @@ export default function Reports() {
           total
         };
       });
-  }, [filteredInvoices, invoiceItems, invoices, customers, vehicles, vendors, products]);
+  }, [filteredInvoices, invoiceItems, invoices, customers, vehicles, vendors, products, selectedProductId]);
 
   const paginatedReportItems = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -412,6 +422,9 @@ export default function Reports() {
       } else if (selectedVendorId !== "all") {
         const v = vendors.find(v => v.id === selectedVendorId);
         reportTitle = `Vendor Report - ${v?.name || 'Unknown'}`;
+      } else if (selectedProductId !== "all") {
+        const p = products.find(p => p.id === selectedProductId);
+        reportTitle = `Stock Report - ${p?.name || 'Unknown'}`;
       }
 
       // Determine vehicle details for header
@@ -490,6 +503,7 @@ export default function Reports() {
     const [openVehicle, setOpenVehicle] = useState(false);
     const [openCustomer, setOpenCustomer] = useState(false);
     const [openVendor, setOpenVendor] = useState(false);
+    const [openProduct, setOpenProduct] = useState(false);
 
     // Filter vehicles by date range unless "Show All" is clicked
     const filteredVehicles = useMemo(() => {
@@ -832,7 +846,70 @@ export default function Reports() {
               </Popover>
             </div>
 
-            {(selectedVehicleId !== "all" || selectedCustomerId !== "all" || selectedVendorId !== "all") && (
+            {/* Product Filter */}
+            <div className="flex flex-col gap-2">
+              <Label>Product</Label>
+              <Popover open={openProduct} onOpenChange={setOpenProduct}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openProduct}
+                    className="w-[200px] justify-between"
+                  >
+                    {selectedProductId === "all"
+                      ? "All Products"
+                      : products.find((p) => p.id === selectedProductId)?.name || "Select Product..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search product..." />
+                    <CommandList>
+                      <CommandEmpty>No product found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="all"
+                          onSelect={() => {
+                            setSelectedProductId("all");
+                            setOpenProduct(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedProductId === "all" ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          All Products
+                        </CommandItem>
+                        {products.map((p) => (
+                          <CommandItem
+                            key={p.id}
+                            value={p.name}
+                            onSelect={() => {
+                              setSelectedProductId(p.id);
+                              setOpenProduct(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedProductId === p.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {p.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {(selectedVehicleId !== "all" || selectedCustomerId !== "all" || selectedVendorId !== "all" || selectedProductId !== "all") && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -840,6 +917,7 @@ export default function Reports() {
                   setSelectedVehicleId("all");
                   setSelectedCustomerId("all");
                   setSelectedVendorId("all");
+                  setSelectedProductId("all");
                 }}
                 data-testid="button-clear-filters"
               >
@@ -900,46 +978,48 @@ export default function Reports() {
           <FilterSection />
 
           {/* Top Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border-primary/30 bg-primary/5">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-                <CardTitle className="text-sm font-medium text-primary">Opening Balance</CardTitle>
-                <TrendingUp className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold font-mono ${summary.openingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-opening-balance">
-                  {formatCurrency(summary.openingBalance)}
-                </div>
-                <p className="text-xs text-muted-foreground">Outstanding before period</p>
-              </CardContent>
-            </Card>
+          {selectedProductId === "all" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                  <CardTitle className="text-sm font-medium text-primary">Opening Balance</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold font-mono ${summary.openingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-opening-balance">
+                    {formatCurrency(summary.openingBalance)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Outstanding before period</p>
+                </CardContent>
+              </Card>
 
-            <Card className="border-primary/30 bg-primary/5">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-                <CardTitle className="text-sm font-medium text-primary">Payments Received</CardTitle>
-                <CreditCard className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold font-mono text-green-600 dark:text-green-500" data-testid="text-period-payments">
-                  {formatCurrency(summary.paymentsInPeriod)}
-                </div>
-                <p className="text-xs text-muted-foreground">During selected period</p>
-              </CardContent>
-            </Card>
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                  <CardTitle className="text-sm font-medium text-primary">Payments Received</CardTitle>
+                  <CreditCard className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold font-mono text-green-600 dark:text-green-500" data-testid="text-period-payments">
+                    {formatCurrency(summary.paymentsInPeriod)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">During selected period</p>
+                </CardContent>
+              </Card>
 
-            <Card className="border-primary/30 bg-primary/5">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-                <CardTitle className="text-sm font-medium text-primary">Closing Balance</CardTitle>
-                <TrendingUp className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold font-mono ${summary.closingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-closing-balance">
-                  {formatCurrency(summary.closingBalance)}
-                </div>
-                <p className="text-xs text-muted-foreground">Outstanding after period</p>
-              </CardContent>
-            </Card>
-          </div>
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                  <CardTitle className="text-sm font-medium text-primary">Closing Balance</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold font-mono ${summary.closingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-closing-balance">
+                    {formatCurrency(summary.closingBalance)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Outstanding after period</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Detailed Metrics Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -950,9 +1030,9 @@ export default function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold font-mono text-primary" data-testid="text-total-sales">
-                  {formatCurrency(summary.totalSales)}
+                  {formatCurrency(reportSummary.totalSales)}
                 </div>
-                <p className="text-xs text-muted-foreground">{summary.invoiceCount} sales</p>
+                <p className="text-xs text-muted-foreground">{reportSummary.invoiceCount} sales</p>
               </CardContent>
             </Card>
 
@@ -963,7 +1043,7 @@ export default function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold font-mono" data-testid="text-product-sales">
-                  {formatCurrency(summary.totalSubtotal)}
+                  {formatCurrency(reportSummary.totalSubtotal)}
                 </div>
                 <p className="text-xs text-muted-foreground">Without Hamali</p>
               </CardContent>
@@ -976,9 +1056,9 @@ export default function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold font-mono" data-testid="text-hamali-total">
-                  {formatCurrency(summary.totalHamali)}
+                  {formatCurrency(reportSummary.totalHamali)}
                 </div>
-                <p className="text-xs text-muted-foreground">{summary.invoicesWithHamali} sales with Hamali</p>
+                <p className="text-xs text-muted-foreground">{reportSummary.invoicesWithHamali} sales with Hamali</p>
               </CardContent>
             </Card>
 
@@ -989,7 +1069,7 @@ export default function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold font-mono" data-testid="text-total-weight">
-                  {formatWeight(summary.totalWeight)}
+                  {formatWeight(reportSummary.totalWeight)}
                 </div>
                 <p className="text-xs text-muted-foreground">Sold</p>
               </CardContent>
@@ -1168,6 +1248,34 @@ export default function Reports() {
                 </div>
               )}
             </CardContent>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </TabsContent>
 
