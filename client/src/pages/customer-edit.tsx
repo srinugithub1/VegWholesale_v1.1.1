@@ -919,7 +919,7 @@ export default function CustomerEdit() {
                                 variant="outline"
                                 className="gap-2 bg-yellow-100 border-yellow-200 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800"
                                 onClick={() => {
-                                    window.open(`/print?invoiceId=${editingItem.invoiceId}`, '_blank');
+                                    window.open(`/print?invoiceId=${editingItem.invoiceId}&mode=receipt`, '_blank');
                                 }}
                             >
                                 <Printer className="h-4 w-4" />
