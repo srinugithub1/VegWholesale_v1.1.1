@@ -2145,7 +2145,7 @@ export default function Sell() {
       <SaleSuccessDialog
         invoice={lastInvoice}
         saleDetails={lastSaleDetails}
-        open={showSuccessDialog}
+        open={false} // Forced disabled
         onClose={() => setShowSuccessDialog(false)}
         companySettings={shop}
       />

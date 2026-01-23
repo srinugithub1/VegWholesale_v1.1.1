@@ -78,7 +78,7 @@ function ProtectedApp() {
 
     if (isRestrictedAdmin) {
       // Allowed routes for restricted admin
-      const allowed = ['/', '/stock', '/reports', '/payments', '/sell', '/customer-edit'];
+      const allowed = ['/', '/stock', '/reports', '/payments', '/sell', '/customer-edit', '/print'];
       if (!allowed.includes(location)) {
         setLocation('/');
       }
@@ -93,7 +93,7 @@ function ProtectedApp() {
     }
 
     // Regular User
-    const allowed = ['/sell', '/customer-edit'];
+    const allowed = ['/sell', '/customer-edit', '/print'];
     if (!allowed.includes(location)) {
       setLocation('/sell');
     }
@@ -106,7 +106,7 @@ function ProtectedApp() {
 
   // Prevent rendering if redirecting
   if (isPaymentUser && location !== '/payments') return null;
-  if (!isAdmin && !isRestrictedAdmin && !isPaymentUser && location !== '/sell' && location !== '/customer-edit') {
+  if (!isAdmin && !isRestrictedAdmin && !isPaymentUser && location !== '/sell' && location !== '/customer-edit' && location !== '/print') {
     return null;
   }
 
