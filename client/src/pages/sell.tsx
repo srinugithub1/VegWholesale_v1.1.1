@@ -1570,6 +1570,8 @@ export default function Sell() {
                   onClose={() => handleCloseSale(vehicle.id)}
                   onSaleComplete={(invoice) => {
                     handleSaleComplete(vehicle.id, invoice);
+                    // Success dialog disabled as per request
+                    // const currentTotal = inventory.reduce((sum, inv) => sum + inv.quantity, 0);
                     const currentTotal = inventory.reduce((sum, inv) => sum + inv.quantity, 0);
                     const soldWeight = invoice.totalKgWeight || 0;
                     if (currentTotal - soldWeight <= 0.1) {

@@ -32,7 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useShop } from "@/hooks/use-shop";
 import { format } from "date-fns";
 import { Invoice, InvoiceItem, Customer, Vendor, Product, Vehicle } from "@shared/schema";
-import { Loader2, Search, Filter, Edit, Save, ArrowUpDown, ArrowLeft, ArrowRight, Check, ChevronsUpDown, X, ShoppingBag, Calendar } from "lucide-react";
+import { Loader2, Search, Filter, Edit, Save, ArrowUpDown, ArrowLeft, ArrowRight, Check, ChevronsUpDown, X, ShoppingBag, Calendar, Printer, Share2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import {
@@ -912,7 +912,33 @@ export default function CustomerEdit() {
                         </div>
                     )}
 
-                    <DialogFooter>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <div className="flex items-center gap-2 mr-auto">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="gap-2 bg-yellow-100 border-yellow-200 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800"
+                                onClick={() => {
+                                    window.open(`/print?invoiceId=${editingItem.invoiceId}`, '_blank');
+                                }}
+                            >
+                                <Printer className="h-4 w-4" />
+                                Print
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="gap-2 bg-green-100 border-green-200 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800"
+                                onClick={() => {
+                                    const text = `*Invoice: ${editingItem.invoiceNo}*\nDate: ${editingItem.date}\nCustomer: ${editingItem.customerName}\nItem: ${editingItem.productName} (${editingItem.vehicleNumber})\nAvg Rate: ₹${editingItem.price}\nTotal Weight: ${editingItem.weight} ${editingItem.productName === 'Crates' ? '' : 'KG'}\nBags: ${editingItem.bags}\n*Total Amount: ₹${editingItem.amount}*`;
+                                    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                                    window.open(url, '_blank');
+                                }}
+                            >
+                                <Share2 className="h-4 w-4" />
+                                WhatsApp
+                            </Button>
+                        </div>
                         <Button variant="outline" onClick={() => setEditingItem(null)}>Cancel</Button>
                         <Button onClick={handleSave} disabled={updateItemMutation.isPending}>
                             {updateItemMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

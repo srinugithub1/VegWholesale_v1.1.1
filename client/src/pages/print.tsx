@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,12 +86,29 @@ export default function PrintCenter() {
     );
   }
 
+  // Handle Query Param for Auto-Selection
+  const [location] = useLocation();
+  const searchParams = new URLSearchParams(window.location.search);
+  const queryInvoiceId = searchParams.get("invoiceId");
+
+  useEffect(() => {
+    if (queryInvoiceId && invoices.length > 0) {
+      if (invoices.find(i => i.id === queryInvoiceId)) {
+        setSelectedInvoice(queryInvoiceId);
+      }
+    }
+  }, [queryInvoiceId, invoices]);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap print:hidden">
         <h1 className="text-2xl font-semibold" data-testid="text-page-title">
           Print Center
         </h1>
+        {/* Back Button for easier navigation if opened from Edit */}
+        {queryInvoiceId && (
+          <Button variant="outline" onClick={() => window.history.back()}>Back</Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
