@@ -62,7 +62,19 @@ export default function PrintCenter() {
   const getVehicle = (id: string | null) => id ? vehicles.find((v) => v.id === id) : null;
   const getVendor = (id: string | null) => id ? vendors.find((v) => v.id === id) : null;
 
-  const selectedInvoiceData = invoices.find((i) => i.id === selectedInvoice);
+  const { data: singleInvoice } = useQuery<Invoice>({
+    queryKey: [`/api/invoices/${queryInvoiceId}`],
+    enabled: !!queryInvoiceId
+  });
+
+  // Effect to set selected invoice from query param to ensure other logic works
+  useEffect(() => {
+    if (queryInvoiceId) {
+      setSelectedInvoice(queryInvoiceId);
+    }
+  }, [queryInvoiceId]);
+
+  const selectedInvoiceData = singleInvoice || invoices.find((i) => i.id === selectedInvoice);
   const customer = selectedInvoiceData ? getCustomer(selectedInvoiceData.customerId) : null;
   const vehicle = selectedInvoiceData ? getVehicle(selectedInvoiceData.vehicleId) : null;
   const vendor = selectedInvoiceData
@@ -93,13 +105,6 @@ export default function PrintCenter() {
   const queryInvoiceId = searchParams.get("invoiceId");
   const queryMode = searchParams.get("mode"); // 'receipt' or null
 
-  useEffect(() => {
-    if (queryInvoiceId && invoices.length > 0) {
-      if (invoices.find(i => i.id === queryInvoiceId)) {
-        setSelectedInvoice(queryInvoiceId);
-      }
-    }
-  }, [queryInvoiceId, invoices]);
 
   return (
     <div className="p-6 space-y-6">
