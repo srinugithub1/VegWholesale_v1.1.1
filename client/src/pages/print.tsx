@@ -20,6 +20,12 @@ export default function PrintCenter() {
   const [selectedInvoice, setSelectedInvoice] = useState<string>("");
   const [documentType, setDocumentType] = useState<"invoice" | "challan">("invoice");
 
+  // Handle Query Param for Auto-Selection (Moved to top to avoid ReferenceError)
+  const [location] = useLocation();
+  const searchParams = new URLSearchParams(window.location.search);
+  const queryInvoiceId = searchParams.get("invoiceId");
+  const queryMode = searchParams.get("mode"); // 'receipt' or null
+
   const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
     queryKey: ["/api/invoices?limit=2000"],
   });
@@ -74,7 +80,7 @@ export default function PrintCenter() {
     }
   }, [queryInvoiceId]);
 
-  const selectedInvoiceData = singleInvoice || invoices.find((i) => i.id === selectedInvoice);
+  const selectedInvoiceData = singleInvoice || invoices.find((i) => String(i.id) === String(selectedInvoice));
   const customer = selectedInvoiceData ? getCustomer(selectedInvoiceData.customerId) : null;
   const vehicle = selectedInvoiceData ? getVehicle(selectedInvoiceData.vehicleId) : null;
   const vendor = selectedInvoiceData
@@ -98,12 +104,6 @@ export default function PrintCenter() {
       </div>
     );
   }
-
-  // Handle Query Param for Auto-Selection
-  const [location] = useLocation();
-  const searchParams = new URLSearchParams(window.location.search);
-  const queryInvoiceId = searchParams.get("invoiceId");
-  const queryMode = searchParams.get("mode"); // 'receipt' or null
 
 
   return (
@@ -204,7 +204,11 @@ export default function PrintCenter() {
                       </div>
                       {item.weightBreakdown && (
                         <div className="text-[10px] leading-tight text-muted-foreground mt-0.5 break-words">
-                          Weights: {JSON.parse(item.weightBreakdown as unknown as string).join(", ")}
+                          Weights: {Array.isArray(item.weightBreakdown)
+                            ? item.weightBreakdown.join(", ")
+                            : typeof item.weightBreakdown === 'string'
+                              ? (() => { try { return JSON.parse(item.weightBreakdown).join(", ") } catch (e) { return item.weightBreakdown } })()
+                              : item.weightBreakdown}
                         </div>
                       )}
                     </div>
