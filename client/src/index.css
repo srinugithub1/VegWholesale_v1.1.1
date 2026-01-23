@@ -286,3 +286,19 @@
     inset: -1px;
   }
 }
+
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+  
+  body {
+    background: white;
+  }
+
+  /* Ensure no scrollbars in print */
+  .overflow-hidden, .overflow-auto {
+    overflow: visible !important;
+  }
+}

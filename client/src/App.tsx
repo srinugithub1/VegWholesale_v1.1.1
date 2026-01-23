@@ -113,9 +113,11 @@ function ProtectedApp() {
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <div className="flex h-screen w-full">
-        <AppSidebar />
+        <div className="print:hidden">
+          <AppSidebar />
+        </div>
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="relative flex items-center justify-between gap-2 p-2 border-b h-14 flex-shrink-0">
+          <header className="relative flex items-center justify-between gap-2 p-2 border-b h-14 flex-shrink-0 print:hidden">
             <div className="flex items-center gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
             </div>
