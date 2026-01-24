@@ -36,6 +36,11 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Search, Plus, Calendar, Save, Trash2, Printer, CreditCard, Wallet, X, CheckCircle, Edit2 as Pencil } from "lucide-react"; // Aliasing Edit2 to Pencil to avoid changing all usages
 import type { Vendor, Customer, VendorPayment, CustomerPayment, HamaliCashPayment, Invoice, InvoiceItem, Product, Purchase, PurchaseItem } from "@shared/schema";
+import { format } from "date-fns";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import { FileDown, Filter as FilterIcon } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type VendorWithBalance = Vendor & { totalPurchases: number; totalPayments: number; balance: number };
@@ -103,6 +108,20 @@ export default function Payments() {
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [vendorHistoryDialogOpen, setVendorHistoryDialogOpen] = useState(false);
+
+
+  // Transaction Tab State (Vendor)
+  const [vendorTxDateFrom, setVendorTxDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [vendorTxDateTo, setVendorTxDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [vendorTxShowCashOnly, setVendorTxShowCashOnly] = useState(false);
+  const [vendorTxPage, setVendorTxPage] = useState(1);
+
+  // Transaction Tab State (Customer)
+  const [customerTxDateFrom, setCustomerTxDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [customerTxDateTo, setCustomerTxDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [customerTxShowCashOnly, setCustomerTxShowCashOnly] = useState(false);
+  const [customerTxPage, setCustomerTxPage] = useState(1);
+
   // Vendor Payment State
   const [vendorPurchases, setVendorPurchases] = useState<PurchaseWithItems[]>([]);
   const [vendorStep, setVendorStep] = useState<'select' | 'review' | 'completed'>('select');
@@ -264,6 +283,103 @@ export default function Payments() {
     } finally {
       setLoadingInvoices(false);
     }
+  };
+
+  // --- Transaction Tab Logic ---
+
+  // Vendor Transactions Logic
+  const filteredVendorTransactions = useMemo(() => {
+    let data = [...vendorPayments];
+
+    // Filter by Date
+    data = data.filter(item => item.date >= vendorTxDateFrom && item.date <= vendorTxDateTo);
+
+    // Filter by Payment Method (Cash vs Non-Cash)
+    if (vendorTxShowCashOnly) {
+      data = data.filter(item => item.paymentMethod && item.paymentMethod.toLowerCase() === "cash");
+    } else {
+      // Default: Show Non-Cash (Credit Payments)
+      data = data.filter(item => !item.paymentMethod || item.paymentMethod.toLowerCase() !== "cash");
+    }
+
+    return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [vendorPayments, vendorTxDateFrom, vendorTxDateTo, vendorTxShowCashOnly]);
+
+  const paginatedVendorTransactions = useMemo(() => {
+    const start = (vendorTxPage - 1) * ITEMS_PER_PAGE;
+    return filteredVendorTransactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredVendorTransactions, vendorTxPage]);
+
+  const generateVendorTxPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Vendor Transactions Report", 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Date Range: ${vendorTxDateFrom} to ${vendorTxDateTo}`, 14, 30);
+    doc.text(`Filter: ${vendorTxShowCashOnly ? "Cash Only" : "Non-Cash Only"}`, 14, 38);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Date', 'Vendor', 'Method', 'Notes', 'Amount']],
+      body: filteredVendorTransactions.map(row => [
+        row.date,
+        vendors.find(v => v.id === row.vendorId)?.name || "Unknown",
+        row.paymentMethod,
+        row.notes || "-",
+        row.amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74] }
+    });
+    doc.save(`vendor-transactions-${vendorTxDateFrom}.pdf`);
+  };
+
+  // Customer Transactions Logic
+  const filteredCustomerTransactions = useMemo(() => {
+    let data = [...customerPayments];
+
+    // Filter by Date
+    data = data.filter(item => item.date >= customerTxDateFrom && item.date <= customerTxDateTo);
+
+    // Filter by Payment Method
+    if (customerTxShowCashOnly) {
+      data = data.filter(item => item.paymentMethod && item.paymentMethod.toLowerCase() === "cash");
+    } else {
+      data = data.filter(item => !item.paymentMethod || item.paymentMethod.toLowerCase() !== "cash");
+    }
+
+    return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [customerPayments, customerTxDateFrom, customerTxDateTo, customerTxShowCashOnly]);
+
+
+  const paginatedCustomerTransactions = useMemo(() => {
+    const start = (customerTxPage - 1) * ITEMS_PER_PAGE;
+    return filteredCustomerTransactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredCustomerTransactions, customerTxPage]);
+
+
+  const generateCustomerTxPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Customer Transactions Report", 14, 22);
+    doc.setFontSize(11);
+    doc.text(`Date Range: ${customerTxDateFrom} to ${customerTxDateTo}`, 14, 30);
+    doc.text(`Filter: ${customerTxShowCashOnly ? "Cash Only" : "Non-Cash Only"}`, 14, 38);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Date', 'Customer', 'Method', 'Notes', 'Amount']],
+      body: filteredCustomerTransactions.map(row => [
+        row.date,
+        customers.find(c => c.id === row.customerId)?.name || "Unknown",
+        row.paymentMethod,
+        row.notes || "-",
+        row.amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [22, 163, 74] }
+    });
+    doc.save(`customer-transactions-${customerTxDateFrom}.pdf`);
   };
 
   const handleCustomerSelect = (customerId: string) => {
@@ -1504,6 +1620,103 @@ export default function Payments() {
                   </div>
                 </DialogContent>
               </Dialog>
+
+              <Card className="mt-8 border-t-2 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <List className="h-5 w-5" />
+                    Daily Transactions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/20 p-4 rounded-lg">
+                      <div className="space-y-2">
+                        <Label>From Date</Label>
+                        <Input type="date" value={vendorTxDateFrom} onChange={(e) => setVendorTxDateFrom(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>To Date</Label>
+                        <Input type="date" value={vendorTxDateTo} onChange={(e) => setVendorTxDateTo(e.target.value)} />
+                      </div>
+                      <div className="flex flex-col justify-end space-y-2">
+                        <div className="flex items-center space-x-2 pb-2">
+                          <Checkbox
+                            id="vendor-tx-cash"
+                            checked={vendorTxShowCashOnly}
+                            onCheckedChange={(checked) => {
+                              setVendorTxShowCashOnly(checked as boolean);
+                              setVendorTxPage(1);
+                            }}
+                          />
+                          <Label htmlFor="vendor-tx-cash">Cash Payments Only</Label>
+                        </div>
+                      </div>
+                      <div className="flex items-end">
+                        <Button onClick={generateVendorTxPDF} className="w-full gap-2" variant="outline">
+                          <FileDown className="h-4 w-4" />
+                          Download Report
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Vendor</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Notes</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredVendorTransactions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                              No transactions found for selected criteria
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedVendorTransactions.map((tx, i) => (
+                            <TableRow key={i}>
+                              <TableCell>{tx.date}</TableCell>
+                              <TableCell>{vendors.find(v => v.id === tx.vendorId)?.name || 'Unknown'}</TableCell>
+                              <TableCell className="capitalize">{tx.paymentMethod}</TableCell>
+                              <TableCell className="text-muted-foreground">{tx.notes || '-'}</TableCell>
+                              <TableCell className="text-right font-mono font-bold">
+                                {tx.amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {Math.ceil(filteredVendorTransactions.length / ITEMS_PER_PAGE) > 1 && (
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setVendorTxPage(p => Math.max(1, p - 1))}
+                              className={vendorTxPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          <PaginationItem>
+                            <span className="px-4 text-sm font-medium">Page {vendorTxPage} of {Math.ceil(filteredVendorTransactions.length / ITEMS_PER_PAGE)}</span>
+                          </PaginationItem>
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setVendorTxPage(p => Math.min(Math.ceil(filteredVendorTransactions.length / ITEMS_PER_PAGE), p + 1))}
+                              className={vendorTxPage === Math.ceil(filteredVendorTransactions.length / ITEMS_PER_PAGE) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="customers" className="space-y-4">
@@ -1958,6 +2171,103 @@ export default function Payments() {
                 </DialogContent>
               </Dialog>
 
+              <Card className="mt-8 border-t-2 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <List className="h-5 w-5" />
+                    Daily Transactions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/20 p-4 rounded-lg">
+                      <div className="space-y-2">
+                        <Label>From Date</Label>
+                        <Input type="date" value={customerTxDateFrom} onChange={(e) => setCustomerTxDateFrom(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>To Date</Label>
+                        <Input type="date" value={customerTxDateTo} onChange={(e) => setCustomerTxDateTo(e.target.value)} />
+                      </div>
+                      <div className="flex flex-col justify-end space-y-2">
+                        <div className="flex items-center space-x-2 pb-2">
+                          <Checkbox
+                            id="customer-tx-cash"
+                            checked={customerTxShowCashOnly}
+                            onCheckedChange={(checked) => {
+                              setCustomerTxShowCashOnly(checked as boolean);
+                              setCustomerTxPage(1);
+                            }}
+                          />
+                          <Label htmlFor="customer-tx-cash">Cash Payments Only</Label>
+                        </div>
+                      </div>
+                      <div className="flex items-end">
+                        <Button onClick={generateCustomerTxPDF} className="w-full gap-2" variant="outline">
+                          <FileDown className="h-4 w-4" />
+                          Download Report
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Customer</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Notes</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredCustomerTransactions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                              No transactions found for selected criteria
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedCustomerTransactions.map((tx, i) => (
+                            <TableRow key={i}>
+                              <TableCell>{tx.date}</TableCell>
+                              <TableCell>{customers.find(c => c.id === tx.customerId)?.name || 'Unknown'}</TableCell>
+                              <TableCell className="capitalize">{tx.paymentMethod}</TableCell>
+                              <TableCell className="text-muted-foreground">{tx.notes || '-'}</TableCell>
+                              <TableCell className="text-right font-mono font-bold">
+                                {tx.amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {Math.ceil(filteredCustomerTransactions.length / ITEMS_PER_PAGE) > 1 && (
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCustomerTxPage(p => Math.max(1, p - 1))}
+                              className={customerTxPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          <PaginationItem>
+                            <span className="px-4 text-sm font-medium">Page {customerTxPage} of {Math.ceil(filteredCustomerTransactions.length / ITEMS_PER_PAGE)}</span>
+                          </PaginationItem>
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCustomerTxPage(p => Math.min(Math.ceil(filteredCustomerTransactions.length / ITEMS_PER_PAGE), p + 1))}
+                              className={customerTxPage === Math.ceil(filteredCustomerTransactions.length / ITEMS_PER_PAGE) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Customer Payment Details</CardTitle>
@@ -2054,6 +2364,102 @@ export default function Payments() {
                       </Pagination>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+              <Card className="mt-8 border-t-2 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <List className="h-5 w-5" />
+                    Daily Transactions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-muted/20 p-4 rounded-lg">
+                      <div className="space-y-2">
+                        <Label>From Date</Label>
+                        <Input type="date" value={customerTxDateFrom} onChange={(e) => setCustomerTxDateFrom(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>To Date</Label>
+                        <Input type="date" value={customerTxDateTo} onChange={(e) => setCustomerTxDateTo(e.target.value)} />
+                      </div>
+                      <div className="flex flex-col justify-end space-y-2">
+                        <div className="flex items-center space-x-2 pb-2">
+                          <Checkbox
+                            id="customer-tx-cash"
+                            checked={customerTxShowCashOnly}
+                            onCheckedChange={(checked) => {
+                              setCustomerTxShowCashOnly(checked as boolean);
+                              setCustomerTxPage(1);
+                            }}
+                          />
+                          <Label htmlFor="customer-tx-cash">Cash Payments Only</Label>
+                        </div>
+                      </div>
+                      <div className="flex items-end">
+                        <Button onClick={generateCustomerTxPDF} className="w-full gap-2" variant="outline">
+                          <FileDown className="h-4 w-4" />
+                          Download Report
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Customer</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Notes</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredCustomerTransactions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                              No transactions found for selected criteria
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedCustomerTransactions.map((tx, i) => (
+                            <TableRow key={i}>
+                              <TableCell>{tx.date}</TableCell>
+                              <TableCell>{customers.find(c => c.id === tx.customerId)?.name || 'Unknown'}</TableCell>
+                              <TableCell className="capitalize">{tx.paymentMethod}</TableCell>
+                              <TableCell className="text-muted-foreground">{tx.notes || '-'}</TableCell>
+                              <TableCell className="text-right font-mono font-bold">
+                                {tx.amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {Math.ceil(filteredCustomerTransactions.length / ITEMS_PER_PAGE) > 1 && (
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCustomerTxPage(p => Math.max(1, p - 1))}
+                              className={customerTxPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          <PaginationItem>
+                            <span className="px-4 text-sm font-medium">Page {customerTxPage} of {Math.ceil(filteredCustomerTransactions.length / ITEMS_PER_PAGE)}</span>
+                          </PaginationItem>
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCustomerTxPage(p => Math.min(Math.ceil(filteredCustomerTransactions.length / ITEMS_PER_PAGE), p + 1))}
+                              className={customerTxPage === Math.ceil(filteredCustomerTransactions.length / ITEMS_PER_PAGE) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
