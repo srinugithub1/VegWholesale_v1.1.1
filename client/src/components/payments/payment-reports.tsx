@@ -11,17 +11,6 @@ import { format, isWithinInterval, parseISO } from "date-fns";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FileDown, Filter } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination";
-
-const ITEMS_PER_PAGE = 10;
 
 type ReportType = "all" | "vendor" | "customer";
 
@@ -30,8 +19,6 @@ export function PaymentReports() {
     const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
     const [reportType, setReportType] = useState<ReportType>("all");
     const [selectedEntityId, setSelectedEntityId] = useState<string>("all");
-    const [showCashSalesOnly, setShowCashSalesOnly] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
 
     const { data: vendorPayments } = useQuery<VendorPayment[]>({
         queryKey: ["/api/vendor-payments"],
@@ -101,29 +88,8 @@ export function PaymentReports() {
             data = data.filter(item => item.partyId === selectedEntityId);
         }
 
-        // Cash Sale Filter
-        if (showCashSalesOnly) {
-            // Show ONLY Cash Sales
-            data = data.filter(item => item.partyName && item.partyName.toLowerCase().includes("cash sale"));
-        } else {
-            // Hide Cash Sales
-            data = data.filter(item => !item.partyName || !item.partyName.toLowerCase().includes("cash sale"));
-        }
-
         return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [vendorPayments, customerPayments, vendors, customers, dateFrom, dateTo, reportType, selectedEntityId, showCashSalesOnly]);
-
-    // Pagination Logic
-    const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
-    const paginatedData = useMemo(() => {
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return filteredData.slice(start, start + ITEMS_PER_PAGE);
-    }, [filteredData, currentPage]);
-
-    // Calculate Total Amount for current filtered list (Not just page)
-    const totalFilteredAmount = useMemo(() => {
-        return filteredData.reduce((sum, item) => sum + item.amount, 0);
-    }, [filteredData]);
+    }, [vendorPayments, customerPayments, vendors, customers, dateFrom, dateTo, reportType, selectedEntityId]);
 
     const generatePDF = () => {
         const doc = new jsPDF();
@@ -233,19 +199,6 @@ export function PaymentReports() {
                                 </Select>
                             </div>
                         )}
-                        <div className="flex flex-col justify-end space-y-2">
-                            <div className="flex items-center space-x-2 pb-2">
-                                <Checkbox
-                                    id="cash-sales"
-                                    checked={showCashSalesOnly}
-                                    onCheckedChange={(checked) => {
-                                        setShowCashSalesOnly(checked as boolean);
-                                        setCurrentPage(1); // Reset page on filter change
-                                    }}
-                                />
-                                <Label htmlFor="cash-sales">Cash Payments</Label>
-                            </div>
-                        </div>
                         <div className="flex items-end">
                             <Button onClick={generatePDF} className="w-full gap-2">
                                 <FileDown className="h-4 w-4" />
@@ -277,7 +230,7 @@ export function PaymentReports() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                paginatedData.map((row, i) => (
+                                filteredData.map((row, i) => (
                                     <TableRow key={i}>
                                         <TableCell>{row.date}</TableCell>
                                         <TableCell>
@@ -294,46 +247,10 @@ export function PaymentReports() {
                                     </TableRow>
                                 ))
                             )}
-                            {filteredData.length > 0 && (
-                                <TableRow className="bg-muted/50 font-bold border-t-2">
-                                    <TableCell colSpan={5} className="text-right">Total Amount:</TableCell>
-                                    <TableCell className="text-right font-mono text-base">
-                                        {totalFilteredAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
-                                    </TableCell>
-                                </TableRow>
-                            )}
                         </TableBody>
                     </Table>
                 </CardContent>
             </Card>
-
-            {totalPages > 1 && (
-                <div className="flex justify-center">
-                    <Pagination>
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious
-                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                                />
-                            </PaginationItem>
-
-                            <PaginationItem>
-                                <span className="px-4 text-sm font-medium">
-                                    Page {currentPage} of {totalPages}
-                                </span>
-                            </PaginationItem>
-
-                            <PaginationItem>
-                                <PaginationNext
-                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                                />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
-            )}
         </div>
     );
 }
