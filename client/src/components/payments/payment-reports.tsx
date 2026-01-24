@@ -101,13 +101,14 @@ export function PaymentReports() {
             data = data.filter(item => item.partyId === selectedEntityId);
         }
 
-        // Cash Sale Filter
+        // Cash Payment Filter (Based on Method)
         if (showCashSalesOnly) {
-            // Show ONLY Cash Sales
-            data = data.filter(item => item.partyName && item.partyName.toLowerCase().includes("cash sale"));
+            // Show ONLY Cash Method Payments
+            data = data.filter(item => item.paymentMethod && item.paymentMethod.toLowerCase() === "cash");
         } else {
-            // Hide Cash Sales
-            data = data.filter(item => !item.partyName || !item.partyName.toLowerCase().includes("cash sale"));
+            // Default: Show Non-Cash Method Payments (Bank, UPI, etc.)
+            // User referred to this as "Credit Method Customer" (paying off credit via non-cash means, or just non-cash payments)
+            data = data.filter(item => !item.paymentMethod || item.paymentMethod.toLowerCase() !== "cash");
         }
 
         return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
