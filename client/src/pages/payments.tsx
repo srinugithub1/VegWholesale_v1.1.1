@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Search, Plus, Calendar, Save, Trash2, Printer, CreditCard, Wallet, X, CheckCircle, Edit2 as Pencil } from "lucide-react"; // Aliasing Edit2 to Pencil to avoid changing all usages
 import type { Vendor, Customer, VendorPayment, CustomerPayment, HamaliCashPayment, Invoice, InvoiceItem, Product, Purchase, PurchaseItem } from "@shared/schema";
+import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type VendorWithBalance = Vendor & { totalPurchases: number; totalPayments: number; balance: number };
@@ -110,6 +111,8 @@ export default function Payments() {
   const [editingPayment, setEditingPayment] = useState<{ id: string, type: 'vendor' | 'customer', amount: string, date: string, method: string, notes?: string } | null>(null);
 
   // Customer Payment State
+  const [listDateFrom, setListDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [listDateTo, setListDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [customerInvoices, setCustomerInvoices] = useState<InvoiceWithItems[]>([]);
   const [editedInvoices, setEditedInvoices] = useState<Record<string, EditedInvoice>>({});
   const [loadingInvoices, setLoadingInvoices] = useState(false);
