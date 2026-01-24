@@ -1976,6 +1976,7 @@ export default function Payments() {
                     <TableBody>
                       {customerBalances
                         .filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()))
+                        .filter(c => c.balance > 0)
                         .slice((customerPage - 1) * ITEMS_PER_PAGE, customerPage * ITEMS_PER_PAGE)
                         .map((customer) => (
                           <TableRow key={customer.id} data-testid={`row-customer-${customer.id}`}>
@@ -2013,7 +2014,7 @@ export default function Payments() {
                             </TableCell>
                           </TableRow>
                         ))}
-                      {customerBalances.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())).length === 0 && (
+                      {customerBalances.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) && c.balance > 0).length === 0 && (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
                             No customers found
