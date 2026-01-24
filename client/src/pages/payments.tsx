@@ -177,6 +177,16 @@ export default function Payments() {
     queryKey: ["/api/hamali-cash"],
   });
 
+  const customerPaymentStats = useMemo(() => {
+    const stats: Record<string, number> = {};
+    customerPayments.forEach(payment => {
+      if (payment.date >= listDateFrom && payment.date <= listDateTo) {
+        stats[payment.customerId] = (stats[payment.customerId] || 0) + payment.amount;
+      }
+    });
+    return stats;
+  }, [customerPayments, listDateFrom, listDateTo]);
+
   const [vendorSummary, setVendorSummary] = useState<{
     totalPurchases: number;
     totalPayments: number;
@@ -1960,7 +1970,15 @@ export default function Payments() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Customer Payment Details</CardTitle>
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <CardTitle>Customer Payment Details</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Label>From:</Label>
+                      <Input type="date" className="w-[150px]" value={listDateFrom} onChange={(e) => setListDateFrom(e.target.value)} />
+                      <Label>To:</Label>
+                      <Input type="date" className="w-[150px]" value={listDateTo} onChange={(e) => setListDateTo(e.target.value)} />
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -1985,7 +2003,7 @@ export default function Payments() {
                               {customer.totalInvoices.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                             </TableCell>
                             <TableCell className="text-right font-mono">
-                              {customer.totalPayments.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                              {(customerPaymentStats[customer.id] || 0).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold">
                               {customer.balance.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
@@ -2019,6 +2037,31 @@ export default function Payments() {
                           <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
                             No customers found
                           </TableCell>
+                        </TableRow>
+                      )}
+
+                      {customerBalances.filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) && c.balance > 0).length > 0 && (
+                        <TableRow className="bg-muted/50 font-bold border-t-2">
+                          <TableCell>Total</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {customerBalances
+                              .filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) && c.balance > 0)
+                              .reduce((sum, c) => sum + c.totalInvoices, 0)
+                              .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {customerBalances
+                              .filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) && c.balance > 0)
+                              .reduce((sum, c) => sum + (customerPaymentStats[c.id] || 0), 0)
+                              .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {customerBalances
+                              .filter(c => c.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) && c.balance > 0)
+                              .reduce((sum, c) => sum + c.balance, 0)
+                              .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                          </TableCell>
+                          <TableCell></TableCell>
                         </TableRow>
                       )}
                     </TableBody>
