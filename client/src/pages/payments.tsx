@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -1169,6 +1170,19 @@ export default function Payments() {
                       <Label>To Date</Label>
                       <Input type="date" value={creditDateTo} onChange={(e) => setCreditDateTo(e.target.value)} />
                     </div>
+                    <div className="flex items-center space-x-2 pt-6">
+                      <Checkbox
+                        id="showCreditOnly"
+                        checked={showCreditOnly}
+                        onCheckedChange={(checked) => setShowCreditOnly(checked as boolean)}
+                      />
+                      <Label
+                        htmlFor="showCreditOnly"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Show Credit Only (Pending)
+                      </Label>
+                    </div>
                   </div>
 
                   <div className="min-h-[300px]">
@@ -1186,6 +1200,7 @@ export default function Payments() {
                               <TableHead className="w-[50px]">S.No</TableHead>
                               <TableHead>Customer Name</TableHead>
                               <TableHead>Invoice No</TableHead>
+                              <TableHead>Status</TableHead>
                               <TableHead>Date</TableHead>
                               <TableHead className="text-right">Credit Amount</TableHead>
                             </TableRow>
@@ -1198,6 +1213,11 @@ export default function Payments() {
                                   <TableCell>{index + 1}</TableCell>
                                   <TableCell className="font-medium">{customerName}</TableCell>
                                   <TableCell>{invoice.invoiceNumber}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={invoice.status === 'pending' ? 'destructive' : 'default'} className="uppercase text-[10px]">
+                                      {invoice.status}
+                                    </Badge>
+                                  </TableCell>
                                   <TableCell>{invoice.date}</TableCell>
                                   <TableCell className="text-right">₹{invoice.grandTotal.toFixed(2)}</TableCell>
                                 </TableRow>
