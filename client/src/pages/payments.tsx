@@ -118,6 +118,7 @@ export default function Payments() {
   // Customer Credit Tab State
   const [creditDateFrom, setCreditDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
   const [creditDateTo, setCreditDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [showCreditOnly, setShowCreditOnly] = useState(true);
   const [customerInvoices, setCustomerInvoices] = useState<InvoiceWithItems[]>([]);
   const [editedInvoices, setEditedInvoices] = useState<Record<string, EditedInvoice>>({});
   const [loadingInvoices, setLoadingInvoices] = useState(false);
