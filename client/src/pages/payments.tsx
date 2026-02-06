@@ -1190,19 +1190,28 @@ export default function Payments() {
                         size="sm"
                         className="h-9 gap-2"
                         onClick={() => {
-                          const data: any = {
-                            period: `From: ${format(new Date(creditDateFrom), 'dd/MM/yyyy')} To: ${format(new Date(creditDateTo), 'dd/MM/yyyy')}`,
-                            items: creditInvoices.map((inv, idx) => ({
-                              no: idx + 1,
-                              customerName: customers.find(c => c.id === inv.customerId)?.name || "Unknown",
-                              invoiceNumber: inv.invoiceNumber,
-                              status: inv.status,
-                              date: format(new Date(inv.date), 'dd/MM/yyyy'),
-                              amount: inv.grandTotal
-                            })),
-                            totalAmount: totalCreditAmount
-                          };
-                          generateCreditReport(data);
+                          try {
+                            const data: any = {
+                              period: `From: ${format(new Date(creditDateFrom), 'dd/MM/yyyy')} To: ${format(new Date(creditDateTo), 'dd/MM/yyyy')}`,
+                              items: creditInvoices.map((inv, idx) => ({
+                                no: idx + 1,
+                                customerName: customers.find(c => c.id === inv.customerId)?.name || "Unknown",
+                                invoiceNumber: inv.invoiceNumber,
+                                status: inv.status,
+                                date: format(new Date(inv.date), 'dd/MM/yyyy'),
+                                amount: inv.grandTotal
+                              })),
+                              totalAmount: totalCreditAmount
+                            };
+                            generateCreditReport(data);
+                          } catch (error: any) {
+                            console.error("PDF Generation failed:", error);
+                            toast({
+                              title: "PDF Generation Failed",
+                              description: error.message || "Unknown error occurred",
+                              variant: "destructive",
+                            });
+                          }
                         }}
                       >
                         <FileDown className="h-4 w-4" />
