@@ -1184,6 +1184,31 @@ export default function Payments() {
                         Show Credit Only (Pending)
                       </Label>
                     </div>
+                    <div className="flex items-center pt-6">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-2"
+                        onClick={() => {
+                          const data: any = {
+                            period: `From: ${format(new Date(creditDateFrom), 'dd/MM/yyyy')} To: ${format(new Date(creditDateTo), 'dd/MM/yyyy')}`,
+                            items: creditInvoices.map((inv, idx) => ({
+                              no: idx + 1,
+                              customerName: customers.find(c => c.id === inv.customerId)?.name || "Unknown",
+                              invoiceNumber: inv.invoiceNumber,
+                              status: inv.status,
+                              date: format(new Date(inv.date), 'dd/MM/yyyy'),
+                              amount: inv.grandTotal
+                            })),
+                            totalAmount: totalCreditAmount
+                          };
+                          generateCreditReport(data);
+                        }}
+                      >
+                        <FileDown className="h-4 w-4" />
+                        PDF Download
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="min-h-[300px]">
