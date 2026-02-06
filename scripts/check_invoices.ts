@@ -1,4 +1,5 @@
 
+import "dotenv/config";
 import { db } from "../server/db";
 import { invoices } from "../shared/schema";
 import { eq, desc } from "drizzle-orm";
