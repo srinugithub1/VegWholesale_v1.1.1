@@ -474,7 +474,9 @@ export async function registerRoutes(
         shop,
         page,
         limit,
-        vehicleId
+        limit,
+        vehicleId,
+        status: req.query.status as string | undefined
       });
 
       res.json(result);

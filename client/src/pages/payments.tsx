@@ -186,7 +186,7 @@ export default function Payments() {
 
   // Fetch Invoices for Customer Credit Tab
   const { data: creditInvoicesData, isLoading: creditInvoicesLoading } = useQuery<{ invoices: InvoiceWithItems[] }>({
-    queryKey: ["/api/invoices", { startDate: creditDateFrom, endDate: creditDateTo }],
+    queryKey: ["/api/invoices", { startDate: creditDateFrom, endDate: creditDateTo, status: 'pending' }],
   });
 
   const creditInvoices = useMemo(() => {

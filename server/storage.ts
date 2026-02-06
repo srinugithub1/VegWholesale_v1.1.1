@@ -554,7 +554,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number, vehicleId?: string }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number }> {
+  async getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number, vehicleId?: string, status?: string }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number }> {
     const page = filters.page || 1;
     const limit = filters.limit || 50;
     const offset = (page - 1) * limit;
@@ -564,6 +564,7 @@ export class DatabaseStorage implements IStorage {
     if (filters.endDate) conditions.push(lte(invoices.date, filters.endDate));
     if (filters.shop) conditions.push(eq(vehicles.shop, filters.shop));
     if (filters.vehicleId) conditions.push(eq(invoices.vehicleId, filters.vehicleId));
+    if (filters.status) conditions.push(eq(invoices.status, filters.status));
 
     // Get total count first
     const countQuery = db.select({ count: sql<number>`count(*)` })
