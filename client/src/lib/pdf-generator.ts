@@ -270,7 +270,7 @@ export const generateCreditReport = (data: CreditReportData) => {
         item.no,
         item.customerName,
         item.invoiceNumber,
-        item.status.toUpperCase(),
+        (item.status || "pending").toUpperCase(),
         item.date,
         `Rs ${item.amount.toFixed(2)}`
     ]);
