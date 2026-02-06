@@ -112,6 +112,7 @@ export default function Payments() {
 
   // Customer Payment State
   const [listDateFrom, setListDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [listDateTo, setListDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
 
   // Customer Credit Tab State
   const [creditDateFrom, setCreditDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
