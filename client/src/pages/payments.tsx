@@ -112,7 +112,10 @@ export default function Payments() {
 
   // Customer Payment State
   const [listDateFrom, setListDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [listDateTo, setListDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
+
+  // Customer Credit Tab State
+  const [creditDateFrom, setCreditDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [creditDateTo, setCreditDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [customerInvoices, setCustomerInvoices] = useState<InvoiceWithItems[]>([]);
   const [editedInvoices, setEditedInvoices] = useState<Record<string, EditedInvoice>>({});
   const [loadingInvoices, setLoadingInvoices] = useState(false);
@@ -179,6 +182,19 @@ export default function Payments() {
   const { data: hamaliCashPayments = [] } = useQuery<HamaliCashPayment[]>({
     queryKey: ["/api/hamali-cash"],
   });
+
+  // Fetch Invoices for Customer Credit Tab
+  const { data: creditInvoicesData, isLoading: creditInvoicesLoading } = useQuery<{ invoices: InvoiceWithItems[] }>({
+    queryKey: ["/api/invoices", { startDate: creditDateFrom, endDate: creditDateTo }],
+  });
+
+  const creditInvoices = useMemo(() => {
+    return creditInvoicesData?.invoices || [];
+  }, [creditInvoicesData]);
+
+  const totalCreditAmount = useMemo(() => {
+    return creditInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
+  }, [creditInvoices]);
 
   const customerPaymentStats = useMemo(() => {
     const stats: Record<string, number> = {};
@@ -1134,7 +1150,75 @@ export default function Payments() {
             <TabsList>
               <TabsTrigger value="vendors" data-testid="tab-vendors">Vendor Payments</TabsTrigger>
               <TabsTrigger value="customers" data-testid="tab-customers">Customer Payments</TabsTrigger>
+              <TabsTrigger value="customer-credit">Customers Credit</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="customer-credit">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customers Credit Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4 mb-6">
+                    <div>
+                      <Label>From Date</Label>
+                      <Input type="date" value={creditDateFrom} onChange={(e) => setCreditDateFrom(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>To Date</Label>
+                      <Input type="date" value={creditDateTo} onChange={(e) => setCreditDateTo(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="min-h-[300px]">
+                    {creditInvoicesLoading ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    ) : creditInvoices.length > 0 ? (
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[50px]">S.No</TableHead>
+                              <TableHead>Customer Name</TableHead>
+                              <TableHead>Invoice No</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead className="text-right">Credit Amount</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {creditInvoices.map((invoice, index) => {
+                              const customerName = customers.find(c => c.id === invoice.customerId)?.name || "Unknown";
+                              return (
+                                <TableRow key={invoice.id}>
+                                  <TableCell>{index + 1}</TableCell>
+                                  <TableCell className="font-medium">{customerName}</TableCell>
+                                  <TableCell>{invoice.invoiceNumber}</TableCell>
+                                  <TableCell>{invoice.date}</TableCell>
+                                  <TableCell className="text-right">₹{invoice.grandTotal.toFixed(2)}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                        <div className="p-4 bg-muted/20 border-t flex justify-between items-center font-bold">
+                          <span>Total Credit Amount:</span>
+                          <span>₹{totalCreditAmount.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-8 text-muted-foreground border rounded-md border-dashed">
+                        <p className="text-lg font-medium">No Credit Records Found</p>
+                        <p className="text-sm">Try selecting a different date range.</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             <TabsContent value="vendors" className="space-y-4">
               <Dialog open={vendorDialogOpen} onOpenChange={handleVendorDialogClose}>
