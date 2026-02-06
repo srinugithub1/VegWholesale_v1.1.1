@@ -428,7 +428,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getInvoices(): Promise<Invoice[]> {
-    return await db.select().from(invoices);
+    return await db.select().from(invoices).orderBy(desc(invoices.date), desc(invoices.invoiceNumber));
   }
 
   async getInvoice(id: string): Promise<Invoice | undefined> {
@@ -521,7 +521,8 @@ export class DatabaseStorage implements IStorage {
     })
       .from(invoices)
       .leftJoin(vehicles, eq(invoices.vehicleId, vehicles.id))
-      .where(eq(invoices.customerId, customerId));
+      .where(eq(invoices.customerId, customerId))
+      .orderBy(desc(invoices.date), desc(invoices.invoiceNumber));
 
     return rows.map(({ invoice, shop }) => ({
       ...invoice,
@@ -536,7 +537,8 @@ export class DatabaseStorage implements IStorage {
     })
       .from(invoices)
       .leftJoin(vehicles, eq(invoices.vehicleId, vehicles.id))
-      .where(eq(invoices.customerId, customerId));
+      .where(eq(invoices.customerId, customerId))
+      .orderBy(desc(invoices.date), desc(invoices.invoiceNumber));
 
     const invoiceIds = rows.map(r => r.invoice.id);
 
@@ -585,7 +587,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(customers, eq(invoices.customerId, customers.id))
       .limit(limit)
       .offset(offset)
-      .orderBy(desc(invoices.createdAt)); // Order by creation time to show recent first
+      .orderBy(desc(invoices.date), desc(invoices.invoiceNumber)); // Order by date descending
 
     if (conditions.length > 0) {
       query.where(and(...conditions));
@@ -639,9 +641,10 @@ export class DatabaseStorage implements IStorage {
   async getStockMovements(startDate?: string, endDate?: string): Promise<StockMovement[]> {
     if (startDate && endDate) {
       return await db.select().from(stockMovements)
-        .where(and(gte(stockMovements.date, startDate), lte(stockMovements.date, endDate)));
+        .where(and(gte(stockMovements.date, startDate), lte(stockMovements.date, endDate)))
+        .orderBy(desc(stockMovements.date), desc(stockMovements.id));
     }
-    return await db.select().from(stockMovements);
+    return await db.select().from(stockMovements).orderBy(desc(stockMovements.date), desc(stockMovements.id));
   }
 
   async createStockMovement(insertMovement: InsertStockMovement): Promise<StockMovement> {
@@ -698,9 +701,11 @@ export class DatabaseStorage implements IStorage {
 
   async getCustomerPayments(customerId?: string): Promise<CustomerPayment[]> {
     if (customerId) {
-      return await db.select().from(customerPayments).where(eq(customerPayments.customerId, customerId));
+      return await db.select().from(customerPayments)
+        .where(eq(customerPayments.customerId, customerId))
+        .orderBy(desc(customerPayments.date), desc(customerPayments.id));
     }
-    return await db.select().from(customerPayments);
+    return await db.select().from(customerPayments).orderBy(desc(customerPayments.date), desc(customerPayments.id));
   }
 
   async createCustomerPayment(insertPayment: InsertCustomerPayment): Promise<CustomerPayment> {
@@ -853,11 +858,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVehicleInventoryMovements(vehicleId: string): Promise<VehicleInventoryMovement[]> {
-    return await db.select().from(vehicleInventoryMovements).where(eq(vehicleInventoryMovements.vehicleId, vehicleId));
+    return await db.select().from(vehicleInventoryMovements)
+      .where(eq(vehicleInventoryMovements.vehicleId, vehicleId))
+      .orderBy(desc(vehicleInventoryMovements.date), desc(vehicleInventoryMovements.id));
   }
 
   async getAllVehicleInventoryMovements(): Promise<VehicleInventoryMovement[]> {
-    return await db.select().from(vehicleInventoryMovements);
+    return await db.select().from(vehicleInventoryMovements)
+      .orderBy(desc(vehicleInventoryMovements.date), desc(vehicleInventoryMovements.id));
   }
 
   async updateVehicleInventory(vehicleId: string, productId: string, newQuantity: number): Promise<VehicleInventory> {
@@ -921,9 +929,11 @@ export class DatabaseStorage implements IStorage {
   // Vendor Returns Methods
   async getVendorReturns(vendorId?: string): Promise<VendorReturn[]> {
     if (vendorId) {
-      return await db.select().from(vendorReturns).where(eq(vendorReturns.vendorId, vendorId));
+      return await db.select().from(vendorReturns)
+        .where(eq(vendorReturns.vendorId, vendorId))
+        .orderBy(desc(vendorReturns.date), desc(vendorReturns.id));
     }
-    return await db.select().from(vendorReturns);
+    return await db.select().from(vendorReturns).orderBy(desc(vendorReturns.date), desc(vendorReturns.id));
   }
 
   async getVendorReturn(id: string): Promise<VendorReturn | undefined> {
@@ -976,7 +986,7 @@ export class DatabaseStorage implements IStorage {
 
   // Hamali Cash Payments
   async getHamaliCashPayments(): Promise<HamaliCashPayment[]> {
-    return await db.select().from(hamaliCashPayments);
+    return await db.select().from(hamaliCashPayments).orderBy(desc(hamaliCashPayments.date), desc(hamaliCashPayments.id));
   }
 
   async createHamaliCashPayment(insertPayment: InsertHamaliCashPayment): Promise<HamaliCashPayment> {
