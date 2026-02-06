@@ -28,18 +28,44 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
+    async ({ queryKey }) => {
+      let url = "";
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
+      // Check if the last item is a plain object (query params)
+      const lastItem = queryKey[queryKey.length - 1];
+      const isLastItemQueryObj = typeof lastItem === "object" && lastItem !== null && !Array.isArray(lastItem);
 
-    await throwIfResNotOk(res);
-    return await res.json();
-  };
+      if (isLastItemQueryObj) {
+        // Join everything except the last item
+        url = queryKey.slice(0, -1).join("/");
+
+        const searchParams = new URLSearchParams();
+        // Use type assertion since we know it's an object
+        Object.entries(lastItem as Record<string, unknown>).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            searchParams.append(key, String(value));
+          }
+        });
+
+        if (searchParams.toString()) {
+          url += `?${searchParams.toString()}`;
+        }
+      } else {
+        // Fallback: standard join for array of strings/numbers
+        url = queryKey.join("/");
+      }
+
+      const res = await fetch(url, {
+        credentials: "include",
+      });
+
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      await throwIfResNotOk(res);
+      return await res.json();
+    };
 
 export const queryClient = new QueryClient({
   defaultOptions: {
