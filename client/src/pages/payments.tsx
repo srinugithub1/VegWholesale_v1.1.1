@@ -35,7 +35,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Search, Plus, Calendar, Save, Trash2, Printer, CreditCard, Wallet, X, CheckCircle, Edit2 as Pencil } from "lucide-react"; // Aliasing Edit2 to Pencil to avoid changing all usages
+import { Search, Plus, Calendar, Save, Trash2, Printer, CreditCard, Wallet, X, CheckCircle, FileDown, Edit2 as Pencil } from "lucide-react"; // Aliasing Edit2 to Pencil to avoid changing all usages
 import type { Vendor, Customer, VendorPayment, CustomerPayment, HamaliCashPayment, Invoice, InvoiceItem, Product, Purchase, PurchaseItem } from "@shared/schema";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";

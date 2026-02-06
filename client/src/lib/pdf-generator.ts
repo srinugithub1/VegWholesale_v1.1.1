@@ -222,3 +222,97 @@ export const generateDetailedReport = (data: ReportData) => {
 
     doc.save(`${reportTitle.replace(/\s+/g, '_')}_${data.date}.pdf`);
 };
+
+export interface CreditReportData {
+    period: string; // "From: ... To: ..."
+    items: {
+        no: number;
+        customerName: string;
+        invoiceNumber: string;
+        status: string;
+        date: string;
+        amount: number;
+    }[];
+    totalAmount: number;
+}
+
+export const generateCreditReport = (data: CreditReportData) => {
+    const doc = new jsPDF();
+
+    // --- Header ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Dr B. R. Ambedkar Vegetable Market (Shop No. 42)", 14, 15);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text("Bowenpally, Secunderabad", 14, 22);
+
+    // --- Title Box ---
+    doc.setLineWidth(0.5);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(14, 28, 182, 10); // Box
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Customers Credit Report (${data.period})`, 18, 34);
+
+    // --- Main Table ---
+    const tableColumn = [
+        "S.No",
+        "Customer Name",
+        "Invoice No",
+        "Status",
+        "Date",
+        "Credit Amount"
+    ];
+
+    const tableRows = data.items.map(item => [
+        item.no,
+        item.customerName,
+        item.invoiceNumber,
+        item.status.toUpperCase(),
+        item.date,
+        `Rs ${item.amount.toFixed(2)}`
+    ]);
+
+    // Footer Row
+    const footRows = [
+        [
+            { content: 'Total Credit Amount', colSpan: 5, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+            { content: `Rs ${data.totalAmount.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [220, 252, 231] as [number, number, number] } }
+        ]
+    ];
+
+    autoTable(doc, {
+        startY: 45,
+        head: [tableColumn],
+        body: tableRows,
+        foot: footRows,
+        theme: 'grid',
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            lineColor: [229, 231, 235],
+            lineWidth: 0.1,
+            textColor: [31, 41, 55],
+            fillColor: [255, 255, 255]
+        },
+        headStyles: {
+            fillColor: [22, 163, 74], // Green 600 (Success color)
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            lineWidth: 0.1,
+            lineColor: [22, 163, 74]
+        },
+        alternateRowStyles: {
+            fillColor: [249, 250, 251]
+        },
+        columnStyles: {
+            0: { cellWidth: 15, halign: 'center' },
+            5: { halign: 'right' }
+        }
+    });
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    doc.save(`Customer_Credit_Report_${timestamp}.pdf`);
+};
