@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Store, LogOut, User } from "lucide-react";
 import { useShop } from "@/hooks/use-shop";
 import { useAuth } from "@/hooks/use-auth";
+import { DateTimeDisplay } from "@/components/date-time-display";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect } from "react";
@@ -169,6 +170,9 @@ function ProtectedApp() {
             )}
 
             <div className="flex items-center gap-2">
+              <div className="hidden lg:flex">
+                <DateTimeDisplay />
+              </div>
               <div className="flex items-center gap-2 px-2 mr-2 border-r">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary/10 text-primary">
