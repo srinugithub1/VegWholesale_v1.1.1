@@ -69,10 +69,17 @@ export default function PrintCenter() {
   const getVehicle = (id: string | null) => id ? vehicles.find((v) => v.id === id) : null;
   const getVendor = (id: string | null) => id ? vendors.find((v) => v.id === id) : null;
 
-  const { data: singleInvoice } = useQuery<Invoice>({
+  const { data: singleInvoice, isLoading: singleInvoiceLoading } = useQuery<Invoice>({
     queryKey: [`/api/invoices/${queryInvoiceId}`],
     enabled: !!queryInvoiceId
   });
+
+  const selectedInvoiceData = singleInvoice || invoices.find((i) => String(i.id) === String(selectedInvoice));
+  const customer = selectedInvoiceData ? getCustomer(selectedInvoiceData.customerId) : null;
+  const vehicle = selectedInvoiceData ? getVehicle(selectedInvoiceData.vehicleId) : null;
+  const vendor = selectedInvoiceData
+    ? (getVendor(selectedInvoiceData.vendorId) || (vehicle ? getVendor(vehicle.vendorId) : null))
+    : null;
 
   // Effect to set selected invoice from query param to ensure other logic works
   useEffect(() => {
@@ -93,18 +100,11 @@ export default function PrintCenter() {
     }
   }, [autoPrint, !!selectedInvoiceData, invoiceItems.length]);
 
-  const selectedInvoiceData = singleInvoice || invoices.find((i) => String(i.id) === String(selectedInvoice));
-  const customer = selectedInvoiceData ? getCustomer(selectedInvoiceData.customerId) : null;
-  const vehicle = selectedInvoiceData ? getVehicle(selectedInvoiceData.vehicleId) : null;
-  const vendor = selectedInvoiceData
-    ? (getVendor(selectedInvoiceData.vendorId) || (vehicle ? getVendor(vehicle.vendorId) : null))
-    : null;
-
   const handlePrint = () => {
     window.print();
   };
 
-  if (invoicesLoading) {
+  if (invoicesLoading || (queryInvoiceId && singleInvoiceLoading)) {
     return (
       <div className="p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -117,6 +117,23 @@ export default function PrintCenter() {
       </div>
     );
   }
+
+  // Safe numeric conversion for decimal fields from Postgres
+  const formatAmount = (val: any) => {
+    const num = typeof val === 'string' ? parseFloat(val) : val;
+    return isNaN(num) ? 0 : num;
+  };
+
+  // Safe bag count calculation
+  const getBagsCount = (item: any) => {
+    if (!item.weightBreakdown) return 0;
+    try {
+      const weights = typeof item.weightBreakdown === 'string' ? JSON.parse(item.weightBreakdown) : item.weightBreakdown;
+      return Array.isArray(weights) ? weights.length : 0;
+    } catch (e) {
+      return 0;
+    }
+  };
 
 
   return (
@@ -210,10 +227,10 @@ export default function PrintCenter() {
                         <div className="col-span-5 truncate">{getProductName(item.productId)}</div>
                         <div className="col-span-2 text-right">{item.quantity}</div>
                         <div className="col-span-2 text-right">{item.unitPrice}</div>
-                        <div className="col-span-3 text-right">{item.total.toFixed(0)}</div>
+                        <div className="col-span-3 text-right">{formatAmount(item.total).toFixed(0)}</div>
                       </div>
                       <div className="italic text-[10px] mt-0.5">
-                        Bags: {item.bags || 0}
+                        Bags: {getBagsCount(item)}
                       </div>
                       {item.weightBreakdown && (
                         <div className="text-[10px] leading-tight text-muted-foreground mt-0.5 break-words">
@@ -234,12 +251,12 @@ export default function PrintCenter() {
                   {selectedInvoiceData.includeHamaliCharge && (
                     <div className="flex justify-between items-center text-sm">
                       <span>Hamali Charge ({selectedInvoiceData.bags || 0} Bags):</span>
-                      <span className="font-bold">Rs {selectedInvoiceData.hamaliChargeAmount?.toFixed(0)}</span>
+                      <span className="font-bold">Rs {formatAmount(selectedInvoiceData.hamaliChargeAmount).toFixed(0)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center text-lg font-bold border-t border-black pt-1">
                     <span>TOTAL:</span>
-                    <span>Rs {selectedInvoiceData.grandTotal?.toFixed(0)}</span>
+                    <span>Rs {formatAmount(selectedInvoiceData.grandTotal).toFixed(0)}</span>
                   </div>
                 </div>
 
@@ -425,6 +442,17 @@ export default function PrintCenter() {
             </Card>
           )}
         </div>
+      )}
+
+      {!selectedInvoiceData && selectedInvoice && !singleInvoiceLoading && (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">
+              Invoice not found. Please check the ID or select from the list.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {!selectedInvoice && (

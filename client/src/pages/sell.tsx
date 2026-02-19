@@ -932,6 +932,12 @@ function SaleSuccessDialog({
     window.open(url, '_blank');
   };
 
+  // Safe numeric conversion for decimal fields
+  const formatAmount = (val: any) => {
+    const num = typeof val === 'string' ? parseFloat(val) : val;
+    return isNaN(num) ? 0 : num;
+  };
+
   return (
     <>
       {/* Thermal Receipt - Visible only when printing */}
@@ -1021,7 +1027,7 @@ function SaleSuccessDialog({
           <div className="grid gap-4 py-4">
             <div className="flex flex-col items-center justify-center space-y-2 bg-muted/50 p-4 rounded-lg">
               <span className="text-sm text-muted-foreground">Grand Total</span>
-              <span className="text-3xl font-bold text-primary">₹{invoice.grandTotal.toFixed(0)}</span>
+              <span className="text-3xl font-bold text-primary">₹{formatAmount(invoice.grandTotal).toFixed(0)}</span>
             </div>
 
             {saleDetails?.items && (
@@ -1031,7 +1037,7 @@ function SaleSuccessDialog({
                   <div key={idx} className="flex flex-col border-b border-border/50 pb-1 mb-1">
                     <div className="flex justify-between">
                       <span>{item.name} ({item.weight}kg)</span>
-                      <span>₹{item.total.toFixed(0)}</span>
+                      <span>₹{formatAmount(item.total).toFixed(0)}</span>
                     </div>
                     {item.weightBreakdown && item.weightBreakdown.length > 0 && (
                       <div className="text-[10px] text-muted-foreground truncate" title={item.weightBreakdown.join(', ')}>
