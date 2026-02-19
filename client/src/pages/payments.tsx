@@ -381,6 +381,9 @@ export default function Payments() {
       // 1. Search Filter
       if (!c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())) return false;
 
+      // 2. Hide specialized accounts (Cash Sale Account shouldn't show in Payments)
+      if (c.name.toLowerCase() === "cash sale account") return false;
+
       // 2. Mode Filter
       if (customerListFilterMode === 'all') {
         // Show everyone with a balance
