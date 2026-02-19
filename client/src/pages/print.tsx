@@ -25,6 +25,7 @@ export default function PrintCenter() {
   const searchParams = new URLSearchParams(window.location.search);
   const queryInvoiceId = searchParams.get("invoiceId");
   const queryMode = searchParams.get("mode"); // 'receipt' or null
+  const autoPrint = searchParams.get("autoPrint") === "true";
 
   const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
     queryKey: ["/api/invoices?limit=2000"],
@@ -79,6 +80,18 @@ export default function PrintCenter() {
       setSelectedInvoice(queryInvoiceId);
     }
   }, [queryInvoiceId]);
+
+  // Effect for Auto-Printing
+  useEffect(() => {
+    if (autoPrint && selectedInvoiceData && invoiceItems.length > 0) {
+      const timer = setTimeout(() => {
+        window.print();
+        // After printing, if it's auto-print, maybe we can offer to close?
+        // But window.print() is blocking in most browsers.
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [autoPrint, !!selectedInvoiceData, invoiceItems.length]);
 
   const selectedInvoiceData = singleInvoice || invoices.find((i) => String(i.id) === String(selectedInvoice));
   const customer = selectedInvoiceData ? getCustomer(selectedInvoiceData.customerId) : null;
@@ -194,10 +207,10 @@ export default function PrintCenter() {
                   {invoiceItems.map((item) => (
                     <div key={item.id}>
                       <div className="grid grid-cols-12 font-bold text-sm">
-                        <div className="col-span-4 truncate">{getProductName(item.productId)}</div>
-                        <div className="col-span-3 text-right">{item.quantity}</div>
+                        <div className="col-span-5 truncate">{getProductName(item.productId)}</div>
+                        <div className="col-span-2 text-right">{item.quantity}</div>
                         <div className="col-span-2 text-right">{item.unitPrice}</div>
-                        <div className="col-span-3 text-right">{item.total}</div>
+                        <div className="col-span-3 text-right">{item.total.toFixed(0)}</div>
                       </div>
                       <div className="italic text-[10px] mt-0.5">
                         Bags: {item.bags || 0}
@@ -217,9 +230,17 @@ export default function PrintCenter() {
 
                 <div className="border-t-2 border-dashed border-black my-2"></div>
 
-                <div className="flex justify-between items-center text-lg font-bold">
-                  <span>TOTAL:</span>
-                  <span>Rs {selectedInvoiceData.grandTotal}</span>
+                <div className="space-y-1">
+                  {selectedInvoiceData.includeHamaliCharge && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Hamali Charge ({selectedInvoiceData.bags || 0} Bags):</span>
+                      <span className="font-bold">Rs {selectedInvoiceData.hamaliChargeAmount?.toFixed(0)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-lg font-bold border-t border-black pt-1">
+                    <span>TOTAL:</span>
+                    <span>Rs {selectedInvoiceData.grandTotal?.toFixed(0)}</span>
+                  </div>
                 </div>
 
                 <div className="border-t-2 border-dashed border-black my-2"></div>

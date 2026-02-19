@@ -1504,6 +1504,9 @@ export default function Sell() {
     setLastInvoice(invoice);
     setShowSuccessDialog(true);
 
+    // Automatically open thermal print page in new tab
+    window.open(`/print?invoiceId=${invoice.id}&mode=receipt&autoPrint=true`, '_blank');
+
     // Reset the draft instead of closing - pane stays open for more sales
     setSaleDrafts(prev => ({
       ...prev,
