@@ -316,3 +316,104 @@ export const generateCreditReport = (data: CreditReportData) => {
     const timestamp = new Date().toISOString().split('T')[0];
     doc.save(`Customer_Credit_Report_${timestamp}.pdf`);
 };
+
+export interface CustomerBalanceReportData {
+    period: string; // "From: ... To: ..."
+    filterMode: 'activity' | 'all';
+    items: {
+        no: number;
+        customerName: string;
+        totalInvoice: number;
+        totalPaid: number;
+        balance: number;
+    }[];
+    totals: {
+        invoice: number;
+        paid: number;
+        balance: number;
+    };
+}
+
+export const generateCustomerBalancesReport = (data: CustomerBalanceReportData) => {
+    const doc = new jsPDF();
+
+    // --- Header ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Dr B. R. Ambedkar Vegetable Market (Shop No. 42)", 14, 15);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text("Bowenpally, Secunderabad", 14, 22);
+
+    // --- Title Box ---
+    doc.setLineWidth(0.5);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(14, 28, 182, 10); // Box
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    const title = data.filterMode === 'activity' ? "Customer Activity Report" : "Customer Balances Report";
+    doc.text(`${title} (${data.period})`, 18, 34);
+
+    // --- Main Table ---
+    const tableColumn = [
+        "S.No",
+        "Customer Name",
+        "Total Invoice",
+        "Total Paid",
+        "Balance"
+    ];
+
+    const tableRows = data.items.map(item => [
+        item.no,
+        item.customerName,
+        `Rs ${item.totalInvoice.toFixed(2)}`,
+        `Rs ${item.totalPaid.toFixed(2)}`,
+        `Rs ${item.balance.toFixed(2)}`
+    ]);
+
+    // Footer Row
+    const footRows = [
+        [
+            { content: 'Grand Total', colSpan: 2, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+            { content: `Rs ${data.totals.invoice.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
+            { content: `Rs ${data.totals.paid.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
+            { content: `Rs ${data.totals.balance.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [220, 252, 231] as [number, number, number] } }
+        ]
+    ];
+
+    autoTable(doc, {
+        startY: 45,
+        head: [tableColumn],
+        body: tableRows,
+        foot: footRows,
+        theme: 'grid',
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            lineColor: [229, 231, 235],
+            lineWidth: 0.1,
+            textColor: [31, 41, 55],
+            fillColor: [255, 255, 255]
+        },
+        headStyles: {
+            fillColor: [22, 163, 74], // Green 600
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            lineWidth: 0.1,
+            lineColor: [22, 163, 74]
+        },
+        alternateRowStyles: {
+            fillColor: [249, 250, 251]
+        },
+        columnStyles: {
+            0: { cellWidth: 15, halign: 'center' },
+            2: { halign: 'right' },
+            3: { halign: 'right' },
+            4: { halign: 'right' }
+        }
+    });
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    doc.save(`Customer_Balances_${timestamp}.pdf`);
+};

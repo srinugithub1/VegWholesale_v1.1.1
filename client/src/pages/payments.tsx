@@ -1,5 +1,5 @@
 
-import { generateDetailedReport, generateCreditReport } from "@/lib/pdf-generator";
+import { generateDetailedReport, generateCreditReport, generateCustomerBalancesReport } from "@/lib/pdf-generator";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -802,6 +802,36 @@ export default function Payments() {
     setCompletedPaymentData(null);
     setCustomerPaymentMethod("cash");
     setCustomerSummary(null);
+  };
+
+  const handleDownloadCustomerBalancesPDF = () => {
+    const period = `From: ${listDateFrom} To: ${listDateTo}`;
+
+    const items = filteredCustomers.map((c, index) => ({
+      no: index + 1,
+      customerName: c.name,
+      totalInvoice: customerListFilterMode === 'activity' ? (periodInvoiceStats[c.id] || 0) : c.totalInvoices,
+      totalPaid: customerListFilterMode === 'activity' ? (customerPaymentStats[c.id] || 0) : c.totalPayments,
+      balance: c.balance
+    }));
+
+    const totals = {
+      invoice: filteredCustomers.reduce((sum, c) => sum + (customerListFilterMode === 'activity' ? (periodInvoiceStats[c.id] || 0) : c.totalInvoices), 0),
+      paid: filteredCustomers.reduce((sum, c) => sum + (customerListFilterMode === 'activity' ? (customerPaymentStats[c.id] || 0) : c.totalPayments), 0),
+      balance: filteredCustomers.reduce((sum, c) => sum + c.balance, 0)
+    };
+
+    generateCustomerBalancesReport({
+      period,
+      filterMode: customerListFilterMode,
+      items,
+      totals
+    });
+
+    toast({
+      title: "PDF Generated",
+      description: "Customer balances report has been downloaded."
+    });
   };
 
   const handlePrintReceipt = () => {
@@ -1934,6 +1964,10 @@ export default function Payments() {
                 <Button variant="outline" onClick={handleImportClick} className="gap-2" disabled={isImporting}>
                   {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   {isImporting ? "Importing..." : "Import"}
+                </Button>
+                <Button variant="outline" onClick={handleDownloadCustomerBalancesPDF} className="gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800">
+                  <Download className="h-4 w-4" />
+                  Download PDF
                 </Button>
               </div>
 
