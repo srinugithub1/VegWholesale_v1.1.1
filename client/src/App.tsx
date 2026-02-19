@@ -154,7 +154,7 @@ function ProtectedApp() {
                 </div>
 
                 {/* Shop Both (Only on Reports & Payments) */}
-                {['/reports', '/payments'].includes(location) && (
+                {['/', '/reports', '/payments'].includes(location) && (
                   <div
                     className={`flex items-center gap-2 cursor-pointer group transition-all duration-300 ${shop === 'all' ? 'scale-110 opacity-100' : 'opacity-50 hover:opacity-80'}`}
                     onClick={() => setShop('all')}

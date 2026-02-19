@@ -10,7 +10,7 @@ interface ShopContextType {
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export function ShopProvider({ children }: { children: ReactNode }) {
-    const [shop, setShop] = useState<Shop>(42);
+    const [shop, setShop] = useState<Shop>('all');
 
     return (
         <ShopContext.Provider value={{ shop, setShop }}>
