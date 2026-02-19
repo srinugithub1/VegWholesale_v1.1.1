@@ -127,7 +127,7 @@ function ProtectedApp() {
             </div>
 
             {/* Shop Icons (Sell, Customer Edit, Reports, Payments) - Centered */}
-            {['/sell', '/customer-edit', '/reports', '/payments'].includes(location) && (
+            {['/', '/sell', '/customer-edit', '/reports', '/payments'].includes(location) && (
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-8">
                 {/* Shop 42 */}
                 <div

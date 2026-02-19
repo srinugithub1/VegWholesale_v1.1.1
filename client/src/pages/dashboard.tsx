@@ -171,18 +171,23 @@ export default function Dashboard() {
     const safeAllPurchases = Array.isArray(allPurchases) ? allPurchases : [];
     const safeVehicleInventories = Array.isArray(vehicleInventories) ? vehicleInventories : [];
 
-    const shopVehicles = safeVehicles.filter(v => v.shop === shop);
+    const shopVehicles = safeVehicles.filter(v => shop === 'all' || v.shop === shop);
     const shopVehicleIds = new Set(shopVehicles.map(v => v.id));
 
-    // Filter invoices: Must have vehicleId and it must act match shop, or we might miss some?
-    // Assuming strictly vehicle-based sales for now to separate shops.
-    const filteredInvoices = safeAllInvoices.filter(i => i.vehicleId && shopVehicleIds.has(i.vehicleId));
+    // Filter invoices: Include all if 'all' is selected, otherwise filter by vehicle shop
+    const filteredInvoices = safeAllInvoices.filter(i =>
+      shop === 'all' || (i.vehicleId && shopVehicleIds.has(i.vehicleId))
+    );
 
     // Filter purchases
-    const filteredPurchases = safeAllPurchases.filter(p => p.vehicleId && shopVehicleIds.has(p.vehicleId));
+    const filteredPurchases = safeAllPurchases.filter(p =>
+      shop === 'all' || (p.vehicleId && shopVehicleIds.has(p.vehicleId))
+    );
 
     // Filter stock (vehicle inventory)
-    const filteredInventory = safeVehicleInventories.filter(vi => shopVehicleIds.has(vi.vehicleId));
+    const filteredInventory = safeVehicleInventories.filter(vi =>
+      shop === 'all' || (vi.vehicleId && shopVehicleIds.has(vi.vehicleId))
+    );
 
     // Aggregate stock by product for this shop
     const stockMap = new Map<string, number>();
