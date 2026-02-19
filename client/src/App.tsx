@@ -124,6 +124,9 @@ function ProtectedApp() {
           <header className="relative flex items-center justify-between gap-2 p-2 border-b h-14 flex-shrink-0 print:hidden">
             <div className="flex items-center gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <div className="hidden lg:flex">
+                <DateTimeDisplay />
+              </div>
             </div>
 
             {/* Shop Icons (Sell, Customer Edit, Reports, Payments) - Centered */}
@@ -170,9 +173,6 @@ function ProtectedApp() {
             )}
 
             <div className="flex items-center gap-2">
-              <div className="hidden lg:flex">
-                <DateTimeDisplay />
-              </div>
               <div className="flex items-center gap-2 px-2 mr-2 border-r">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary/10 text-primary">

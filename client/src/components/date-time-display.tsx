@@ -30,7 +30,7 @@ export function DateTimeDisplay() {
   };
 
   return (
-    <div className="flex items-center gap-4 px-3 py-1 bg-muted/30 rounded-full border text-sm font-medium text-muted-foreground mr-2">
+    <div className="flex items-center gap-4 px-3 py-1 bg-muted/30 rounded-full border text-sm font-medium text-muted-foreground">
       <div className="flex items-center gap-1.5 border-r pr-3">
         <Calendar className="h-3.5 w-3.5 text-primary/70" />
         <span className="tabular-nums">{formatDate(dateTime)}</span>
