@@ -2051,11 +2051,37 @@ export default function Payments() {
                                     </TableBody>
                                   </Table>
                                   <div className="flex items-center justify-between pt-2 border-t text-sm">
-                                    <span className="text-muted-foreground">
-                                      Hamali: {invoice.bags || 0} bags × ₹{invoice.hamaliRatePerBag || 0} = <span className="font-mono">₹{invoice.hamaliChargeAmount || 0}</span>
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-muted-foreground">Hamali:</span>
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          type="number"
+                                          className="h-7 w-12 px-1 text-center"
+                                          value={editedInvoices[invoice.id]?.bags || ''}
+                                          onChange={(e) => handleHamaliChange(invoice.id, 'bags', e.target.value)}
+                                          placeholder="Bags"
+                                        />
+                                        <span className="text-xs text-muted-foreground">×</span>
+                                        <Input
+                                          type="number"
+                                          className="h-7 w-12 px-1 text-center"
+                                          value={editedInvoices[invoice.id]?.ratePerBag || ''}
+                                          onChange={(e) => handleHamaliChange(invoice.id, 'ratePerBag', e.target.value)}
+                                          placeholder="Rate"
+                                        />
+                                        <span className="text-xs text-muted-foreground">=</span>
+                                        <span className="font-mono font-semibold">₹{editedInvoices[invoice.id]?.hamaliChargeAmount || 0}</span>
+                                      </div>
+                                    </div>
                                     <span className="font-semibold">
-                                      Total: <span className="font-mono text-primary">{invoice.grandTotal.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
+                                      Total: <span className="font-mono text-primary">
+                                        {(() => {
+                                          const edited = editedInvoices[invoice.id];
+                                          const hamaliAmount = edited?.hamaliChargeAmount || invoice.hamaliChargeAmount || 0;
+                                          const itemTotal = edited?.items?.reduce((s, i) => s + i.total, 0) || invoice.subtotal;
+                                          return (itemTotal + hamaliAmount).toLocaleString("en-IN", { style: "currency", currency: "INR" });
+                                        })()}
+                                      </span>
                                     </span>
                                   </div>
                                 </CardContent>
@@ -2145,7 +2171,7 @@ export default function Payments() {
                                                   type="number"
                                                   className="h-7 w-12 px-1 text-center"
                                                   value={hamaliBags || ''}
-                                                  readOnly // Made read-only as per previous task
+                                                  onChange={(e) => handleHamaliChange(invoice.id, 'bags', e.target.value)}
                                                   placeholder="Bags"
                                                 />
                                                 <span className="text-xs text-muted-foreground">×</span>
