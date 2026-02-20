@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Package, ArrowUpRight, Receipt, CreditCard, Download, Calendar, Filter, Truck, Users, Scale, ShoppingBag, FileText, BarChart3, LayoutDashboard, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -79,6 +80,7 @@ export default function Reports() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("all");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
   const [selectedProductId, setSelectedProductId] = useState<string>("all");
+  const [includeCashSales, setIncludeCashSales] = useState(false);
   const { shop } = useShop();
 
   const startDate = fromDate ? format(fromDate, 'yyyy-MM-dd') : "";
@@ -162,6 +164,12 @@ export default function Reports() {
       // Payment Status Filter
       if (paymentStatus === 'paid' && inv.status !== 'completed') return false;
       if (paymentStatus === 'pending' && inv.status !== 'pending') return false;
+
+      // Cash Sale Account Filter
+      if (!includeCashSales) {
+        const customerName = getCustomerName(inv.customerId);
+        if (customerName.toLowerCase() === "cash sale account") return false;
+      }
 
       return true;
     }).sort((a, b) => b.date.localeCompare(a.date) || b.invoiceNumber.localeCompare(a.invoiceNumber));
@@ -536,8 +544,11 @@ export default function Reports() {
         .filter(inv => inv.date >= startDate && inv.date <= endDate)
         .map(inv => inv.customerId));
 
-      return customers.filter(c => activeCustomerIds.has(c.id));
-    }, [customers, showAllCustomers, invoices, startDate, endDate]);
+      return customers.filter(c => {
+        if (!includeCashSales && c.name.toLowerCase() === "cash sale account") return false;
+        return activeCustomerIds.has(c.id);
+      });
+    }, [customers, showAllCustomers, invoices, startDate, endDate, includeCashSales]);
 
     // Filter Vendors based on ACTIVITY in the date range (invoices linked to vendor)
     const filteredVendors = useMemo(() => {
@@ -978,6 +989,16 @@ export default function Reports() {
                 Clear Filters
               </Button>
             )}
+
+            {/* Cash Sale Toggle */}
+            <div className="flex items-center space-x-2 border rounded-md px-3 h-10 bg-background/50 self-end">
+              <Checkbox
+                id="include-cash-sales"
+                checked={includeCashSales}
+                onCheckedChange={(checked: boolean) => setIncludeCashSales(!!checked)}
+              />
+              <Label htmlFor="include-cash-sales" className="text-xs cursor-pointer">Include Cash Sales</Label>
+            </div>
           </div>
         </CardContent>
       </Card>
