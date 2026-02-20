@@ -104,14 +104,13 @@ export function PaymentReports({
             data = data.filter(item => item.partyId === selectedEntityId);
         }
 
-        // Cash Payment Filter (Based on Method)
+        // Cash Sale Account Filter
         if (showCashSalesOnly) {
-            // Show ONLY Cash Method Payments
-            data = data.filter(item => item.paymentMethod && item.paymentMethod.toLowerCase() === "cash");
+            // Show ONLY Cash Sale Account records
+            data = data.filter(item => item.partyName.toLowerCase() === "cash sale account");
         } else {
-            // Default: Show Non-Cash Method Payments (Bank, UPI, etc.)
-            // User referred to this as "Credit Method Customer" (paying off credit via non-cash means, or just non-cash payments)
-            data = data.filter(item => !item.paymentMethod || item.paymentMethod.toLowerCase() !== "cash");
+            // Default: Show everything EXCEPT Cash Sale Account
+            data = data.filter(item => item.partyName.toLowerCase() !== "cash sale account");
         }
 
         return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -247,7 +246,7 @@ export function PaymentReports({
                                         setCurrentPage(1); // Reset page on filter change
                                     }}
                                 />
-                                <Label htmlFor="cash-sales">Cash Payments</Label>
+                                <Label htmlFor="cash-sales">Cash Sale Account</Label>
                             </div>
                         </div>
                         <div className="flex items-end">
