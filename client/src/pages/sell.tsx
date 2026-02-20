@@ -1508,10 +1508,10 @@ export default function Sell() {
       });
     }
     setLastInvoice(invoice);
-    setShowSuccessDialog(true);
+    // setShowSuccessDialog(true); // Disabled as per request to stay on sale page
 
-    // Automatically open thermal print page in new tab
-    window.open(`/print?invoiceId=${invoice.id}&mode=receipt&autoPrint=true`, '_blank');
+    // Automatically open thermal print page in new tab - DISABLED
+    // window.open(`/print?invoiceId=${invoice.id}&mode=receipt&autoPrint=true`, '_blank');
 
     // Reset the draft instead of closing - pane stays open for more sales
     setSaleDrafts(prev => ({
