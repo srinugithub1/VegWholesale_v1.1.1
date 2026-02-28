@@ -138,6 +138,7 @@ export interface IStorage {
 
   getCompanySettings(): Promise<CompanySettings | undefined>;
   upsertCompanySettings(settings: InsertCompanySettings): Promise<CompanySettings>;
+  createOpeningBalanceInvoice(customerId: string, amount: number): Promise<Invoice>;
 
   // Vehicle Inventory
   getVehicleInventory(vehicleId: string): Promise<VehicleInventory[]>;
@@ -1400,6 +1401,24 @@ export class DatabaseStorage implements IStorage {
     // For now, we just return true to satisfy interface or implement later.
     // This requires specific logic per table type.
     return false;
+  }
+
+  async createOpeningBalanceInvoice(customerId: string, amount: number): Promise<Invoice> {
+    const invoiceNumber = `OB-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    const today = new Date().toISOString().split("T")[0];
+
+    const [invoice] = await db.insert(invoices).values({
+      invoiceNumber,
+      customerId,
+      date: today,
+      subtotal: amount,
+      grandTotal: amount,
+      status: "pending",
+      includeHamaliCharge: false,
+      hamaliPaidByCash: false,
+    }).returning();
+
+    return invoice;
   }
 }
 

@@ -15,7 +15,6 @@ import {
   insertHamaliCashPaymentSchema,
   insertInvoiceSchema,
   insertInvoiceItemSchema,
-  insertInvoiceItemSchema,
   type User as DbUser,
   type SystemMetric,
 } from "@shared/schema";
@@ -763,13 +762,7 @@ export async function registerRoutes(
         }
 
         try {
-          await storage.createCustomerPayment({
-            customerId: customer.id,
-            amount: -1 * Math.abs(balance),
-            date: new Date().toISOString().split('T')[0],
-            paymentMethod: "Opening Balance",
-            notes: "Imported Opening Balance",
-          });
+          await storage.createOpeningBalanceInvoice(customer.id, Math.abs(balance));
           results.success++;
         } catch (err) {
           console.error(`Failed to insert payment for ${name}:`, err);
