@@ -11,8 +11,8 @@ import { CalendarIcon, Download, FileJson } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { generateMastersXML, generateSalesVouchersXML, generatePurchaseVouchersXML, wrapTallyXML } from "@/lib/tally-xml";
-import type { Invoice, Purchase, Customer, Vendor } from "@shared/schema";
+import { generateMastersXML, generateSalesVouchersXML, generatePurchaseVouchersXML, wrapTallyXML, SALES_FIELDS } from "@/lib/tally-xml";
+import type { Invoice, InvoiceItem, Purchase, Customer, Vendor, Product } from "@shared/schema";
 
 export default function TallyExport() {
     const { toast } = useToast();
@@ -20,6 +20,7 @@ export default function TallyExport() {
     const [includeMasters, setIncludeMasters] = useState(true);
     const [includeSales, setIncludeSales] = useState(true);
     const [includePurchases, setIncludePurchases] = useState(true);
+    const [selectedSalesFields, setSelectedSalesFields] = useState<string[]>(SALES_FIELDS.map(f => f.id));
 
     // Fetch Data (Full dump for client-side filtering logic for now, or could filter by date in backend. 
     // Given user wants "bulk export", loading all active customers/vendors is cheap. 
@@ -44,6 +45,14 @@ export default function TallyExport() {
         queryKey: ["/api/vendors"],
     });
 
+    const { data: invoiceItems = [] } = useQuery<InvoiceItem[]>({
+        queryKey: ["/api/invoice-items"],
+    });
+
+    const { data: productsResult = [] } = useQuery<Product[]>({
+        queryKey: ["/api/products"],
+    });
+
     const handleExport = () => {
         if (!date) {
             toast({ title: "Please select a date", variant: "destructive" });
@@ -63,7 +72,7 @@ export default function TallyExport() {
             if (includeSales) {
                 const dailyInvoices = invoices.filter(inv => inv.date === selectedDateStr);
                 if (dailyInvoices.length > 0) {
-                    xmlContent += generateSalesVouchersXML(dailyInvoices, customers);
+                    xmlContent += generateSalesVouchersXML(dailyInvoices, customers, selectedSalesFields, invoiceItems, productsResult);
                 }
             }
 
@@ -158,6 +167,30 @@ export default function TallyExport() {
                             <Checkbox id="sales" checked={includeSales} onCheckedChange={(c) => setIncludeSales(!!c)} />
                             <Label htmlFor="sales">Sales (Invoices)</Label>
                         </div>
+
+                        {includeSales && (
+                            <div className="ml-6 grid grid-cols-2 gap-4 p-4 border rounded-md bg-muted/30">
+                                <Label className="col-span-2 text-sm font-medium">Select Sales Fields to Include:</Label>
+                                {SALES_FIELDS.map((field) => (
+                                    <div key={field.id} className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`field-${field.id}`}
+                                            checked={selectedSalesFields.includes(field.id)}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                    setSelectedSalesFields([...selectedSalesFields, field.id]);
+                                                } else {
+                                                    setSelectedSalesFields(selectedSalesFields.filter(f => f !== field.id));
+                                                }
+                                            }}
+                                        />
+                                        <Label htmlFor={`field-${field.id}`} className="text-sm font-normal cursor-pointer">
+                                            {field.label}
+                                        </Label>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         <div className="flex items-center space-x-2">
                             <Checkbox id="purchases" checked={includePurchases} onCheckedChange={(c) => setIncludePurchases(!!c)} />
