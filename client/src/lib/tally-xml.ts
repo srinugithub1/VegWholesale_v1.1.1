@@ -90,12 +90,12 @@ export const generateMastersXML = (customers: Customer[], vendors: Vendor[]): st
 // --- Vouchers Generation ---
 
 export const SALES_FIELDS = [
-  { id: "partyName", label: "Party Ledger Name" },
-  { id: "itemName", label: "Name of Item(Product)" },
+  { id: "partyName", label: "Customer Name" },
+  { id: "itemName", label: "Product" },
   { id: "quantity", label: "Quantity" },
   { id: "rate", label: "Rate" },
-  { id: "weight", label: "Weight(Total Weight)" },
-  { id: "amount", label: "Total Amount(Grand Total)" },
+  { id: "weight", label: "Total Weight" },
+  { id: "amount", label: "Total Amount" },
   { id: "hamali", label: "Hamali" },
   { id: "date", label: "Date" },
   { id: "voucherNumber", label: "Voucher Number" }
@@ -138,12 +138,15 @@ export const generateSalesVouchersXML = (
           <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
           ${selectedFields.includes("voucherNumber") ? `<VOUCHERNUMBER>${voucherNumber}</VOUCHERNUMBER>` : ""}
           ${selectedFields.includes("voucherNumber") ? `<REFERENCE>${voucherNumber}</REFERENCE>` : ""}
-          ${selectedFields.includes("partyName") ? `<PARTYLEDGERNAME>${customerName}</PARTYLEDGERNAME>
+          ${selectedFields.includes("partyName") ? `<PARTYLEDGERNAME>${customerName}</PARTYLEDGERNAME>` : ""}
+          
+          ${selectedFields.includes("partyName") ? `
           <ALLLEDGERENTRIES.LIST>
             <LEDGERNAME>${customerName}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
             ${selectedFields.includes("amount") ? `<AMOUNT>-${amount}</AMOUNT>` : ""}
           </ALLLEDGERENTRIES.LIST>` : ""}
+
           <PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>
           ${inv.totalKgWeight && selectedFields.includes("weight") ? `<NARRATION>Total Weight: ${inv.totalKgWeight} kg</NARRATION>` : ""}
 
@@ -164,13 +167,13 @@ export const generateSalesVouchersXML = (
                 ${selectedFields.includes("amount") ? `<AMOUNT>${item.total}</AMOUNT>` : ""}
             </ACCOUNTINGALLOCATIONS.LIST>
           </ALLINVENTORYENTRIES.LIST>`;
-        }).join("") : `
+        }).join("") : (selectedFields.includes("amount") ? `
           <!-- Ledger Entry for Sales Account (Credit) -->
           <ALLLEDGERENTRIES.LIST>
             <LEDGERNAME>${SALES_LEDGER}</LEDGERNAME>
             <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-            ${selectedFields.includes("amount") ? `<AMOUNT>${amount}</AMOUNT>` : ""}
-          </ALLLEDGERENTRIES.LIST>`}
+            <AMOUNT>${amount}</AMOUNT>
+          </ALLLEDGERENTRIES.LIST>` : "")}
 
           ${selectedFields.includes("hamali") && inv.hamaliChargeAmount && inv.hamaliChargeAmount > 0 ? `
           <!-- Hamali Charges Ledger Entry -->

@@ -20,7 +20,9 @@ export default function TallyExport() {
     const [includeMasters, setIncludeMasters] = useState(true);
     const [includeSales, setIncludeSales] = useState(true);
     const [includePurchases, setIncludePurchases] = useState(true);
-    const [selectedSalesFields, setSelectedSalesFields] = useState<string[]>(SALES_FIELDS.map(f => f.id));
+    const [selectedSalesFields, setSelectedSalesFields] = useState<string[]>(
+        SALES_FIELDS.filter(f => !["date", "voucherNumber"].includes(f.id)).map(f => f.id)
+    );
 
     // Fetch Data (Full dump for client-side filtering logic for now, or could filter by date in backend. 
     // Given user wants "bulk export", loading all active customers/vendors is cheap. 
