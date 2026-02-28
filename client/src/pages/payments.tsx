@@ -2444,7 +2444,12 @@ export default function Payments() {
               <Card>
                 <CardHeader>
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <CardTitle>Customer Payment Details</CardTitle>
+                    <div className="flex items-center gap-3">
+                      <CardTitle>Customer Payment Details</CardTitle>
+                      <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-semibold px-3 py-1 rounded-full">
+                        Total Records: {filteredCustomers.length}
+                      </Badge>
+                    </div>
                     <div className="flex items-center gap-2">
                       <Label>From:</Label>
                       <Input type="date" className="w-[150px]" value={listDateFrom} onChange={(e) => setListDateFrom(e.target.value)} />
