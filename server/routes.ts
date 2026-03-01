@@ -733,12 +733,21 @@ export async function registerRoutes(
         const name = getValue(['Customer Name', 'Name', 'Customer', 'CUSTOMERS NAMES', 'Customer Names']);
         const phone = getValue(['Phone', 'Mobile', 'Contact', 'Phone Number']) || '0000000000';
         const address = getValue(['Address', 'City', 'Location']) || '';
-        const balanceVal = getValue(['Balance', 'Pending Balance', 'Opening Balance', 'Amount', 'Debit', 'BALANCES', 'Pending Balances']);
+        const rawBalance = getValue(['Balance', 'Pending Balance', 'Opening Balance', 'Amount', 'Debit', 'BALANCES', 'Pending Balances']);
 
-        const balance = Number(balanceVal || 0);
+        // Robust number parsing: strip commas, currency symbols, and handle Dr/Cr
+        let balance = 0;
+        if (rawBalance !== undefined && rawBalance !== null) {
+          const cleanStr = String(rawBalance)
+            .replace(/[₹, \s]/g, '')
+            .replace(/Dr/i, '')
+            .replace(/Cr/i, '-');
+          balance = Number(cleanStr);
+        }
 
         if (!name || isNaN(balance) || balance === 0) {
-          console.log(`Skipping row: Name=${name}, Balance=${balance}, RawBalance=${balanceVal}`);
+          console.log(`Skipping row: Name=${name}, Balance=${balance}, RawValue=${rawBalance}`);
+          results.details.push(`Skipped row: ${name || 'Unknown'} (Balance: ${rawBalance})`);
           continue;
         }
 

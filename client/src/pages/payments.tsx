@@ -290,7 +290,7 @@ export default function Payments() {
 
   // Fetch All Invoices for Shop Filtering (Customer Payments)
   const { data: allInvoicesResult } = useQuery<{ invoices: Invoice[] }>({
-    queryKey: ["/api/invoices", { limit: 5000 }],
+    queryKey: ["/api/invoices", { limit: 100000 }],
   });
   const allInvoices = allInvoicesResult?.invoices || [];
 
