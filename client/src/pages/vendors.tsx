@@ -41,7 +41,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Search, Pencil, Trash2, Users, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Users, Phone, Mail, MapPin, ChevronLeft, ChevronRight, Upload } from "lucide-react";
+import React from "react"
 import { insertVendorSchema, type Vendor, type InsertVendor } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/use-auth";
@@ -57,6 +58,48 @@ export default function Vendors() {
   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const fileInputRef = useState<HTMLInputElement | null>(null)[0]; // We'll use a ref instead
+  const [isImporting, setIsImporting] = useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => {
+    inputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        setIsImporting(true);
+        toast({ title: "Importing Vendors...", description: "Processing file, please wait." });
+        const base64Data = e.target?.result as string;
+
+        const res = await apiRequest("POST", "/api/vendors/import", {
+          fileData: base64Data
+        });
+
+        const data = await res.json();
+
+        if (data.results) {
+          toast({
+            title: "Import Success",
+            description: `Successfully imported ${data.results.success} vendors. ${data.results.errors} errors.`
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+        }
+      } catch (error) {
+        console.error("Upload error:", error);
+        toast({ title: "Import Failed", description: "Failed to process file.", variant: "destructive" });
+      } finally {
+        setIsImporting(false);
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
 
   const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
@@ -217,33 +260,82 @@ export default function Vendors() {
             Manage your suppliers and farmers
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreateDialog} data-testid="button-add-vendor">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Vendor
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingVendor ? "Edit Vendor" : "Add New Vendor"}
-              </DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center gap-2">
+          <Input
+            type="file"
+            ref={inputRef}
+            className="hidden"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileChange}
+          />
+          <Button variant="outline" onClick={handleImportClick} disabled={isImporting}>
+            <Upload className="h-4 w-4 mr-2" />
+            {isImporting ? "Importing..." : "Import Vendors"}
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreateDialog} data-testid="button-add-vendor">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Vendor
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingVendor ? "Edit Vendor" : "Add New Vendor"}
+                </DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Name *</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Vendor name"
+                              {...field}
+                              data-testid="input-vendor-name"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone *</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Phone number"
+                              {...field}
+                              data-testid="input-vendor-phone"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Name *</FormLabel>
+                        <FormLabel>Email</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Vendor name"
+                            placeholder="Email address"
+                            type="email"
                             {...field}
-                            data-testid="input-vendor-name"
+                            value={field.value || ""}
+                            data-testid="input-vendor-email"
                           />
                         </FormControl>
                         <FormMessage />
@@ -252,83 +344,47 @@ export default function Vendors() {
                   />
                   <FormField
                     control={form.control}
-                    name="phone"
+                    name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone *</FormLabel>
+                        <FormLabel>Address</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Phone number"
+                            placeholder="Full address"
                             {...field}
-                            data-testid="input-vendor-phone"
+                            value={field.value || ""}
+                            data-testid="input-vendor-address"
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Email address"
-                          type="email"
-                          {...field}
-                          value={field.value || ""}
-                          data-testid="input-vendor-email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Full address"
-                          {...field}
-                          value={field.value || ""}
-                          data-testid="input-vendor-address"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                    data-testid="button-submit-vendor"
-                  >
-                    {createMutation.isPending || updateMutation.isPending
-                      ? "Saving..."
-                      : editingVendor
-                        ? "Update"
-                        : "Add Vendor"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      data-testid="button-submit-vendor"
+                    >
+                      {createMutation.isPending || updateMutation.isPending
+                        ? "Saving..."
+                        : editingVendor
+                          ? "Update"
+                          : "Add Vendor"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card>
@@ -476,7 +532,7 @@ export default function Vendors() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage((p: number) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
@@ -488,7 +544,7 @@ export default function Vendors() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => setCurrentPage((p: number) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
               >
                 Next

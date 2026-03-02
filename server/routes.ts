@@ -780,11 +780,71 @@ export async function registerRoutes(
         }
       }
 
-      res.json({ message: "Import completed", results });
+      res.json({ results });
+    } catch (err) {
+      console.error('Import error:', err);
+      res.status(500).json({ error: 'Failed to process import file' });
+    }
+  });
 
-    } catch (error) {
-      console.error("Import error:", error);
-      res.status(500).json({ error: "Failed to process import file" });
+  app.post("/api/vendors/import", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { fileData } = req.body;
+      if (!fileData) return res.status(400).json({ error: "Missing fileData" });
+
+      const XLSX = await import("xlsx");
+      const base64Content = fileData.split(",")[1] || fileData;
+      const buffer = Buffer.from(base64Content, "base64");
+      const workbook = XLSX.read(buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+      const results = { success: 0, errors: 0, details: [] as string[] };
+      const existingVendors = await storage.getVendors();
+      const existingNames = new Set(existingVendors.map(v => v.name.toLowerCase().trim()));
+
+      for (const row of data as any[]) {
+        const getValue = (keys: string[]) => {
+          for (const key of keys) {
+            if (row[key] !== undefined) return row[key];
+            const foundKey = Object.keys(row).find(k => k.toLowerCase().trim() === key.toLowerCase().trim());
+            if (foundKey) return row[foundKey];
+          }
+          return undefined;
+        };
+
+        const name = getValue(['Vendor Name', 'Name', 'Vendor', 'Suppliers', 'Supplier Name', 'Farmer Name']);
+        const phone = getValue(['Phone', 'Mobile', 'Contact']) || '0000000000';
+        const address = getValue(['Address', 'City', 'Location']) || '';
+
+        if (!name) continue;
+
+        const cleanName = String(name).trim();
+        if (!cleanName || existingNames.has(cleanName.toLowerCase())) {
+          results.details.push(`Skipped duplicate or empty name: ${cleanName || 'Unknown'}`);
+          continue;
+        }
+
+        try {
+          await storage.createVendor({
+            name: cleanName,
+            phone: String(phone),
+            address: String(address),
+            email: '',
+          });
+          results.success++;
+          existingNames.add(cleanName.toLowerCase());
+        } catch (err) {
+          results.errors++;
+          results.details.push(`Error creating vendor ${cleanName}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+      }
+
+      res.json({ results });
+    } catch (err) {
+      console.error('Vendor Import error:', err);
+      res.status(500).json({ error: 'Failed to process vendor import' });
     }
   });
 
