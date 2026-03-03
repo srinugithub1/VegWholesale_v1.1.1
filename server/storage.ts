@@ -112,7 +112,7 @@ export interface IStorage {
   getPurchasesWithItemsByVendor(vendorId: string): Promise<(Purchase & { items: PurchaseItem[] })[]>;
 
   getInvoices(): Promise<Invoice[]>;
-  getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number }>;
+  getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number, vehicleId?: string, status?: string, excludeCashAccount?: boolean }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number, totalAmount: number }>;
   deleteInvoicesBulk(ids: string[]): Promise<boolean>;
   getInvoice(id: string): Promise<Invoice | undefined>;
   getInvoicesByCustomer(customerId: string): Promise<(Invoice & { shop?: number | null })[]>;
@@ -653,7 +653,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number, vehicleId?: string, status?: string }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number }> {
+  async getInvoicesFiltered(filters: { startDate?: string, endDate?: string, shop?: number, page?: number, limit?: number, vehicleId?: string, status?: string, excludeCashAccount?: boolean }): Promise<{ invoices: (Invoice & { shop?: number | null, customerName?: string | null })[], total: number, totalAmount: number }> {
     const page = filters.page || 1;
     const limit = filters.limit || 50;
     const offset = (page - 1) * limit;
@@ -665,16 +665,33 @@ export class DatabaseStorage implements IStorage {
     if (filters.vehicleId) conditions.push(eq(invoices.vehicleId, filters.vehicleId));
     if (filters.status) conditions.push(eq(invoices.status, filters.status));
 
+    if (filters.excludeCashAccount) {
+      conditions.push(sql`LOWER(${customers.name}) != 'cash account'`);
+    }
+
     // Get total count first
     const countQuery = db.select({ count: sql<number>`count(*)` })
       .from(invoices)
-      .leftJoin(vehicles, eq(invoices.vehicleId, vehicles.id));
+      .leftJoin(vehicles, eq(invoices.vehicleId, vehicles.id))
+      .leftJoin(customers, eq(invoices.customerId, customers.id));
 
     if (conditions.length > 0) {
       countQuery.where(and(...conditions));
     }
 
     const [countResult] = await countQuery;
+
+    // Get total sum
+    const sumQuery = db.select({ totalAmount: sql<number>`COALESCE(SUM(${invoices.grandTotal}), 0)` })
+      .from(invoices)
+      .leftJoin(vehicles, eq(invoices.vehicleId, vehicles.id))
+      .leftJoin(customers, eq(invoices.customerId, customers.id));
+
+    if (conditions.length > 0) {
+      sumQuery.where(and(...conditions));
+    }
+
+    const [sumResult] = await sumQuery;
 
     // Get paginated data
     const query = db.select({
@@ -696,7 +713,8 @@ export class DatabaseStorage implements IStorage {
     const rows = await query;
     return {
       invoices: rows.map(r => ({ ...r.invoice, shop: r.shop, customerName: r.customerName })),
-      total: Number(countResult?.count || 0)
+      total: Number(countResult?.count || 0),
+      totalAmount: Number(sumResult?.totalAmount || 0)
     };
   }
 

@@ -350,8 +350,8 @@ export default function Payments() {
   });
 
   // Fetch Invoices for Customer Credit Tab
-  const { data: creditInvoicesData, isLoading: creditInvoicesLoading } = useQuery<{ invoices: InvoiceWithItems[] }>({
-    queryKey: ["/api/invoices", { startDate: creditDateFrom, endDate: creditDateTo, status: showCreditOnly ? 'pending' : undefined, limit: 1000 }],
+  const { data: creditInvoicesData, isLoading: creditInvoicesLoading } = useQuery<{ invoices: InvoiceWithItems[], total: number, totalAmount: number }>({
+    queryKey: ["/api/invoices", { startDate: creditDateFrom, endDate: creditDateTo, status: showCreditOnly ? 'pending' : undefined, limit: 10000, excludeCashAccount: true }],
   });
 
   const creditInvoices = useMemo(() => {
@@ -367,8 +367,8 @@ export default function Payments() {
   }, [creditInvoices, creditPage]);
 
   const totalCreditAmount = useMemo(() => {
-    return creditInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
-  }, [creditInvoices]);
+    return creditInvoicesData?.totalAmount || 0;
+  }, [creditInvoicesData]);
 
   const customerPaymentStats = useMemo(() => {
     const stats: Record<string, number> = {};
@@ -1589,11 +1589,6 @@ export default function Payments() {
                             </Pagination>
                           </div>
                         )}
-
-                        <div className="p-4 bg-muted/20 border-t flex justify-between items-center font-bold">
-                          <span>Total Credit Amount:</span>
-                          <span>₹{totalCreditAmount.toFixed(2)}</span>
-                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center p-8 text-muted-foreground border rounded-md border-dashed">
@@ -1602,6 +1597,13 @@ export default function Payments() {
                       </div>
                     )}
                   </div>
+
+                  {creditInvoices.length > 0 && !creditInvoicesLoading && (
+                    <div className="mt-4 p-4 bg-muted/20 border rounded-md flex justify-between items-center font-bold">
+                      <span>Total Credit Amount:</span>
+                      <span className="text-lg">₹{totalCreditAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

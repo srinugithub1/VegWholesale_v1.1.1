@@ -520,9 +520,9 @@ export async function registerRoutes(
         shop,
         page,
         limit,
-
         vehicleId,
-        status: req.query.status as string | undefined
+        status: req.query.status as string | undefined,
+        excludeCashAccount: req.query.excludeCashAccount === 'true'
       });
 
       res.json(result);
