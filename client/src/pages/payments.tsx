@@ -1572,17 +1572,13 @@ export default function Payments() {
                                     className={creditPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                                   />
                                 </PaginationItem>
-                                {Array.from({ length: Math.ceil(creditInvoices.length / ITEMS_PER_PAGE) }).map((_, i) => (
-                                  <PaginationItem key={i}>
-                                    <PaginationLink
-                                      isActive={creditPage === i + 1}
-                                      onClick={() => setCreditPage(i + 1)}
-                                      className="cursor-pointer"
-                                    >
-                                      {i + 1}
-                                    </PaginationLink>
-                                  </PaginationItem>
-                                ))}
+
+                                <PaginationItem>
+                                  <span className="px-4 text-sm font-medium">
+                                    Page {creditPage} of {Math.ceil(creditInvoices.length / ITEMS_PER_PAGE)}
+                                  </span>
+                                </PaginationItem>
+
                                 <PaginationItem>
                                   <PaginationNext
                                     onClick={() => setCreditPage(p => Math.min(Math.ceil(creditInvoices.length / ITEMS_PER_PAGE), p + 1))}
