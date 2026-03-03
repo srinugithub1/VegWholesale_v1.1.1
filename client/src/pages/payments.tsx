@@ -124,6 +124,7 @@ export default function Payments() {
   const [creditDateFrom, setCreditDateFrom] = useState(format(new Date(), "yyyy-MM-dd"));
   const [creditDateTo, setCreditDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [showCreditOnly, setShowCreditOnly] = useState(true);
+  const [creditPage, setCreditPage] = useState(1);
   const [customerInvoices, setCustomerInvoices] = useState<InvoiceWithItems[]>([]);
   const [editedInvoices, setEditedInvoices] = useState<Record<string, EditedInvoice>>({});
   const [loadingInvoices, setLoadingInvoices] = useState(false);
@@ -146,6 +147,11 @@ export default function Payments() {
     invoices: InvoiceWithItems[];
     editedInvoices: Record<string, EditedInvoice>;
   } | null>(null);
+
+  // Reset pagination when date or status filters change
+  useEffect(() => {
+    setCreditPage(1);
+  }, [creditDateFrom, creditDateTo, showCreditOnly]);
 
   const { data: vendors = [], isLoading: vendorsLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -345,12 +351,20 @@ export default function Payments() {
 
   // Fetch Invoices for Customer Credit Tab
   const { data: creditInvoicesData, isLoading: creditInvoicesLoading } = useQuery<{ invoices: InvoiceWithItems[] }>({
-    queryKey: ["/api/invoices", { startDate: creditDateFrom, endDate: creditDateTo, status: showCreditOnly ? 'pending' : undefined }],
+    queryKey: ["/api/invoices", { startDate: creditDateFrom, endDate: creditDateTo, status: showCreditOnly ? 'pending' : undefined, limit: 1000 }],
   });
 
   const creditInvoices = useMemo(() => {
-    return creditInvoicesData?.invoices || [];
-  }, [creditInvoicesData]);
+    return (creditInvoicesData?.invoices || []).filter(inv => {
+      const customer = customers.find(c => c.id === inv.customerId);
+      return customer?.name.toLowerCase() !== "cash account";
+    });
+  }, [creditInvoicesData, customers]);
+
+  const paginatedCreditInvoices = useMemo(() => {
+    const start = (creditPage - 1) * ITEMS_PER_PAGE;
+    return creditInvoices.slice(start, start + ITEMS_PER_PAGE);
+  }, [creditInvoices, creditPage]);
 
   const totalCreditAmount = useMemo(() => {
     return creditInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
@@ -1527,11 +1541,12 @@ export default function Payments() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {creditInvoices.map((invoice, index) => {
+                            {paginatedCreditInvoices.map((invoice, index) => {
                               const customerName = customers.find(c => c.id === invoice.customerId)?.name || "Unknown";
+                              const actualIndex = (creditPage - 1) * ITEMS_PER_PAGE + index + 1;
                               return (
                                 <TableRow key={invoice.id}>
-                                  <TableCell>{index + 1}</TableCell>
+                                  <TableCell>{actualIndex}</TableCell>
                                   <TableCell className="font-medium">{customerName}</TableCell>
                                   <TableCell>{invoice.invoiceNumber}</TableCell>
                                   <TableCell>
@@ -1546,6 +1561,39 @@ export default function Payments() {
                             })}
                           </TableBody>
                         </Table>
+
+                        {creditInvoices.length > ITEMS_PER_PAGE && (
+                          <div className="p-4 border-t">
+                            <Pagination>
+                              <PaginationContent>
+                                <PaginationItem>
+                                  <PaginationPrevious
+                                    onClick={() => setCreditPage(p => Math.max(1, p - 1))}
+                                    className={creditPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                  />
+                                </PaginationItem>
+                                {Array.from({ length: Math.ceil(creditInvoices.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                  <PaginationItem key={i}>
+                                    <PaginationLink
+                                      isActive={creditPage === i + 1}
+                                      onClick={() => setCreditPage(i + 1)}
+                                      className="cursor-pointer"
+                                    >
+                                      {i + 1}
+                                    </PaginationLink>
+                                  </PaginationItem>
+                                ))}
+                                <PaginationItem>
+                                  <PaginationNext
+                                    onClick={() => setCreditPage(p => Math.min(Math.ceil(creditInvoices.length / ITEMS_PER_PAGE), p + 1))}
+                                    className={creditPage === Math.ceil(creditInvoices.length / ITEMS_PER_PAGE) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                  />
+                                </PaginationItem>
+                              </PaginationContent>
+                            </Pagination>
+                          </div>
+                        )}
+
                         <div className="p-4 bg-muted/20 border-t flex justify-between items-center font-bold">
                           <span>Total Credit Amount:</span>
                           <span>₹{totalCreditAmount.toFixed(2)}</span>
