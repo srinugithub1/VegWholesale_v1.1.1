@@ -498,14 +498,27 @@ function VehicleSalePane({
                 )}
               </span>
               <div className="flex items-center gap-2 mt-1">
-                <div className="flex items-center space-x-1 border rounded px-1.5 h-6 bg-background/50">
+                <div className={cn(
+                  "flex items-center space-x-1 border rounded px-1.5 h-6 transition-colors duration-200",
+                  draft.isCashSale
+                    ? "bg-amber-100 dark:bg-amber-950/40 border-amber-500 animate-pulse"
+                    : "bg-background/50"
+                )}>
                   <Switch
                     id={`cash-mode-${vehicle.id}`}
                     checked={draft.isCashSale}
                     onCheckedChange={(checked) => onUpdateDraft({ ...draft, isCashSale: checked })}
-                    className="h-4 w-7 data-[state=checked]:bg-green-600 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-3"
+                    className="h-4 w-7 data-[state=checked]:bg-amber-600 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-3"
                   />
-                  <Label htmlFor={`cash-mode-${vehicle.id}`} className="text-[10px] cursor-pointer font-normal">Cash</Label>
+                  <Label
+                    htmlFor={`cash-mode-${vehicle.id}`}
+                    className={cn(
+                      "text-[10px] cursor-pointer font-bold",
+                      draft.isCashSale ? "text-amber-700 dark:text-amber-400" : "font-normal"
+                    )}
+                  >
+                    {draft.isCashSale ? "AUTO-PAY ON" : "Cash Sale"}
+                  </Label>
                 </div>
               </div>
               <span className={`text-xs ${isNewVehicle ? 'text-primary' : 'text-amber-600'}`}>
@@ -749,8 +762,17 @@ function VehicleSalePane({
 
         <Button
           size="sm"
-          className="w-full h-8"
-          onClick={() => {
+          className={cn(
+            "w-full h-8 transition-all duration-200",
+            createSaleMutation.isPending && "opacity-50 cursor-not-allowed bg-muted"
+          )}
+          onClick={(e) => {
+            // Strict double-click prevention
+            if (createSaleMutation.isPending) {
+              e.preventDefault();
+              return;
+            }
+
             if (validateForm()) {
               createSaleMutation.mutate();
             } else {
@@ -764,7 +786,12 @@ function VehicleSalePane({
           disabled={createSaleMutation.isPending || !hasProductsWithWeight}
           data-testid={`button-create-sale-${vehicle.id}`}
         >
-          {createSaleMutation.isPending ? "..." : "Create Sale"}
+          {createSaleMutation.isPending ? (
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>SAVING...</span>
+            </div>
+          ) : "Create Sale"}
         </Button>
       </CardContent>
     </Card >
