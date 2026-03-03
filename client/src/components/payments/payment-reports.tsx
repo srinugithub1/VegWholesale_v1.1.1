@@ -109,8 +109,11 @@ export function PaymentReports({
             // Show ONLY Cash Sale Account records
             data = data.filter(item => item.partyName.toLowerCase() === "cash sale account");
         } else {
-            // Default: Show everything EXCEPT Cash Sale Account
-            data = data.filter(item => item.partyName.toLowerCase() !== "cash sale account");
+            // Default: Show everything EXCEPT Cash Sale Account and Cash Account
+            data = data.filter(item => {
+                const nameLower = item.partyName.toLowerCase();
+                return nameLower !== "cash sale account" && nameLower !== "cash account";
+            });
         }
 
         return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -229,7 +232,7 @@ export function PaymentReports({
                                         {reportType === 'vendor' && vendors?.map(v => (
                                             <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
                                         ))}
-                                        {reportType === 'customer' && customers?.map(c => (
+                                        {reportType === 'customer' && customers?.filter(c => c.name.toLowerCase() !== "cash account" && c.name.toLowerCase() !== "cash sale account").map(c => (
                                             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                                         ))}
                                     </SelectContent>

@@ -90,10 +90,15 @@ export function PaymentDashboard({
             customerStats[pay.customerId].balance -= (pay.amount || 0);
         });
 
-        // Convert to array
+        // Convert to array and filter out specialized accounts
         return Object.entries(customerStats)
             .map(([id, stat]) => ({ name: stat.name, value: stat.balance }))
-            .filter(c => c.value > 0)
+            .filter(c => {
+                const nameLower = c.name.toLowerCase();
+                return c.value > 0 &&
+                    nameLower !== "cash account" &&
+                    nameLower !== "cash sale account";
+            })
             .sort((a, b) => b.value - a.value)
             .slice(0, 5);
     }, [invoices, customerPayments, customers]);

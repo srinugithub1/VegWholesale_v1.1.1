@@ -382,7 +382,8 @@ export default function Payments() {
       if (!c.name.toLowerCase().includes(customerSearchQuery.toLowerCase())) return false;
 
       // 2. Hide specialized accounts (Cash Sale Account shouldn't show in Payments)
-      if (c.name.toLowerCase() === "cash sale account") return false;
+      const nameLower = c.name.toLowerCase();
+      if (nameLower === "cash sale account" || nameLower === "cash account") return false;
 
       // 2. Mode Filter
       if (customerListFilterMode === 'all') {
@@ -2006,11 +2007,13 @@ export default function Payments() {
                               <SelectValue placeholder="Select customer" />
                             </SelectTrigger>
                             <SelectContent>
-                              {customers.map((customer) => (
-                                <SelectItem key={customer.id} value={customer.id}>
-                                  {customer.name}
-                                </SelectItem>
-                              ))}
+                              {customers
+                                .filter(c => c.name.toLowerCase() !== "cash account" && c.name.toLowerCase() !== "cash sale account")
+                                .map((customer) => (
+                                  <SelectItem key={customer.id} value={customer.id}>
+                                    {customer.name}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                           <p className="text-sm text-muted-foreground">Select a customer to process payment</p>
