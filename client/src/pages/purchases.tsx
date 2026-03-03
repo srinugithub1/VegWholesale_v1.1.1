@@ -47,6 +47,7 @@ import {
 import type { Vendor, Vehicle, Product, Purchase } from "@shared/schema";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
 
 interface PurchaseLineItem {
   productId: string;
@@ -94,7 +95,7 @@ export default function Purchases() {
     defaultValues: {
       vendorId: "",
       vehicleId: "",
-      date: new Date().toISOString().split("T")[0],
+      date: format(new Date(), "yyyy-MM-dd"),
     },
   });
 
@@ -177,7 +178,7 @@ export default function Purchases() {
     form.reset({
       vendorId: "",
       vehicleId: "",
-      date: new Date().toISOString().split("T")[0],
+      date: format(new Date(), "yyyy-MM-dd"),
     });
     setLineItems([]);
     setIsDialogOpen(true);

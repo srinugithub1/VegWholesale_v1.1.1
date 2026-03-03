@@ -375,7 +375,7 @@ function VehicleSalePane({
 
       const subtotal = draft.products.reduce((sum, p) => sum + (p.weight * p.price), 0);
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = format(new Date(), "yyyy-MM-dd");
       const invoiceNumber = `INV-${Date.now()}`;
 
       const items = draft.products
@@ -478,7 +478,7 @@ function VehicleSalePane({
   const grandTotal = saleSubtotal + draft.hamaliCharge;
 
   // Check if vehicle is new (today's date)
-  const today = new Date().toISOString().split("T")[0];
+  const today = format(new Date(), "yyyy-MM-dd");
   const isNewVehicle = vehicle.entryDate === today;
 
   // Calculate total stock for this vehicle
@@ -1237,7 +1237,7 @@ export default function Sell() {
         capacity: data.capacity || null,
         driverName: data.driverName || null,
         driverPhone: data.driverPhone || null,
-        entryDate: new Date().toISOString().split("T")[0],
+        entryDate: format(new Date(), "yyyy-MM-dd"),
         vendorId: actualVendorId,
         shop,
         startingWeight: totalLoadedWeight,
@@ -1550,6 +1550,7 @@ export default function Sell() {
         selectedCustomerId: "",
         hamaliCharge: 0,
         hamaliRatePerBag: 0,
+        isCashSale: false,
       },
     }));
   }, [saleDrafts, customers]);

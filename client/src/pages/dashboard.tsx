@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { useShop } from "@/hooks/use-shop";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -215,7 +216,7 @@ export default function Dashboard() {
     return total;
   }, [shopStock, products]);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = format(new Date(), "yyyy-MM-dd");
 
   const todaySales = invoices
     .filter((i) => i.date === today)
@@ -226,16 +227,6 @@ export default function Dashboard() {
     const totalSalesBeforeToday = invoices
       .filter(inv => inv.date < today)
       .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
-
-    // Payments are tricky to filter by shop if they are just "customer payments".
-    // For now, we will use all payments as customers might pay for any bill?
-    // Or should we try to filter payments linked to filtered invoices?
-    // Let's stick to global payments for now to avoid showing huge debts if payments aren't linked.
-    // Ideally payments should be linked to invoices or use a more complex logic.
-    // User requested "get data in the dashboard" based on shop.
-    // If we filter sales but not payments, balance will be wrong.
-    // Strategy: Filter payments where invoiceId is in our filtered invoices list.
-    // If invoiceId is null, it's a general payment. Maybe include those? Or risky? Let's include for now.
 
     const shopInvoiceIds = new Set(invoices.map(i => i.id));
 
@@ -306,7 +297,7 @@ export default function Dashboard() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split("T")[0];
+      const dateStr = format(d, "yyyy-MM-dd");
       const dayData = salesByDate.get(dateStr) || { sales: 0, count: 0 };
       days.push({
         date: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { useShop } from "@/hooks/use-shop";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -185,7 +186,7 @@ export default function Stock() {
     const todaysSales = safeInvoices
       .filter(inv => {
         // Filter by date
-        const isToday = inv.date === new Date().toISOString().split("T")[0];
+        const isToday = inv.date === format(new Date(), "yyyy-MM-dd");
         // Filter by vehicle/shop if possible. 
         // If invoice has vehicleId, check if it's in our shop vehicles.
         // If invoice doesn't have vehicleId (e.g. direct sale?), we might miss it or count it wrong.
