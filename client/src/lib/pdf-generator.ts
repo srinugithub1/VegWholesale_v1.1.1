@@ -417,3 +417,84 @@ export const generateCustomerBalancesReport = (data: CustomerBalanceReportData) 
     const timestamp = new Date().toISOString().split('T')[0];
     doc.save(`Customer_Balances_${timestamp}.pdf`);
 };
+
+export interface CustomerListReportData {
+    customers: {
+        no: number;
+        name: string;
+        phone: string;
+        email?: string;
+        address?: string;
+    }[];
+}
+
+export const generateCustomersListPDF = (data: CustomerListReportData) => {
+    const doc = new jsPDF();
+
+    // --- Header ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Dr B. R. Ambedkar Vegetable Market (Shop No. 42)", 14, 15);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text("Bowenpally, Secunderabad", 14, 22);
+
+    // --- Title Box ---
+    doc.setLineWidth(0.5);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(14, 28, 182, 10); // Box
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Customers List`, 18, 34);
+
+    // --- Main Table ---
+    const tableColumn = [
+        "S.No",
+        "Customer Name",
+        "Phone",
+        "Email",
+        "Address"
+    ];
+
+    const tableRows = data.customers.map(item => [
+        item.no,
+        item.name,
+        item.phone,
+        item.email || "-",
+        item.address || "-"
+    ]);
+
+    autoTable(doc, {
+        startY: 45,
+        head: [tableColumn],
+        body: tableRows,
+        theme: 'grid',
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            lineColor: [229, 231, 235],
+            lineWidth: 0.1,
+            textColor: [31, 41, 55],
+            fillColor: [255, 255, 255]
+        },
+        headStyles: {
+            fillColor: [22, 163, 74], // Green 600
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            lineWidth: 0.1,
+            lineColor: [22, 163, 74]
+        },
+        alternateRowStyles: {
+            fillColor: [249, 250, 251]
+        },
+        columnStyles: {
+            0: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 50 },
+            4: { cellWidth: 60 }
+        }
+    });
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    doc.save(`Customers_List_${timestamp}.pdf`);
+};

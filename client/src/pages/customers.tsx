@@ -41,11 +41,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Search, Pencil, Trash2, UserCheck, Phone, Mail, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, UserCheck, Phone, Mail, MapPin, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 import { insertCustomerSchema, type Customer, type InsertCustomer } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/use-auth";
 import { ImportCustomersDialog } from "@/components/import-customers-dialog";
+import { generateCustomersListPDF } from "@/lib/pdf-generator";
 
 export default function Customers() {
   const { user } = useAuth();
@@ -178,6 +179,18 @@ export default function Customers() {
     setIsDialogOpen(true);
   };
 
+  const handleDownloadPDF = () => {
+    generateCustomersListPDF({
+      customers: filteredCustomers.map((c, index) => ({
+        no: index + 1,
+        name: c.name,
+        phone: c.phone,
+        email: c.email || undefined,
+        address: c.address || undefined
+      }))
+    });
+  };
+
   const onSubmit = (data: InsertCustomer) => {
     if (editingCustomer) {
       updateMutation.mutate({ id: editingCustomer.id, data });
@@ -216,6 +229,10 @@ export default function Customers() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleDownloadPDF} data-testid="button-download-pdf">
+            <FileDown className="h-4 w-4 mr-2" />
+            PDF Download
+          </Button>
           <ImportCustomersDialog />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
