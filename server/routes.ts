@@ -771,6 +771,15 @@ export async function registerRoutes(
         }
 
         try {
+          // Check if customer already has an Opening Balance invoice
+          const existingInvoices = await storage.getInvoicesByCustomer(customer.id);
+          const hasOB = existingInvoices.some(inv => inv.invoiceNumber.startsWith('OB-'));
+
+          if (hasOB) {
+            results.details.push(`Skipped duplicate Opening Balance for: ${name}`);
+            continue;
+          }
+
           await storage.createOpeningBalanceInvoice(customer.id, Math.abs(balance));
           results.success++;
         } catch (err) {
