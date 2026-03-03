@@ -557,7 +557,14 @@ export class DatabaseStorage implements IStorage {
       const items = await this.getInvoiceItems(invoice.id);
 
       if (items.length === 0) {
-        // If no items left, delete the invoice
+        // SAFETY: Never delete an Opening Balance invoice even if it has no items
+        if (invoice.invoiceNumber.startsWith("OB-")) {
+          console.log(`Protected Opening Balance invoice ${invoice.invoiceNumber} from deletion.`);
+          return true;
+        }
+
+        // If no items left, delete the invoice (archive first)
+        await this.archiveRecord('invoices', invoice.id, invoice, 'system');
         await db.delete(invoices).where(eq(invoices.id, invoice.id));
       } else {
         const newTotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
@@ -710,17 +717,22 @@ export class DatabaseStorage implements IStorage {
     await db.delete(invoiceItems).where(inArray(invoiceItems.invoiceId, ids));
 
     // Also need to handle stock movements reversal? 
-    // For now, assuming soft delete or just direct deletion as requested.
-    // Ideally we should reverse stock, but for this task "delete" usually implies data cleanup.
-    // However, if we delete invoices, we might leave stock "sold" without record if we don't reverse movements.
-    // Given the complexity, and typical "delete" request in this context often effectively means "void/cancel",
-    // but without explicit instruction to reverse stock, I will just remove the records to satisfy "delete".
-
-    // Actually, let's try to be safe. If we delete an invoice, we probably SHOULD delete the associated stock movements.
+    // For now, removing stock movements associated with these invoices
     await db.delete(stockMovements).where(and(inArray(stockMovements.referenceId, ids), eq(stockMovements.type, 'out')));
 
+    // Double check for Opening Balance protection in bulk delete
+    const finalIdsToDelete = invoicesToDelete
+      .filter(inv => !inv.invoiceNumber.startsWith("OB-"))
+      .map(inv => inv.id);
+
+    if (finalIdsToDelete.length < ids.length) {
+      console.log(`Protected ${ids.length - finalIdsToDelete.length} Opening Balance invoices from bulk deletion.`);
+    }
+
+    if (finalIdsToDelete.length === 0) return true;
+
     // Delete the invoices
-    await db.delete(invoices).where(inArray(invoices.id, ids));
+    await db.delete(invoices).where(inArray(invoices.id, finalIdsToDelete));
 
     return true;
   }
@@ -1313,7 +1325,9 @@ export class DatabaseStorage implements IStorage {
     // Handle dependencies first
     if (tableName === "invoices") {
       await db.delete(invoiceItems);
-      await db.delete(invoices);
+      // SAFETY: Protect Opening Balance invoices even during clearTable
+      await db.delete(invoices).where(sql`NOT invoice_number LIKE 'OB-%'`);
+      console.log("Cleared non-Opening Balance invoices.");
     } else if (tableName === "purchases") {
       await db.delete(purchaseItems);
       await db.delete(purchases);
