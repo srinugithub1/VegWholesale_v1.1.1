@@ -144,7 +144,7 @@ export default function Reports() {
   };
 
 
-  const [paymentStatus, setPaymentStatus] = useState<'all' | 'paid' | 'pending'>('all');
+  const [paymentFilters, setPaymentFilters] = useState<string[]>(['all']);
 
   const filteredInvoices = useMemo(() => {
     const safeInvoices = Array.isArray(invoices) ? invoices : [];
@@ -168,13 +168,26 @@ export default function Reports() {
         if (!invoiceHasProduct) return false;
       }
 
-      // Payment Status Filter
-      if (paymentStatus === 'paid' && inv.status !== 'completed') return false;
-      if (paymentStatus === 'pending' && inv.status !== 'pending') return false;
+      // Payment Status Filter (Multi-select)
+      if (paymentFilters.length > 0 && !paymentFilters.includes('all')) {
+        let matches = false;
+
+        // Find if this invoice has specific payments
+        const invPayments = customerPayments.filter(p => p.invoiceId === inv.id);
+        const hasUpi = invPayments.some(p => p.paymentMethod?.toLowerCase() === 'upi');
+        const hasCash = inv.status === 'completed' || invPayments.some(p => p.paymentMethod?.toLowerCase() === 'cash');
+        const isCredit = inv.status === 'pending';
+
+        if (paymentFilters.includes('upi') && hasUpi) matches = true;
+        if (paymentFilters.includes('cash') && hasCash) matches = true;
+        if (paymentFilters.includes('credit') && isCredit) matches = true;
+
+        if (!matches) return false;
+      }
 
       return true;
     }).sort((a, b) => b.date.localeCompare(a.date) || b.invoiceNumber.localeCompare(a.invoiceNumber));
-  }, [invoices, startDate, endDate, selectedVehicleId, selectedCustomerId, selectedVendorId, selectedProductId, vehicles, shop, invoiceItems, paymentStatus]);
+  }, [invoices, startDate, endDate, selectedVehicleId, selectedCustomerId, selectedVendorId, selectedProductId, vehicles, shop, invoiceItems, paymentFilters, customerPayments]);
 
   const summary = useMemo(() => {
     const totalSales = filteredInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
@@ -946,43 +959,56 @@ export default function Reports() {
               </Popover>
             </div>
 
-            {/* Payment Status Filter (Radio Buttons) */}
+            {/* Payment Type Filter (Multi-select Checkboxes) */}
             <div className="flex flex-col gap-2">
               <Label>Payment Type</Label>
               <div className="flex items-center space-x-4 pt-2">
                 <div className="flex items-center space-x-2">
                   <input
-                    type="radio"
+                    type="checkbox"
                     id="status-all"
-                    name="paymentStatus"
-                    value="all"
-                    checked={paymentStatus === 'all'}
-                    onChange={() => setPaymentStatus('all')}
-                    className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    checked={paymentFilters.includes('all') || paymentFilters.length === 0}
+                    onChange={() => setPaymentFilters(['all'])}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Label htmlFor="status-all" className="font-normal cursor-pointer">All</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
-                    type="radio"
+                    type="checkbox"
                     id="status-cash"
-                    name="paymentStatus"
-                    value="paid"
-                    checked={paymentStatus === 'paid'}
-                    onChange={() => setPaymentStatus('paid')}
-                    className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    checked={paymentFilters.includes('cash')}
+                    onChange={(e) => {
+                      if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'cash']);
+                      else setPaymentFilters(prev => prev.filter(p => p !== 'cash'));
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Label htmlFor="status-cash" className="font-normal cursor-pointer">Cash</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
-                    type="radio"
+                    type="checkbox"
+                    id="status-upi"
+                    checked={paymentFilters.includes('upi')}
+                    onChange={(e) => {
+                      if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'upi']);
+                      else setPaymentFilters(prev => prev.filter(p => p !== 'upi'));
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="status-upi" className="font-normal cursor-pointer">UPI</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
                     id="status-credit"
-                    name="paymentStatus"
-                    value="pending"
-                    checked={paymentStatus === 'pending'}
-                    onChange={() => setPaymentStatus('pending')}
-                    className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    checked={paymentFilters.includes('credit')}
+                    onChange={(e) => {
+                      if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'credit']);
+                      else setPaymentFilters(prev => prev.filter(p => p !== 'credit'));
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Label htmlFor="status-credit" className="font-normal cursor-pointer">Credit</Label>
                 </div>
