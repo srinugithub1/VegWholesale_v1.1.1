@@ -47,6 +47,7 @@ export function PaymentReports({
     const [reportType, setReportType] = useState<ReportType>("all");
     const [selectedEntityId, setSelectedEntityId] = useState<string>("all");
     const [showCashSalesOnly, setShowCashSalesOnly] = useState(false);
+    const [paymentFilters, setPaymentFilters] = useState<string[]>(['all']);
     const [currentPage, setCurrentPage] = useState(1);
 
 
@@ -116,8 +117,18 @@ export function PaymentReports({
             });
         }
 
+        // Payment Method Filter
+        if (paymentFilters.length > 0 && !paymentFilters.includes('all')) {
+            data = data.filter(item => {
+                const method = (item.paymentMethod || '').toLowerCase();
+                if (paymentFilters.includes('upi') && method === 'upi') return true;
+                if (paymentFilters.includes('cash') && method === 'cash') return true;
+                return false;
+            });
+        }
+
         return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [vendorPayments, customerPayments, vendors, customers, dateFrom, dateTo, reportType, selectedEntityId, showCashSalesOnly]);
+    }, [vendorPayments, customerPayments, vendors, customers, dateFrom, dateTo, reportType, selectedEntityId, showCashSalesOnly, paymentFilters]);
 
     // Pagination Logic
     const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
@@ -239,6 +250,52 @@ export function PaymentReports({
                                 </Select>
                             </div>
                         )}
+                        <div className="flex flex-col gap-2">
+                            <Label>Payment Type</Label>
+                            <div className="flex items-center space-x-4 pt-2">
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="pay-all"
+                                        checked={paymentFilters.includes('all') || paymentFilters.length === 0}
+                                        onChange={() => {
+                                            setPaymentFilters(['all']);
+                                            setCurrentPage(1);
+                                        }}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <Label htmlFor="pay-all" className="font-normal cursor-pointer">All</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="pay-cash"
+                                        checked={paymentFilters.includes('cash')}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'cash']);
+                                            else setPaymentFilters(prev => prev.filter(p => p !== 'cash'));
+                                            setCurrentPage(1);
+                                        }}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <Label htmlFor="pay-cash" className="font-normal cursor-pointer">Cash</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="pay-upi"
+                                        checked={paymentFilters.includes('upi')}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'upi']);
+                                            else setPaymentFilters(prev => prev.filter(p => p !== 'upi'));
+                                            setCurrentPage(1);
+                                        }}
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    />
+                                    <Label htmlFor="pay-upi" className="font-normal cursor-pointer">UPI</Label>
+                                </div>
+                            </div>
+                        </div>
                         <div className="flex flex-col justify-end space-y-2">
                             <div className="flex items-center space-x-2 pb-2">
                                 <Checkbox
