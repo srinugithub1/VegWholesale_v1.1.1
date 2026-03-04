@@ -780,7 +780,7 @@ export async function registerRoutes(
             continue;
           }
 
-          await storage.createOpeningBalanceInvoice(customer.id, Math.abs(balance));
+          await storage.createOpeningBalanceInvoice(customer.id, balance);
           results.success++;
         } catch (err) {
           console.error(`Failed to insert payment for ${name}:`, err);

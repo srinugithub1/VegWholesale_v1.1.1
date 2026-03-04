@@ -568,6 +568,13 @@ export class DatabaseStorage implements IStorage {
         await db.delete(invoices).where(eq(invoices.id, invoice.id));
       } else {
         const newTotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+
+        // SAFETY: Never recalculate total for Opening Balance invoices based on items
+        if (invoice.invoiceNumber.startsWith("OB-")) {
+          console.log(`Skipping total recalculation for Opening Balance invoice ${invoice.invoiceNumber}`);
+          return true;
+        }
+
         await db.update(invoices)
           .set({
             grandTotal: newTotal,
@@ -589,6 +596,12 @@ export class DatabaseStorage implements IStorage {
 
     // Recalculate invoice total
     if (updated) {
+      const [invoice] = await db.select().from(invoices).where(eq(invoices.id, updated.invoiceId));
+      if (invoice && invoice.invoiceNumber.startsWith("OB-")) {
+        console.log(`Skipping total update for Opening Balance invoice ${invoice.invoiceNumber}`);
+        return updated;
+      }
+
       const items = await this.getInvoiceItems(updated.invoiceId);
       const newTotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
       await db.update(invoices).set({ grandTotal: newTotal, subtotal: newTotal }).where(eq(invoices.id, updated.invoiceId));
