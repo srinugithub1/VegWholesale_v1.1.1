@@ -68,37 +68,6 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  // Manual Migration for Scale Settings (Hotfix)
-  try {
-    await db.execute(sql`
-      ALTER TABLE company_settings 
-      ADD COLUMN IF NOT EXISTS scale_settings TEXT;
-    `);
-
-    // Migration for Weight Tracking
-    await db.execute(sql`
-      ALTER TABLE vehicles 
-      ADD COLUMN IF NOT EXISTS total_weight_gain REAL DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS total_weight_loss REAL DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS starting_weight REAL DEFAULT 0,
-      ADD COLUMN IF NOT EXISTS starting_bags INTEGER DEFAULT 0;
-    `);
-
-    // Migration for Timestamps (Hotfix)
-    await db.execute(sql`
-      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
-      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
-      ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
-      ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
-      ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS weight_breakdown TEXT;
-    `);
-
-    log("Migration check complete: schema updated.");
-  } catch (error) {
-    console.error("Migration hotfix failed:", error);
-    // Don't crash, might already exist or other issue
-  }
-
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -118,18 +87,47 @@ app.use((req, res, next) => {
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {
       port,
       host: "0.0.0.0",
-      reusePort: false,
     },
     () => {
       log(`serving on port ${port}`);
+
+      // Run migrations in the background after server starts
+      (async () => {
+        try {
+          // Manual Migration for Scale Settings (Hotfix)
+          await db.execute(sql`
+            ALTER TABLE company_settings 
+            ADD COLUMN IF NOT EXISTS scale_settings TEXT;
+          `);
+
+          // Migration for Weight Tracking
+          await db.execute(sql`
+            ALTER TABLE vehicles 
+            ADD COLUMN IF NOT EXISTS total_weight_gain REAL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS total_weight_loss REAL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS starting_weight REAL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS starting_bags INTEGER DEFAULT 0;
+          `);
+
+          // Migration for Timestamps (Hotfix)
+          await db.execute(sql`
+            ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+            ALTER TABLE invoices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+            ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+            ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+            ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS weight_breakdown TEXT;
+          `);
+
+          log("Migration check complete: schema updated.");
+        } catch (error) {
+          console.error("Migration hotfix failed:", error);
+        }
+      })();
     },
   );
 })();
