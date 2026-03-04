@@ -189,17 +189,47 @@ export default function Reports() {
     // Need original safeInvoices reference here ideally, but using invoices prop directly with check
     const safeAllInvoices = Array.isArray(invoices) ? invoices : [];
 
+    // Filter Helper for Payments/Invoices to respect UI selections
+    const matchesFilters = (item: { customerId?: string, vehicleId?: string | null, vendorId?: string | null, invoiceId?: string | null }) => {
+      // Customer filter
+      if (selectedCustomerId !== "all" && (item.customerId || "") !== selectedCustomerId) return false;
+
+      // For payments, we need to check the linked invoice for vehicle/vendor/shop context
+      let linkedInvoice: Invoice | undefined;
+      if (item.invoiceId) {
+        linkedInvoice = safeAllInvoices.find(inv => inv.id === item.invoiceId);
+      }
+
+      // Vehicle filter
+      const vehicleId = item.vehicleId || linkedInvoice?.vehicleId;
+      if (selectedVehicleId !== "all" && vehicleId !== selectedVehicleId) return false;
+
+      // Vendor filter
+      const vendorId = item.vendorId || linkedInvoice?.vendorId || (vehicleId ? vehicles.find(v => v.id === vehicleId)?.vendorId : null);
+      if (selectedVendorId !== "all" && vendorId !== selectedVendorId) return false;
+
+      // Shop filter
+      if (shop !== 'all') {
+        const vId = vehicleId || linkedInvoice?.vehicleId;
+        const vehicle = vehicles.find(v => v.id === vId);
+        if (vehicle && vehicle.shop !== shop) return false;
+      }
+
+      return true;
+    };
+
     const salesBeforePeriod = safeAllInvoices
-      .filter(inv => startDate && inv.date < startDate)
+      .filter(inv => matchesFilters(inv) && startDate && inv.date < startDate)
       .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
     const paymentsBeforePeriod = safeCustomerPayments
-      .filter(p => startDate && p.date < startDate)
+      .filter(p => matchesFilters(p) && startDate && p.date < startDate)
       .reduce((sum, p) => sum + (p.amount || 0), 0);
     const openingBalance = salesBeforePeriod - paymentsBeforePeriod;
 
     const salesInPeriod = filteredInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
     const paymentsInPeriod = safeCustomerPayments
       .filter(p => {
+        if (!matchesFilters(p)) return false;
         if (startDate && p.date < startDate) return false;
         if (endDate && p.date > endDate) return false;
         return true;
