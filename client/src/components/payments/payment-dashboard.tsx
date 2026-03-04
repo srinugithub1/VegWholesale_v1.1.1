@@ -110,28 +110,43 @@ export function PaymentDashboard({
             <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Vendor Outstanding</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <CardTitle className="text-sm font-medium">Amount Owed to Vendors</CardTitle>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <Info className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[300px]">
+                                        <p>Total amount you currently owe to all your suppliers combined.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
                         <TrendingDown className="h-4 w-4 text-red-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-red-600">
                             {totalVendorOutstanding.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                         </div>
-                        <p className="text-xs text-muted-foreground">Total amount to pay vendors</p>
+                        <p className="text-xs text-muted-foreground">Pending payments to vendors</p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div className="flex items-center gap-2">
-                            <CardTitle className="text-sm font-medium">Total Customer Balance</CardTitle>
+                            <CardTitle className="text-sm font-medium">Total Pending from Customers</CardTitle>
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger>
                                         <Info className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors cursor-help" />
                                     </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Total amount customers currently owe (Sales - Received)</p>
+                                    <TooltipContent className="max-w-[300px]">
+                                        <div className="space-y-2">
+                                            <p>Total unpaid credit that all customers currently owe you combined.</p>
+                                            <p className="text-xs italic text-muted-foreground">(Total All-Time Sales - Total All-Time Payments)</p>
+                                        </div>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -142,7 +157,7 @@ export function PaymentDashboard({
                         <div className="text-2xl font-bold text-green-600">
                             {totalCustomerReceivable.toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                         </div>
-                        <p className="text-xs text-muted-foreground">Total amount to receive</p>
+                        <p className="text-xs text-muted-foreground">Owed to your shop</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -174,7 +189,22 @@ export function PaymentDashboard({
             <div className="grid gap-4 md:grid-cols-2">
                 <Card className="bg-green-50/50 border-green-100">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-green-800">Collected Today</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <CardTitle className="text-sm font-medium text-green-800">Payments Collected Today</CardTitle>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <Info className="h-4 w-4 text-green-700 hover:text-green-900 transition-colors cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-[300px]">
+                                        <div className="space-y-2">
+                                            <p>The total sum of all physical Cash and UPI handed to the shop by all customers today.</p>
+                                            <p className="text-xs italic text-muted-foreground">To manually check: Go to the 'Transactions' tab above, filter for Today, and add up the 'Amount' column.</p>
+                                        </div>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
                         <Wallet className="h-4 w-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
@@ -184,7 +214,7 @@ export function PaymentDashboard({
                                 .reduce((sum, p) => sum + p.amount, 0)
                                 .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                         </div>
-                        <p className="text-xs text-green-600/80">Total received from customers today</p>
+                        <p className="text-xs text-green-600/80">Sum of all customer receipts today</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-red-50/50 border-red-100">
