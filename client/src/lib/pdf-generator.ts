@@ -511,14 +511,12 @@ export interface HamaliReportData {
         bags: number;
         perBagCharge: number;
         totalAmount: number;
-        grandTotal: number;
     }[];
     totals: {
         records: number;
         weight: number;
         bags: number;
         totalAmount: number;
-        grandTotal: number;
     };
 }
 
@@ -551,8 +549,7 @@ export const generateHamaliReportPDF = (data: HamaliReportData) => {
         "Weight",
         "Bags",
         "Rate/Bag",
-        "Total Hamali",
-        "Grand Total"
+        "Total Hamali"
     ];
 
     const tableRows = data.items.map(item => [
@@ -563,8 +560,7 @@ export const generateHamaliReportPDF = (data: HamaliReportData) => {
         `${item.weight.toFixed(2)} KG`,
         item.bags,
         item.perBagCharge.toFixed(2),
-        item.totalAmount.toFixed(2),
-        item.grandTotal.toFixed(2)
+        item.totalAmount.toFixed(2)
     ]);
 
     // Footer Row
@@ -574,8 +570,7 @@ export const generateHamaliReportPDF = (data: HamaliReportData) => {
             { content: `${data.totals.weight.toFixed(2)} KG`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
             { content: `${data.totals.bags}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
             { content: `-`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
-            { content: `Rs ${data.totals.totalAmount.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
-            { content: `Rs ${data.totals.grandTotal.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [220, 252, 231] as [number, number, number] } }
+            { content: `Rs ${data.totals.totalAmount.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [220, 252, 231] as [number, number, number] } }
         ]
     ];
 

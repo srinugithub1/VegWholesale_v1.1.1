@@ -312,6 +312,9 @@ export default function Reports() {
   const hamaliRecords = useMemo(() => {
     let filtered = Array.isArray(invoices) ? invoices : [];
 
+    // Filter only those with hamali charge
+    filtered = filtered.filter(inv => inv.includeHamaliCharge && (inv.hamaliChargeAmount || 0) > 0);
+
     if (hamaliFromDate) {
       const hStartDate = format(hamaliFromDate, 'yyyy-MM-dd');
       filtered = filtered.filter(inv => inv.date >= hStartDate);
@@ -350,6 +353,15 @@ export default function Reports() {
       };
     }).sort((a, b) => b.date.localeCompare(a.date));
   }, [invoices, hamaliFromDate, hamaliToDate, hamaliCustomerId, invoiceItems, products, customers]);
+
+  const hamaliCustomers = useMemo(() => {
+    const customerIdsWithHamali = new Set(
+      invoices
+        .filter(inv => inv.includeHamaliCharge && (inv.hamaliChargeAmount || 0) > 0)
+        .map(inv => inv.customerId)
+    );
+    return customers.filter(c => customerIdsWithHamali.has(c.id));
+  }, [invoices, customers]);
 
   const totalHamaliRecords = hamaliRecords.length;
   const paginatedHamaliRecords = hamaliRecords.slice(
@@ -1680,7 +1692,7 @@ export default function Reports() {
                                 />
                                 All Customers
                               </CommandItem>
-                              {customers.map((c) => (
+                              {hamaliCustomers.map((c) => (
                                 <CommandItem
                                   key={c.id}
                                   onSelect={() => {
@@ -1719,15 +1731,13 @@ export default function Reports() {
                         weight: r.weight,
                         bags: r.bags,
                         perBagCharge: r.perBagCharge,
-                        totalAmount: r.totalAmount,
-                        grandTotal: r.grandTotal
+                        totalAmount: r.totalAmount
                       })),
                       totals: {
                         records: totalHamaliRecords,
                         weight: hamaliRecords.reduce((sum, r) => sum + r.weight, 0),
                         bags: hamaliRecords.reduce((sum, r) => sum + r.bags, 0),
-                        totalAmount: hamaliRecords.reduce((sum, r) => sum + r.totalAmount, 0),
-                        grandTotal: hamaliRecords.reduce((sum, r) => sum + r.grandTotal, 0)
+                        totalAmount: hamaliRecords.reduce((sum, r) => sum + r.totalAmount, 0)
                       }
                     });
                   }}>
@@ -1757,7 +1767,6 @@ export default function Reports() {
                       <TableHead className="text-right">Bags</TableHead>
                       <TableHead className="text-right">Rate/Bag</TableHead>
                       <TableHead className="text-right">Total Hamali</TableHead>
-                      <TableHead className="text-right">Grand Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1779,9 +1788,23 @@ export default function Reports() {
                           <TableCell className="text-right font-mono">{record.bags}</TableCell>
                           <TableCell className="text-right font-mono">{formatCurrency(record.perBagCharge)}</TableCell>
                           <TableCell className="text-right font-mono text-primary font-medium">{formatCurrency(record.totalAmount)}</TableCell>
-                          <TableCell className="text-right font-mono font-bold">{formatCurrency(record.grandTotal)}</TableCell>
                         </TableRow>
                       ))
+                    )}
+                    {hamaliRecords.length > 0 && (
+                      <TableRow className="bg-muted/50 font-bold border-t-2">
+                        <TableCell colSpan={3} className="text-right">TOTAL</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {hamaliRecords.reduce((sum, r) => sum + r.weight, 0).toFixed(2)} KG
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {hamaliRecords.reduce((sum, r) => sum + r.bags, 0)}
+                        </TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="text-right font-mono text-primary">
+                          {formatCurrency(hamaliRecords.reduce((sum, r) => sum + r.totalAmount, 0))}
+                        </TableCell>
+                      </TableRow>
                     )}
                   </TableBody>
                 </Table>
