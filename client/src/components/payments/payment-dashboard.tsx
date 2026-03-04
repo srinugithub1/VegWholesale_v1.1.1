@@ -214,7 +214,34 @@ export function PaymentDashboard({
                                 .reduce((sum, p) => sum + p.amount, 0)
                                 .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                         </div>
-                        <p className="text-xs text-green-600/80">Sum of all customer receipts today</p>
+                        <div className="mt-2 space-y-1">
+                            <div className="flex justify-between text-xs text-green-600/80">
+                                <span>Regular Customers:</span>
+                                <span className="font-mono">
+                                    {customerPayments
+                                        .filter(p => {
+                                            const today = format(new Date(), "yyyy-MM-dd");
+                                            const name = customers.find(c => c.id === p.customerId)?.name.toLowerCase() || "";
+                                            return p.date === today && name !== "cash account" && name !== "cash sale account";
+                                        })
+                                        .reduce((sum, p) => sum + p.amount, 0)
+                                        .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                                </span>
+                            </div>
+                            <div className="flex justify-between text-xs text-green-600/80">
+                                <span>Direct Customers:</span>
+                                <span className="font-mono">
+                                    {customerPayments
+                                        .filter(p => {
+                                            const today = format(new Date(), "yyyy-MM-dd");
+                                            const name = customers.find(c => c.id === p.customerId)?.name.toLowerCase() || "";
+                                            return p.date === today && (name === "cash account" || name === "cash sale account");
+                                        })
+                                        .reduce((sum, p) => sum + p.amount, 0)
+                                        .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                                </span>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
                 <Card className="bg-red-50/50 border-red-100">
