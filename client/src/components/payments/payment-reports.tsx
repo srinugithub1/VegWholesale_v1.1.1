@@ -373,7 +373,11 @@ export function PaymentReports({
                                             </span>
                                         </TableCell>
                                         <TableCell className="font-medium">{row.partyName}</TableCell>
-                                        <TableCell className="capitalize">{row.paymentMethod}</TableCell>
+                                        <TableCell className="capitalize">
+                                            {(row.partyName.toLowerCase() === "cash account" || row.partyName.toLowerCase() === "cash sale account")
+                                                ? "Direct Customer"
+                                                : row.paymentMethod}
+                                        </TableCell>
                                         <TableCell className="text-muted-foreground">{row.notes || "-"}</TableCell>
                                         <TableCell className="text-right font-mono font-bold">
                                             {row.amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}

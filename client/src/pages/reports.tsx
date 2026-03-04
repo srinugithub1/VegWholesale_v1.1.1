@@ -419,7 +419,8 @@ export default function Reports() {
         const bags = (invoice && isSingleItem) ? (invoice.bags || 0) : 0;
 
         // Payment Type Logic
-        const paymentType = (invoice?.status === "completed") ? "CASH" : "CREDIT";
+        const isDirect = (customer.toLowerCase() === "cash account" || customer.toLowerCase() === "cash sale account");
+        const paymentType = isDirect ? "Direct Customer" : ((invoice?.status === "completed") ? "CASH" : "CREDIT");
 
         return {
           no: index + 1,
@@ -436,7 +437,7 @@ export default function Reports() {
           weight: quantity,
           bags,
           price: unitPrice,
-          type: paymentType as "CASH" | "CREDIT",
+          type: paymentType,
           subtotal,
           hamali,
           total
@@ -581,7 +582,7 @@ export default function Reports() {
 
       // Filter Credit/Cash from reportItems
       const totalCredit = reportItems.filter(i => i.type === "CREDIT").reduce((sum, i) => sum + i.total, 0);
-      const totalCash = reportItems.filter(i => i.type === "CASH").reduce((sum, i) => sum + i.total, 0);
+      const totalCash = reportItems.filter(i => i.type === "CASH" || i.type === "Direct Customer").reduce((sum, i) => sum + i.total, 0);
 
       generateDetailedReport({
         date: startDate === endDate ? startDate : `${startDate} to ${endDate}`,
@@ -1428,7 +1429,7 @@ export default function Reports() {
                             {item.price.toFixed(2)}
                           </TableCell>
                           <TableCell className="text-center text-xs">
-                            <Badge variant={item.type === "CASH" ? "outline" : "secondary"} className="text-xs">
+                            <Badge variant={(item.type === "CASH" || item.type === "Direct Customer") ? "outline" : "secondary"} className="text-xs">
                               {item.type}
                             </Badge>
                           </TableCell>

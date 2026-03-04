@@ -21,7 +21,7 @@ export interface ReportData {
         weight: number;
         bags: number;
         price: number;
-        type: "CREDIT" | "CASH";
+        type: "CREDIT" | "CASH" | "Direct Customer" | string;
         subtotal: number;
         hamali: number;
         total: number;
