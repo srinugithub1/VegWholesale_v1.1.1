@@ -1642,7 +1642,7 @@ export default function Sell() {
 
       {(() => {
         const shopVehicles = vehicles.filter(v => v.shop === shop);
-        const today = new Date().toISOString().split("T")[0];
+        const today = format(new Date(), "yyyy-MM-dd");
 
         const visibleVehicles = shopVehicles.filter(vehicle => {
           const inventory = vehicleInventories[vehicle.id] || [];
@@ -2286,7 +2286,8 @@ function ProductRow({
   errors: any,
   updateProductField: (id: string, field: 'weight' | 'bags' | 'price', val: number) => void,
   accumulateWeightAndBags: (id: string, val: number) => void,
-  removeWeightFromProduct: (id: string, index: number) => void
+  removeWeightFromProduct: (id: string, index: number) => void,
+  isLowStock?: boolean
 }) {
   // Local state for "Add Weight" input
   const [addValue, setAddValue] = useState<string>("");
@@ -2442,7 +2443,7 @@ function VehicleSaleHistory({ vehicleId }: { vehicleId: string }) {
   const [page, setPage] = useState(1);
   const LIMIT = 10;
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError } = useQuery<{ invoices: (Invoice & { customerName?: string })[], total: number }>({
     queryKey: [`/api/invoices?vehicleId=${vehicleId}&page=${page}&limit=${LIMIT}`],
     enabled: isOpen,
   });

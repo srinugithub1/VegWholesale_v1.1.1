@@ -1260,7 +1260,7 @@ export default function Payments() {
       invoiceId,
       amount: paymentAmount,
       paymentMethod: customerPaymentMethod,
-      date: new Date().toISOString().split("T")[0],
+      date: format(new Date(), "yyyy-MM-dd"),
     });
   };
 
@@ -1268,7 +1268,7 @@ export default function Payments() {
     if (!hamaliAmount) return;
     createHamaliCashPayment.mutate({
       amount: parseFloat(hamaliAmount),
-      date: new Date().toISOString().split("T")[0],
+      date: format(new Date(), "yyyy-MM-dd"),
       paymentMethod: "cash",
       customerId: hamaliCustomerId === "none" ? undefined : hamaliCustomerId,
       notes: hamaliNotes || undefined,
@@ -1429,8 +1429,6 @@ export default function Payments() {
             customerPayments={shopCustomerPayments || []}
             purchases={shopPurchases || []}
             invoices={shopInvoices || []}
-            vendorBalances={vendorBalances || []}
-            customerBalances={customerBalances || []}
             customers={customers || []}
           />
         </TabsContent>
