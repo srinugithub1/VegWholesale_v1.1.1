@@ -31,7 +31,7 @@ import {
   Bar,
   XAxis,
   YAxis,
-  Tooltip,
+  Tooltip as ChartTooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -40,6 +40,13 @@ import {
   Area,
   Legend,
 } from "recharts";
+import {
+  Tooltip as UiTooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import type { Vendor, Customer, Product, Invoice, Purchase, CustomerPayment, Vehicle, VehicleInventory } from "@shared/schema";
 
 function MetricCard({
@@ -224,13 +231,21 @@ export default function Dashboard() {
 
   // Calculate opening and closing balances
   const balances = useMemo(() => {
-    const totalSalesBeforeToday = invoices
+    const internalCustomerIds = customers
+      .filter(c => c.name === "CASH ACCOUNT" || c.name === "Cash Sale Account")
+      .map(c => c.id);
+
+    const filteredInvoicesForBalances = invoices.filter(inv => !internalCustomerIds.includes(inv.customerId || ""));
+
+    const totalSalesBeforeToday = filteredInvoicesForBalances
       .filter(inv => inv.date < today)
       .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
 
     const shopInvoiceIds = new Set(invoices.map(i => i.id));
 
     const filteredPayments = customerPayments.filter(p => {
+      if (p.customerId && internalCustomerIds.includes(p.customerId)) return false;
+
       // If payment is linked to an invoice, check if that invoice is in our current list
       if (p.invoiceId) {
         // If the invoice exists in DB but isn't in our shop list, exclude it
@@ -261,7 +276,7 @@ export default function Dashboard() {
     const closingBalance = openingBalance + todayTotalSales - todayPayments;
 
     return { openingBalance, closingBalance, todayPayments };
-  }, [invoices, customerPayments, today]);
+  }, [invoices, customerPayments, today, customers, allInvoices, vehicles, shop]);
 
   const recentInvoices = [...invoices]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -318,9 +333,6 @@ export default function Dashboard() {
   }, [invoices]);
 
 
-
-
-
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -354,7 +366,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Opening Balance</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-primary">Opening Balance</CardTitle>
+              <TooltipProvider>
+                <UiTooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[300px]">
+                    <p>Total outstanding credit from all customers BEFORE today. Calculated as (Total Past Sales - Total Past Payments). Internal cash accounts are excluded.</p>
+                  </TooltipContent>
+                </UiTooltip>
+              </TooltipProvider>
+            </div>
             <IndianRupee className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
@@ -367,7 +391,19 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today's Sales</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Today's Sales</CardTitle>
+              <TooltipProvider>
+                <UiTooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[300px]">
+                    <p>Grand total of all invoices created today (including Hamali charges). These are credits added to customer accounts today.</p>
+                  </TooltipContent>
+                </UiTooltip>
+              </TooltipProvider>
+            </div>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -380,7 +416,23 @@ export default function Dashboard() {
 
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Closing Balance</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-primary">Closing Balance</CardTitle>
+              <TooltipProvider>
+                <UiTooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[300px]">
+                    <div className="space-y-2">
+                      <p className="font-semibold underline">Closing Balance = Opening + Sales - Payments</p>
+                      <p>This is the total net credit owed by all customers right now.</p>
+                      <p className="text-xs text-muted-foreground italic">Note: Internal rotations (CASH ACCOUNT) are excluded for accuracy.</p>
+                    </div>
+                  </TooltipContent>
+                </UiTooltip>
+              </TooltipProvider>
+            </div>
             <IndianRupee className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
@@ -446,7 +498,7 @@ export default function Dashboard() {
                     axisLine={false}
                     tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
                   />
-                  <Tooltip
+                  <ChartTooltip
                     formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Sales"]}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
@@ -490,7 +542,7 @@ export default function Dashboard() {
                     axisLine={false}
                     width={80}
                   />
-                  <Tooltip
+                  <ChartTooltip
                     formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Value"]}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",

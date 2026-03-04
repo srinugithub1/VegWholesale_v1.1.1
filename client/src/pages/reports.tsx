@@ -194,6 +194,15 @@ export default function Reports() {
       // Customer filter
       if (selectedCustomerId !== "all" && (item.customerId || "") !== selectedCustomerId) return false;
 
+      // Exclude special accounts (CASH ACCOUNT, Cash Sale Account) from summaries
+      // unless the user specifically searched for them or filtered by them.
+      const customer = customers.find(c => c.id === (item.customerId || ""));
+      const isInternalAccount = customer?.name === "CASH ACCOUNT" || customer?.name === "Cash Sale Account";
+
+      if (selectedCustomerId === "all" && isInternalAccount) {
+        return false;
+      }
+
       // For payments, we need to check the linked invoice for vehicle/vendor/shop context
       let linkedInvoice: Invoice | undefined;
       if (item.invoiceId) {
@@ -1113,7 +1122,19 @@ export default function Reports() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-primary/30 bg-primary/5">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-                  <CardTitle className="text-sm font-medium text-primary">Opening Balance</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-primary">Opening Balance</CardTitle>
+                    <TooltipProvider>
+                      <UiTooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[300px]">
+                          <p>Total outstanding credit from all customers BEFORE the selected date range. Internal cash accounts are excluded.</p>
+                        </TooltipContent>
+                      </UiTooltip>
+                    </TooltipProvider>
+                  </div>
                   <TrendingUp className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
@@ -1126,7 +1147,19 @@ export default function Reports() {
 
               <Card className="border-primary/30 bg-primary/5">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-                  <CardTitle className="text-sm font-medium text-primary">Payments Received</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-primary">Payments Received</CardTitle>
+                    <TooltipProvider>
+                      <UiTooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[300px]">
+                          <p>Total cash collected from customers during the selected period. Internal transfers (CASH ACCOUNT) are excluded for clarity.</p>
+                        </TooltipContent>
+                      </UiTooltip>
+                    </TooltipProvider>
+                  </div>
                   <CreditCard className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
@@ -1139,7 +1172,22 @@ export default function Reports() {
 
               <Card className="border-primary/30 bg-primary/5">
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-                  <CardTitle className="text-sm font-medium text-primary">Closing Balance</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-medium text-primary">Closing Balance</CardTitle>
+                    <TooltipProvider>
+                      <UiTooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[300px]">
+                          <div className="space-y-2">
+                            <p className="font-semibold underline">Closing = Opening + Sales - Payments</p>
+                            <p>Total net credit owed by customers at the end of the selected period (or today if range ends today).</p>
+                          </div>
+                        </TooltipContent>
+                      </UiTooltip>
+                    </TooltipProvider>
+                  </div>
                   <TrendingUp className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
