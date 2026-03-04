@@ -231,8 +231,17 @@ export default function Dashboard() {
     const shopInvoiceIds = new Set(invoices.map(i => i.id));
 
     const filteredPayments = customerPayments.filter(p => {
-      if (p.invoiceId) return shopInvoiceIds.has(p.invoiceId);
-      return true; // Include general payments? Or risky? Let's include for now.
+      // If payment is linked to an invoice, check if that invoice is in our current list
+      if (p.invoiceId) {
+        // If the invoice exists in DB but isn't in our shop list, exclude it
+        // BUT if the invoice was DELETED (orphan), we should include the payment
+        // to match the realized cash reporting.
+        const linkedInvoiceExists = allInvoices.some(inv => inv.id === p.invoiceId);
+        if (linkedInvoiceExists && !shopInvoiceIds.has(p.invoiceId)) {
+          return false;
+        }
+      }
+      return true;
     });
 
     const totalPaymentsBeforeToday = filteredPayments

@@ -567,7 +567,7 @@ export class DatabaseStorage implements IStorage {
         await this.archiveRecord('invoices', invoice.id, invoice, 'system');
         await db.delete(invoices).where(eq(invoices.id, invoice.id));
       } else {
-        const newTotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+        const newSubtotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
 
         // SAFETY: Never recalculate total for Opening Balance invoices based on items
         if (invoice.invoiceNumber.startsWith("OB-")) {
@@ -575,15 +575,16 @@ export class DatabaseStorage implements IStorage {
           return true;
         }
 
+        const hamali = Number(invoice.hamaliChargeAmount || 0);
+
         await db.update(invoices)
           .set({
-            grandTotal: newTotal,
-            subtotal: newTotal
+            grandTotal: newSubtotal + hamali,
+            subtotal: newSubtotal
           })
           .where(eq(invoices.id, invoice.id));
       }
     }
-
     return true;
   }
 
@@ -603,8 +604,14 @@ export class DatabaseStorage implements IStorage {
       }
 
       const items = await this.getInvoiceItems(updated.invoiceId);
-      const newTotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
-      await db.update(invoices).set({ grandTotal: newTotal, subtotal: newTotal }).where(eq(invoices.id, updated.invoiceId));
+      const newSubtotal = items.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+      const hamali = Number(invoice.hamaliChargeAmount || 0);
+      await db.update(invoices)
+        .set({
+          grandTotal: newSubtotal + hamali,
+          subtotal: newSubtotal
+        })
+        .where(eq(invoices.id, updated.invoiceId));
     }
     return updated;
   }

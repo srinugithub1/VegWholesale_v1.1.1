@@ -90,7 +90,7 @@ export default function Reports() {
   const products = Array.isArray(rawProducts) ? rawProducts : [];
 
   const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
-    queryKey: ["/api/invoices?limit=2000"],
+    queryKey: ["/api/invoices?limit=100000"],
   });
   const invoices = invoicesResult?.invoices || [];
 
@@ -235,6 +235,8 @@ export default function Reports() {
         return true;
       })
       .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    // Discrepancy Fix: Closing Balance must be consistent with opening + change
     const closingBalance = openingBalance + salesInPeriod - paymentsInPeriod;
 
     return {
@@ -1052,14 +1054,59 @@ export default function Reports() {
             <Calendar className="h-4 w-4 mr-2" />
             Daily Summary
           </TabsTrigger>
-          <TabsTrigger value="charts" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Charts
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6 animate-in fade-in duration-500">
-          <FilterSection />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[280px] justify-start text-left font-normal pl-3">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {fromDate ? (
+                      toDate ? (
+                        <>
+                          {format(fromDate, "LLL dd, y")} - {format(toDate, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(fromDate, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-4 border-b">
+                    <Label className="text-xs uppercase text-muted-foreground mb-4 block">Select Date Range</Label>
+                    <div className="flex gap-4">
+                      <CalendarComponent
+                        mode="single"
+                        selected={fromDate}
+                        onSelect={setFromDate}
+                        className="rounded-md border shadow-sm"
+                      />
+                      <CalendarComponent
+                        mode="single"
+                        selected={toDate}
+                        onSelect={setToDate}
+                        className="rounded-md border shadow-sm"
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setFromDate(new Date()); setToDate(new Date()); }}>Today</Button>
+              <Button variant="outline" size="sm" onClick={() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 30);
+                setFromDate(d);
+                setToDate(new Date());
+              }}>Last 30 Days</Button>
+            </div>
+          </div>
 
           {/* Top Summary Cards */}
           {selectedProductId === "all" && (
@@ -1160,80 +1207,6 @@ export default function Reports() {
             </Card>
           </div>
 
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Sales Trend</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {chartData.length === 0 ? (
-                  <div className="h-64 flex items-center justify-center text-muted-foreground">
-                    No data to display
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={chartData}>
-                      <XAxis dataKey="date" fontSize={11} />
-                      <YAxis fontSize={11} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Bar dataKey="sales" fill={CHART_COLORS[0]} name="Sales" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="hamali" fill={CHART_COLORS[1]} name="Hamali" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Sales Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {salesBreakdownData.length === 0 ? (
-                  <div className="h-64 flex items-center justify-center text-muted-foreground">
-                    No data to display
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie
-                        data={salesBreakdownData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={2}
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        labelLine={false}
-                      >
-                        {salesBreakdownData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="sales" className="space-y-4 animate-in fade-in duration-500">
@@ -1436,83 +1409,6 @@ export default function Reports() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="charts" className="space-y-4 animate-in fade-in duration-500">
-          <FilterSection />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Sales Trend</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {chartData.length === 0 ? (
-                  <div className="h-64 flex items-center justify-center text-muted-foreground">
-                    No data to display
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={chartData}>
-                      <XAxis dataKey="date" fontSize={11} />
-                      <YAxis fontSize={11} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Bar dataKey="sales" fill={CHART_COLORS[0]} name="Sales" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="hamali" fill={CHART_COLORS[1]} name="Hamali" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Sales Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {salesBreakdownData.length === 0 ? (
-                  <div className="h-64 flex items-center justify-center text-muted-foreground">
-                    No data to display
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie
-                        data={salesBreakdownData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={2}
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        labelLine={false}
-                      >
-                        {salesBreakdownData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: number) => formatCurrency(value)}
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
       </Tabs>
     </div>
