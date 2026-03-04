@@ -22,7 +22,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { Product, Invoice, Customer, Vehicle, InvoiceItem, Vendor, CustomerPayment } from "@shared/schema";
-import { generateDetailedReport } from "@/lib/pdf-generator";
+import { generateDetailedReport, generateHamaliReportPDF } from "@/lib/pdf-generator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BarChart,
@@ -81,6 +81,14 @@ export default function Reports() {
   const [selectedVendorId, setSelectedVendorId] = useState<string>("all");
   const [selectedProductId, setSelectedProductId] = useState<string>("all");
   const { shop } = useShop();
+
+  // Hamali Tab State
+  const [hamaliFromDate, setHamaliFromDate] = useState<Date | undefined>(new Date());
+  const [hamaliToDate, setHamaliToDate] = useState<Date | undefined>(new Date());
+  const [hamaliCustomerId, setHamaliCustomerId] = useState<string>("all");
+  const [hamaliCurrentPage, setHamaliCurrentPage] = useState(1);
+  const [openHamaliCustomer, setOpenHamaliCustomer] = useState(false);
+  const hamaliItemsPerPage = 20;
 
   const startDate = fromDate ? format(fromDate, 'yyyy-MM-dd') : "";
   const endDate = toDate ? format(toDate, 'yyyy-MM-dd') : "";
@@ -285,6 +293,54 @@ export default function Reports() {
 
     return Array.from(dateMap.values()).sort((a, b) => b.date.localeCompare(a.date));
   }, [filteredInvoices]);
+
+  const hamaliRecords = useMemo(() => {
+    let filtered = Array.isArray(invoices) ? invoices : [];
+
+    if (hamaliFromDate) {
+      const hStartDate = format(hamaliFromDate, 'yyyy-MM-dd');
+      filtered = filtered.filter(inv => inv.date >= hStartDate);
+    }
+    if (hamaliToDate) {
+      const hEndDate = format(hamaliToDate, 'yyyy-MM-dd');
+      filtered = filtered.filter(inv => inv.date <= hEndDate);
+    }
+    if (hamaliCustomerId !== "all") {
+      filtered = filtered.filter(inv => inv.customerId === hamaliCustomerId);
+    }
+
+    return filtered.map(inv => {
+      const safeInvoiceItems = Array.isArray(invoiceItems) ? invoiceItems : [];
+      const invoiceProducts = safeInvoiceItems
+        .filter(item => item.invoiceId === inv.id)
+        .map(item => {
+          const product = products.find(p => p.id === item.productId);
+          return product ? product.name : "Unknown";
+        })
+        .join(", ");
+
+      const customer = customers.find(c => c.id === inv.customerId);
+      const customerName = customer ? customer.name : "Unknown";
+
+      return {
+        id: inv.id,
+        date: inv.date,
+        customerName,
+        product: invoiceProducts || "-",
+        weight: inv.totalKgWeight || 0,
+        bags: inv.bags || 0,
+        perBagCharge: inv.hamaliRatePerBag || 0,
+        totalAmount: inv.hamaliChargeAmount || 0,
+        grandTotal: inv.grandTotal || 0,
+      };
+    }).sort((a, b) => b.date.localeCompare(a.date));
+  }, [invoices, hamaliFromDate, hamaliToDate, hamaliCustomerId, invoiceItems, products, customers]);
+
+  const totalHamaliRecords = hamaliRecords.length;
+  const paginatedHamaliRecords = hamaliRecords.slice(
+    (hamaliCurrentPage - 1) * hamaliItemsPerPage,
+    hamaliCurrentPage * hamaliItemsPerPage
+  );
 
   const chartData = useMemo(() => {
     return [...dailySummary].reverse().slice(-14).map((day) => ({
@@ -1064,6 +1120,10 @@ export default function Reports() {
             <Calendar className="h-4 w-4 mr-2" />
             Daily Summary
           </TabsTrigger>
+          <TabsTrigger value="hamali" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
+            <Users className="h-4 w-4 mr-2" />
+            Hamali Details
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6 animate-in fade-in duration-500">
@@ -1454,6 +1514,256 @@ export default function Reports() {
                       </TableRow>
                     </TableBody>
                   </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="hamali" className="space-y-6 animate-in fade-in duration-500">
+          <Card className="border-0 shadow-sm bg-white/50 backdrop-blur-sm dark:bg-zinc-950/50">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-6">
+                <div className="flex flex-wrap gap-4 items-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-[280px] justify-start text-left font-normal pl-3">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {hamaliFromDate ? (
+                          hamaliToDate ? (
+                            <>
+                              {format(hamaliFromDate, "LLL dd, y")} - {format(hamaliToDate, "LLL dd, y")}
+                            </>
+                          ) : (
+                            format(hamaliFromDate, "LLL dd, y")
+                          )
+                        ) : (
+                          <span>Pick a date range</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <div className="p-4 border-b">
+                        <Label className="text-xs uppercase text-muted-foreground mb-4 block">Select Date Range</Label>
+                        <div className="flex gap-4">
+                          <CalendarComponent
+                            mode="single"
+                            selected={hamaliFromDate}
+                            onSelect={setHamaliFromDate}
+                            className="rounded-md border shadow-sm"
+                          />
+                          <CalendarComponent
+                            mode="single"
+                            selected={hamaliToDate}
+                            onSelect={setHamaliToDate}
+                            className="rounded-md border shadow-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="p-4 flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => { setHamaliFromDate(new Date()); setHamaliToDate(new Date()); }}>Today</Button>
+                        <Button variant="outline" size="sm" onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() - 30);
+                          setHamaliFromDate(d);
+                          setHamaliToDate(new Date());
+                        }}>Last 30 Days</Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  <div className="w-[240px]">
+                    <Popover open={openHamaliCustomer} onOpenChange={setOpenHamaliCustomer}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openHamaliCustomer}
+                          className="w-full justify-between font-normal bg-background"
+                        >
+                          {hamaliCustomerId === "all"
+                            ? "All Customers"
+                            : customers.find((c) => c.id === hamaliCustomerId)?.name}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[240px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search customer..." />
+                          <CommandList>
+                            <CommandEmpty>No customer found.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => {
+                                  setHamaliCustomerId("all");
+                                  setOpenHamaliCustomer(false);
+                                  setHamaliCurrentPage(1);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    hamaliCustomerId === "all" ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                All Customers
+                              </CommandItem>
+                              {customers.map((c) => (
+                                <CommandItem
+                                  key={c.id}
+                                  onSelect={() => {
+                                    setHamaliCustomerId(c.id);
+                                    setOpenHamaliCustomer(false);
+                                    setHamaliCurrentPage(1);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      hamaliCustomerId === c.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {c.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => {
+                    generateHamaliReportPDF({
+                      period: hamaliFromDate && hamaliToDate ? `${format(hamaliFromDate, "dd/MM/yyyy")} to ${format(hamaliToDate, "dd/MM/yyyy")}` : "All Time",
+                      customerFilter: hamaliCustomerId === "all" ? "All Customers" : customers.find((c) => c.id === hamaliCustomerId)?.name || "All Customers",
+                      items: hamaliRecords.map((r, index) => ({
+                        no: index + 1,
+                        date: format(new Date(r.date), 'dd/MM/yyyy'),
+                        customerName: r.customerName,
+                        product: r.product,
+                        weight: r.weight,
+                        bags: r.bags,
+                        perBagCharge: r.perBagCharge,
+                        totalAmount: r.totalAmount,
+                        grandTotal: r.grandTotal
+                      })),
+                      totals: {
+                        records: totalHamaliRecords,
+                        weight: hamaliRecords.reduce((sum, r) => sum + r.weight, 0),
+                        bags: hamaliRecords.reduce((sum, r) => sum + r.bags, 0),
+                        totalAmount: hamaliRecords.reduce((sum, r) => sum + r.totalAmount, 0),
+                        grandTotal: hamaliRecords.reduce((sum, r) => sum + r.grandTotal, 0)
+                      }
+                    });
+                  }}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  Total Records: <span className="font-semibold text-foreground">{totalHamaliRecords}</span>
+                </span>
+                <span className="text-sm font-semibold text-primary px-3 py-1 bg-primary/10 rounded-full hidden sm:inline-block">
+                  Page {hamaliCurrentPage} of {Math.max(1, Math.ceil(totalHamaliRecords / hamaliItemsPerPage))}
+                </span>
+              </div>
+
+              <div className="rounded-md border bg-card overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead className="text-right">Weight</TableHead>
+                      <TableHead className="text-right">Bags</TableHead>
+                      <TableHead className="text-right">Rate/Bag</TableHead>
+                      <TableHead className="text-right">Total Hamali</TableHead>
+                      <TableHead className="text-right">Grand Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedHamaliRecords.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No hamali records found for the selected filters.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedHamaliRecords.map((record) => (
+                        <TableRow key={record.id}>
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {format(new Date(record.date), 'dd MMM yyyy')}
+                          </TableCell>
+                          <TableCell>{record.customerName}</TableCell>
+                          <TableCell className="max-w-[200px] truncate" title={record.product}>{record.product}</TableCell>
+                          <TableCell className="text-right font-mono">{record.weight.toFixed(2)} KG</TableCell>
+                          <TableCell className="text-right font-mono">{record.bags}</TableCell>
+                          <TableCell className="text-right font-mono">{formatCurrency(record.perBagCharge)}</TableCell>
+                          <TableCell className="text-right font-mono text-primary font-medium">{formatCurrency(record.totalAmount)}</TableCell>
+                          <TableCell className="text-right font-mono font-bold">{formatCurrency(record.grandTotal)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {totalHamaliRecords > hamaliItemsPerPage && (
+                <div className="flex items-center justify-between mt-6">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {((hamaliCurrentPage - 1) * hamaliItemsPerPage) + 1} to {Math.min(hamaliCurrentPage * hamaliItemsPerPage, totalHamaliRecords)} of {totalHamaliRecords} entries
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setHamaliCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={hamaliCurrentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, Math.ceil(totalHamaliRecords / hamaliItemsPerPage)) }).map((_, i) => {
+                        const totalPages = Math.ceil(totalHamaliRecords / hamaliItemsPerPage);
+                        let pageNum = hamaliCurrentPage;
+                        if (hamaliCurrentPage <= 3) pageNum = i + 1;
+                        else if (hamaliCurrentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                        else pageNum = hamaliCurrentPage - 2 + i;
+
+                        if (pageNum > 0 && pageNum <= totalPages) {
+                          return (
+                            <Button
+                              key={`page-${pageNum}`}
+                              variant={hamaliCurrentPage === pageNum ? "default" : "outline"}
+                              size="sm"
+                              className="w-8 h-8 p-0"
+                              onClick={() => setHamaliCurrentPage(pageNum)}
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setHamaliCurrentPage(prev => Math.min(prev + 1, Math.ceil(totalHamaliRecords / hamaliItemsPerPage)))}
+                      disabled={hamaliCurrentPage >= Math.ceil(totalHamaliRecords / hamaliItemsPerPage)}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

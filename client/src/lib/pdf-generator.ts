@@ -498,3 +498,122 @@ export const generateCustomersListPDF = (data: CustomerListReportData) => {
     const timestamp = new Date().toISOString().split('T')[0];
     doc.save(`Customers_List_${timestamp}.pdf`);
 };
+
+export interface HamaliReportData {
+    period: string;
+    customerFilter: string;
+    items: {
+        no: number;
+        date: string;
+        customerName: string;
+        product: string;
+        weight: number;
+        bags: number;
+        perBagCharge: number;
+        totalAmount: number;
+        grandTotal: number;
+    }[];
+    totals: {
+        records: number;
+        weight: number;
+        bags: number;
+        totalAmount: number;
+        grandTotal: number;
+    };
+}
+
+export const generateHamaliReportPDF = (data: HamaliReportData) => {
+    const doc = new jsPDF("landscape");
+
+    // --- Header ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Dr B. R. Ambedkar Vegetable Market (Shop No. 42)", 14, 15);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text("Bowenpally, Secunderabad", 14, 22);
+
+    // --- Title Box ---
+    doc.setLineWidth(0.5);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(14, 28, 269, 10); // Landscape Box
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(`Hamali Report (${data.period}) | Customer: ${data.customerFilter}`, 18, 34);
+
+    // --- Main Table ---
+    const tableColumn = [
+        "S.No",
+        "Date",
+        "Customer Name",
+        "Product",
+        "Weight",
+        "Bags",
+        "Rate/Bag",
+        "Total Hamali",
+        "Grand Total"
+    ];
+
+    const tableRows = data.items.map(item => [
+        item.no,
+        item.date,
+        item.customerName,
+        item.product,
+        `${item.weight.toFixed(2)} KG`,
+        item.bags,
+        item.perBagCharge.toFixed(2),
+        item.totalAmount.toFixed(2),
+        item.grandTotal.toFixed(2)
+    ]);
+
+    // Footer Row
+    const footRows = [
+        [
+            { content: 'Grand Total', colSpan: 4, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+            { content: `${data.totals.weight.toFixed(2)} KG`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
+            { content: `${data.totals.bags}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
+            { content: `-`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
+            { content: `Rs ${data.totals.totalAmount.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [240, 249, 255] as [number, number, number] } },
+            { content: `Rs ${data.totals.grandTotal.toFixed(2)}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [220, 252, 231] as [number, number, number] } }
+        ]
+    ];
+
+    autoTable(doc, {
+        startY: 45,
+        head: [tableColumn],
+        body: tableRows,
+        foot: footRows,
+        theme: 'grid',
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            lineColor: [229, 231, 235],
+            lineWidth: 0.1,
+            textColor: [31, 41, 55],
+            fillColor: [255, 255, 255]
+        },
+        headStyles: {
+            fillColor: [22, 163, 74],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold',
+            lineWidth: 0.1,
+            lineColor: [22, 163, 74]
+        },
+        alternateRowStyles: {
+            fillColor: [249, 250, 251]
+        },
+        columnStyles: {
+            0: { cellWidth: 15, halign: 'center' },
+            1: { cellWidth: 30, halign: 'center' },
+            4: { halign: 'right' },
+            5: { halign: 'right' },
+            6: { halign: 'right' },
+            7: { halign: 'right', fontStyle: 'bold' },
+            8: { halign: 'right', fontStyle: 'bold' }
+        }
+    });
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    doc.save(`Hamali_Report_${timestamp}.pdf`);
+};
