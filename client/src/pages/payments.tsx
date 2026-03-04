@@ -626,6 +626,7 @@ export default function Payments() {
         await apiRequest("PATCH", `/api/invoices/${invoiceId}`, {
           subtotal: totals.subtotal,
           hamaliChargeAmount: edited.hamaliChargeAmount,
+          includeHamaliCharge: (edited.hamaliChargeAmount || 0) > 0,
           bags: edited.bags,
           hamaliRatePerBag: edited.ratePerBag,
           grandTotal: totals.grandTotal,

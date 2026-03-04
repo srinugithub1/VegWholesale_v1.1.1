@@ -207,7 +207,7 @@ export default function Reports() {
     const totalWeight = filteredInvoices.reduce((sum, inv) => sum + (inv.totalKgWeight || 0), 0);
     const totalBags = filteredInvoices.reduce((sum, inv) => sum + (inv.bags || 0), 0);
     const invoiceCount = filteredInvoices.length;
-    const invoicesWithHamali = filteredInvoices.filter(inv => inv.includeHamaliCharge && (inv.hamaliChargeAmount || 0) > 0).length;
+    const invoicesWithHamali = filteredInvoices.filter(inv => (inv.hamaliChargeAmount || 0) > 0).length;
 
     const filteredInvoiceIds = new Set(filteredInvoices.map(inv => inv.id));
 
@@ -313,7 +313,7 @@ export default function Reports() {
     let filtered = Array.isArray(invoices) ? invoices : [];
 
     // Filter only those with hamali charge
-    filtered = filtered.filter(inv => inv.includeHamaliCharge && (inv.hamaliChargeAmount || 0) > 0);
+    filtered = filtered.filter(inv => (inv.hamaliChargeAmount || 0) > 0);
 
     if (hamaliFromDate) {
       const hStartDate = format(hamaliFromDate, 'yyyy-MM-dd');
@@ -357,7 +357,7 @@ export default function Reports() {
   const hamaliCustomers = useMemo(() => {
     const customerIdsWithHamali = new Set(
       invoices
-        .filter(inv => inv.includeHamaliCharge && (inv.hamaliChargeAmount || 0) > 0)
+        .filter(inv => (inv.hamaliChargeAmount || 0) > 0)
         .map(inv => inv.customerId)
     );
     return customers.filter(c => customerIdsWithHamali.has(c.id));
