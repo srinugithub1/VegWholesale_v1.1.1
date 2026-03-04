@@ -231,21 +231,13 @@ export default function Dashboard() {
 
   // Calculate opening and closing balances
   const balances = useMemo(() => {
-    const internalCustomerIds = customers
-      .filter(c => c.name === "CASH ACCOUNT" || c.name === "Cash Sale Account")
-      .map(c => c.id);
-
-    const filteredInvoicesForBalances = invoices.filter(inv => !internalCustomerIds.includes(inv.customerId || ""));
-
-    const totalSalesBeforeToday = filteredInvoicesForBalances
+    const totalSalesBeforeToday = invoices
       .filter(inv => inv.date < today)
       .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
 
     const shopInvoiceIds = new Set(invoices.map(i => i.id));
 
     const filteredPayments = customerPayments.filter(p => {
-      if (p.customerId && internalCustomerIds.includes(p.customerId)) return false;
-
       // If payment is linked to an invoice, check if that invoice is in our current list
       if (p.invoiceId) {
         // If the invoice exists in DB but isn't in our shop list, exclude it
@@ -374,7 +366,7 @@ export default function Dashboard() {
                     <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[300px]">
-                    <p>Total outstanding credit from all customers BEFORE today. Calculated as (Total Past Sales - Total Past Payments). Internal cash accounts are excluded.</p>
+                    <p>Total outstanding credit from all customers BEFORE today. Calculated as (Total Past Sales - Total Past Payments).</p>
                   </TooltipContent>
                 </UiTooltip>
               </TooltipProvider>
@@ -427,7 +419,6 @@ export default function Dashboard() {
                     <div className="space-y-2">
                       <p className="font-semibold underline">Closing Balance = Opening + Sales - Payments</p>
                       <p>This is the total net credit owed by all customers right now.</p>
-                      <p className="text-xs text-muted-foreground italic">Note: Internal rotations (CASH ACCOUNT) are excluded for accuracy.</p>
                     </div>
                   </TooltipContent>
                 </UiTooltip>
