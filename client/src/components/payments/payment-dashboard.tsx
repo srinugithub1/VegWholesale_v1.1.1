@@ -2,10 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { VendorPayment, CustomerPayment, Vendor, Customer } from "@shared/schema";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { useMemo } from "react";
-import { format, subDays, isSameDay } from "date-fns";
-import { IndianRupee, TrendingUp, TrendingDown, Wallet, Info } from "lucide-react";
+import { useState, useMemo } from "react";
+import { format, subDays, isSameDay, addDays, differenceInDays, startOfDay } from "date-fns";
+import { IndianRupee, TrendingUp, TrendingDown, Wallet, Info, Calendar as CalendarIcon, ChevronRight } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface PaymentDashboardProps {
     shop: 42 | 50 | 'all';
@@ -24,6 +28,8 @@ export function PaymentDashboard({
     invoices = [],
     customers = []
 }: PaymentDashboardProps) {
+    const [fromDate, setFromDate] = useState<Date | undefined>(new Date());
+    const [toDate, setToDate] = useState<Date | undefined>(new Date());
 
     // Calculate Totals Dynamic by Shop
     const totalPurchases = purchases.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
@@ -41,12 +47,20 @@ export function PaymentDashboard({
 
     const netPosition = totalCustomerReceivable - totalVendorOutstanding;
 
-    // Chart Data: Last 7 Days
+    // Chart Data: Selected Period (Max 31 days)
     const chartData = useMemo(() => {
         const data = [];
-        const today = new Date();
-        for (let i = 6; i >= 0; i--) {
-            const date = subDays(today, i);
+        if (!fromDate || !toDate) return data;
+
+        const start = startOfDay(fromDate);
+        const end = startOfDay(toDate);
+        const daysCount = differenceInDays(end, start) + 1;
+
+        // Limit to 31 days for chart readability
+        const effectiveStart = daysCount > 31 ? subDays(end, 30) : start;
+
+        for (let i = 0; i <= Math.min(daysCount - 1, 30); i++) {
+            const date = addDays(effectiveStart, i);
             const dateStr = format(date, "yyyy-MM-dd");
 
             const paymentsPaid = vendorPayments?.filter(p => p.date === dateStr).reduce((acc, p) => acc + p.amount, 0) || 0;
@@ -59,7 +73,7 @@ export function PaymentDashboard({
             });
         }
         return data;
-    }, [vendorPayments, customerPayments]);
+    }, [vendorPayments, customerPayments, fromDate, toDate]);
 
     // Pie Chart Data: Top 5 Receivables (Calculated from Invoices - Payments)
     const receivableData = useMemo(() => {
@@ -107,6 +121,106 @@ export function PaymentDashboard({
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Filter Section */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-muted/30 p-4 rounded-lg border border-border/50">
+                <div className="space-y-1">
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4 text-primary" />
+                        Dashboard Filter
+                    </h3>
+                    <p className="text-xs text-muted-foreground">Select date range to filter metrics and charts</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2 bg-background p-1 rounded-md border shadow-sm">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={cn(
+                                        "h-8 justify-start text-left font-normal px-2",
+                                        !fromDate && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-3 w-3" />
+                                    {fromDate ? format(fromDate, "dd MMM yyyy") : <span>From Date</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <CalendarComponent
+                                    mode="single"
+                                    selected={fromDate}
+                                    onSelect={setFromDate}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={cn(
+                                        "h-8 justify-start text-left font-normal px-2",
+                                        !toDate && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-3 w-3" />
+                                    {toDate ? format(toDate, "dd MMM yyyy") : <span>To Date</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <CalendarComponent
+                                    mode="single"
+                                    selected={toDate}
+                                    onSelect={setToDate}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
+                    <div className="flex gap-1">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-[10px] px-2"
+                            onClick={() => {
+                                setFromDate(new Date());
+                                setToDate(new Date());
+                            }}
+                        >
+                            Today
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-[10px] px-2"
+                            onClick={() => {
+                                setFromDate(subDays(new Date(), 7));
+                                setToDate(new Date());
+                            }}
+                        >
+                            Last 7 Days
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-[10px] px-2"
+                            onClick={() => {
+                                setFromDate(subDays(new Date(), 30));
+                                setToDate(new Date());
+                            }}
+                        >
+                            Last 30 Days
+                        </Button>
+                    </div>
+                </div>
+            </div>
             <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -190,7 +304,7 @@ export function PaymentDashboard({
                 <Card className="bg-green-50/50 border-green-100">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <div className="flex items-center gap-2">
-                            <CardTitle className="text-sm font-medium text-green-800">Payments Collected Today</CardTitle>
+                            <CardTitle className="text-sm font-medium text-green-800">Payments Collected in Period</CardTitle>
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger>
@@ -198,8 +312,7 @@ export function PaymentDashboard({
                                     </TooltipTrigger>
                                     <TooltipContent className="max-w-[300px]">
                                         <div className="space-y-2">
-                                            <p>The total sum of all physical Cash and UPI handed to the shop by all customers today.</p>
-                                            <p className="text-xs italic text-muted-foreground">To manually check: Go to the 'Transactions' tab above, filter for Today, and add up the 'Amount' column.</p>
+                                            <p>Total sum of all customer payments received between the selected dates.</p>
                                         </div>
                                     </TooltipContent>
                                 </Tooltip>
@@ -211,29 +324,35 @@ export function PaymentDashboard({
                         <div className="text-2xl font-bold text-green-700">
                             {customerPayments
                                 .filter(p => {
-                                    const today = format(new Date(), "yyyy-MM-dd");
+                                    const start = fromDate ? format(fromDate, "yyyy-MM-dd") : "";
+                                    const end = toDate ? format(toDate, "yyyy-MM-dd") : "";
                                     const name = customers.find(c => c.id === p.customerId)?.name.toLowerCase() || "";
-                                    return p.date === today && name !== "cash account" && name !== "cash sale account";
+                                    const inRange = (!start || p.date >= start) && (!end || p.date <= end);
+                                    return inRange && name !== "cash account" && name !== "cash sale account";
                                 })
                                 .reduce((sum, p) => sum + p.amount, 0)
                                 .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                         </div>
-                        <p className="text-xs text-green-600/80">Sum of all customer receipts today</p>
+                        <p className="text-xs text-green-600/80">Sum of customer receipts in selected period</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-red-50/50 border-red-100">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-red-800">Paid Today</CardTitle>
+                        <CardTitle className="text-sm font-medium text-red-800">Paid in Period</CardTitle>
                         <Wallet className="h-4 w-4 text-red-600" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-red-700">
                             {vendorPayments
-                                .filter(p => p.date === format(new Date(), "yyyy-MM-dd"))
+                                .filter(p => {
+                                    const start = fromDate ? format(fromDate, "yyyy-MM-dd") : "";
+                                    const end = toDate ? format(toDate, "yyyy-MM-dd") : "";
+                                    return (!start || p.date >= start) && (!end || p.date <= end);
+                                })
                                 .reduce((sum, p) => sum + p.amount, 0)
                                 .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
                         </div>
-                        <p className="text-xs text-red-600/80">Total paid to vendors today</p>
+                        <p className="text-xs text-red-600/80">Total paid to vendors in selected period</p>
                     </CardContent>
                 </Card>
             </div>
@@ -241,8 +360,10 @@ export function PaymentDashboard({
             <div className="grid gap-4 md:grid-cols-2">
                 <Card className="col-span-1">
                     <CardHeader>
-                        <CardTitle>Cash Flow (Last 7 Days)</CardTitle>
-                        <CardDescription>Payments Made vs Received</CardDescription>
+                        <CardTitle>Cash Flow</CardTitle>
+                        <CardDescription>
+                            Payments Made vs Received ({fromDate && toDate ? `${format(fromDate, "dd MMM")} - ${format(toDate, "dd MMM")}` : 'Selected Period'})
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
