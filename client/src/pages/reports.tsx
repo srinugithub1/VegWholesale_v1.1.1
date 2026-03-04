@@ -174,8 +174,11 @@ export default function Reports() {
 
         // Find if this invoice has specific payments
         const invPayments = customerPayments.filter(p => p.invoiceId === inv.id);
+        const customerName = (customers.find(c => c.id === inv.customerId)?.name || '').toLowerCase();
+        const isDirectCustomer = customerName === "cash account" || customerName === "cash sale account";
+
         const hasUpi = invPayments.some(p => p.paymentMethod?.toLowerCase() === 'upi');
-        const hasCash = inv.status === 'completed' || invPayments.some(p => p.paymentMethod?.toLowerCase() === 'cash');
+        const hasCash = (inv.status === 'completed' || invPayments.some(p => p.paymentMethod?.toLowerCase() === 'cash')) && !isDirectCustomer;
         const hasBank = invPayments.some(p => {
           const m = p.paymentMethod?.toLowerCase() || '';
           return m === 'bank' || m === 'bank transfer';
@@ -185,6 +188,7 @@ export default function Reports() {
 
         if (paymentFilters.includes('upi') && hasUpi) matches = true;
         if (paymentFilters.includes('cash') && hasCash) matches = true;
+        if (paymentFilters.includes('direct') && isDirectCustomer) matches = true;
         if (paymentFilters.includes('bank') && hasBank) matches = true;
         if (paymentFilters.includes('cheque') && hasCheque) matches = true;
         if (paymentFilters.includes('credit') && isCredit) matches = true;
@@ -545,6 +549,7 @@ export default function Reports() {
       }
 
       if (paymentFilters.includes('cash')) reportTitle += " (Cash)";
+      if (paymentFilters.includes('direct')) reportTitle += " (Direct)";
       if (paymentFilters.includes('upi')) reportTitle += " (UPI)";
       if (paymentFilters.includes('credit')) reportTitle += " (Credit)";
       if (paymentFilters.includes('bank')) reportTitle += " (Bank)";
@@ -996,6 +1001,19 @@ export default function Reports() {
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Label htmlFor="status-cash" className="font-normal cursor-pointer">Cash</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="status-direct"
+                    checked={paymentFilters.includes('direct')}
+                    onChange={(e) => {
+                      if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'direct']);
+                      else setPaymentFilters(prev => prev.filter(p => p !== 'direct'));
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="status-direct" className="font-normal cursor-pointer">Direct Customer</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input

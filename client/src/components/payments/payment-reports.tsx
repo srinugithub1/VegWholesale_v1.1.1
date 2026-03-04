@@ -123,8 +123,12 @@ export function PaymentReports({
         if (paymentFilters.length > 0 && !paymentFilters.includes('all')) {
             data = data.filter(item => {
                 const method = (item.paymentMethod || '').toLowerCase();
+                const partyLower = item.partyName.toLowerCase();
+                const isCashAccount = partyLower === "cash account" || partyLower === "cash sale account";
+
+                if (paymentFilters.includes('direct') && isCashAccount) return true;
+                if (paymentFilters.includes('cash') && method === 'cash' && !isCashAccount) return true;
                 if (paymentFilters.includes('upi') && method === 'upi') return true;
-                if (paymentFilters.includes('cash') && method === 'cash') return true;
                 if (paymentFilters.includes('bank') && (method === 'bank' || method === 'bank transfer')) return true;
                 if (paymentFilters.includes('cheque') && method === 'cheque') return true;
                 return false;
@@ -275,7 +279,7 @@ export function PaymentReports({
                                         id="pay-cash"
                                         checked={paymentFilters.includes('cash')}
                                         onCheckedChange={(checked) => {
-                                            if (checked) setPaymentFilters(prev => [...prev, 'cash']);
+                                            if (checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'cash']);
                                             else setPaymentFilters(prev => prev.filter(f => f !== 'cash'));
                                             setCurrentPage(1);
                                         }}
@@ -284,10 +288,22 @@ export function PaymentReports({
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox
+                                        id="pay-direct"
+                                        checked={paymentFilters.includes('direct')}
+                                        onCheckedChange={(checked) => {
+                                            if (checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'direct']);
+                                            else setPaymentFilters(prev => prev.filter(f => f !== 'direct'));
+                                            setCurrentPage(1);
+                                        }}
+                                    />
+                                    <Label htmlFor="pay-direct" className="text-xs">Direct Customer</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
                                         id="pay-upi"
                                         checked={paymentFilters.includes('upi')}
                                         onCheckedChange={(checked) => {
-                                            if (checked) setPaymentFilters(prev => [...prev, 'upi']);
+                                            if (checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'upi']);
                                             else setPaymentFilters(prev => prev.filter(f => f !== 'upi'));
                                             setCurrentPage(1);
                                         }}
