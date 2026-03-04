@@ -108,13 +108,15 @@ export function PaymentReports({
         // Cash Sale Account Filter
         if (showCashSalesOnly) {
             // Show ONLY Cash Sale Account records
-            data = data.filter(item => item.partyName.toLowerCase() === "cash sale account");
-        } else {
-            // Default: Show everything EXCEPT Cash Sale Account and Cash Account
             data = data.filter(item => {
                 const nameLower = item.partyName.toLowerCase();
-                return nameLower !== "cash sale account" && nameLower !== "cash account";
+                return nameLower.includes("cash sale account") || nameLower === "cash account";
             });
+        } else {
+            // Default: Show EVERYTHING, but if the user wants to see ONLY regular customers, 
+            // they would select them individually. 
+            // The previous logic was hiding Cash Account entirely by default, which confused the user.
+            // We keep it visible unless showCashSalesOnly is used to ISOLATE it.
         }
 
         // Payment Method Filter
@@ -123,6 +125,8 @@ export function PaymentReports({
                 const method = (item.paymentMethod || '').toLowerCase();
                 if (paymentFilters.includes('upi') && method === 'upi') return true;
                 if (paymentFilters.includes('cash') && method === 'cash') return true;
+                if (paymentFilters.includes('bank') && (method === 'bank' || method === 'bank transfer')) return true;
+                if (paymentFilters.includes('cheque') && method === 'cheque') return true;
                 return false;
             });
         }
@@ -252,47 +256,67 @@ export function PaymentReports({
                         )}
                         <div className="flex flex-col gap-2">
                             <Label>Payment Type</Label>
-                            <div className="flex items-center space-x-4 pt-2">
+                            <div className="flex flex-wrap gap-4 items-center border p-2 rounded-md bg-muted/30">
+                                <Label className="text-xs font-bold mr-2">Payment Type:</Label>
                                 <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         id="pay-all"
-                                        checked={paymentFilters.includes('all') || paymentFilters.length === 0}
-                                        onChange={() => {
-                                            setPaymentFilters(['all']);
+                                        checked={paymentFilters.length === 0} // 'all' is represented by an empty array
+                                        onCheckedChange={(checked) => {
+                                            if (checked) setPaymentFilters([]);
+                                            else setPaymentFilters(['cash', 'upi', 'bank', 'cheque']); // If 'all' is unchecked, select all specific types
                                             setCurrentPage(1);
                                         }}
-                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
-                                    <Label htmlFor="pay-all" className="font-normal cursor-pointer">All</Label>
+                                    <Label htmlFor="pay-all" className="text-xs">All</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         id="pay-cash"
                                         checked={paymentFilters.includes('cash')}
-                                        onChange={(e) => {
-                                            if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'cash']);
-                                            else setPaymentFilters(prev => prev.filter(p => p !== 'cash'));
+                                        onCheckedChange={(checked) => {
+                                            if (checked) setPaymentFilters(prev => [...prev, 'cash']);
+                                            else setPaymentFilters(prev => prev.filter(f => f !== 'cash'));
                                             setCurrentPage(1);
                                         }}
-                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
-                                    <Label htmlFor="pay-cash" className="font-normal cursor-pointer">Cash</Label>
+                                    <Label htmlFor="pay-cash" className="text-xs">Cash</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         id="pay-upi"
                                         checked={paymentFilters.includes('upi')}
-                                        onChange={(e) => {
-                                            if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'upi']);
-                                            else setPaymentFilters(prev => prev.filter(p => p !== 'upi'));
+                                        onCheckedChange={(checked) => {
+                                            if (checked) setPaymentFilters(prev => [...prev, 'upi']);
+                                            else setPaymentFilters(prev => prev.filter(f => f !== 'upi'));
                                             setCurrentPage(1);
                                         }}
-                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
-                                    <Label htmlFor="pay-upi" className="font-normal cursor-pointer">UPI</Label>
+                                    <Label htmlFor="pay-upi" className="text-xs">UPI</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="pay-bank"
+                                        checked={paymentFilters.includes('bank')}
+                                        onCheckedChange={(checked) => {
+                                            if (checked) setPaymentFilters(prev => [...prev, 'bank']);
+                                            else setPaymentFilters(prev => prev.filter(f => f !== 'bank'));
+                                            setCurrentPage(1);
+                                        }}
+                                    />
+                                    <Label htmlFor="pay-bank" className="text-xs">Bank</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="pay-cheque"
+                                        checked={paymentFilters.includes('cheque')}
+                                        onCheckedChange={(checked) => {
+                                            if (checked) setPaymentFilters(prev => [...prev, 'cheque']);
+                                            else setPaymentFilters(prev => prev.filter(f => f !== 'cheque'));
+                                            setCurrentPage(1);
+                                        }}
+                                    />
+                                    <Label htmlFor="pay-cheque" className="text-xs">Cheque</Label>
                                 </div>
                             </div>
                         </div>

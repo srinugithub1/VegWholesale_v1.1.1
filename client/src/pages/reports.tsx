@@ -176,10 +176,17 @@ export default function Reports() {
         const invPayments = customerPayments.filter(p => p.invoiceId === inv.id);
         const hasUpi = invPayments.some(p => p.paymentMethod?.toLowerCase() === 'upi');
         const hasCash = inv.status === 'completed' || invPayments.some(p => p.paymentMethod?.toLowerCase() === 'cash');
+        const hasBank = invPayments.some(p => {
+          const m = p.paymentMethod?.toLowerCase() || '';
+          return m === 'bank' || m === 'bank transfer';
+        });
+        const hasCheque = invPayments.some(p => p.paymentMethod?.toLowerCase() === 'cheque');
         const isCredit = inv.status === 'pending';
 
         if (paymentFilters.includes('upi') && hasUpi) matches = true;
         if (paymentFilters.includes('cash') && hasCash) matches = true;
+        if (paymentFilters.includes('bank') && hasBank) matches = true;
+        if (paymentFilters.includes('cheque') && hasCheque) matches = true;
         if (paymentFilters.includes('credit') && isCredit) matches = true;
 
         if (!matches) return false;
@@ -536,8 +543,11 @@ export default function Reports() {
         reportTitle = `Stock Report - ${p?.name || 'Unknown'}`;
       }
 
-      if (paymentStatus === 'paid') reportTitle += " (Cash Sales)";
-      if (paymentStatus === 'pending') reportTitle += " (Credit Sales)";
+      if (paymentFilters.includes('cash')) reportTitle += " (Cash)";
+      if (paymentFilters.includes('upi')) reportTitle += " (UPI)";
+      if (paymentFilters.includes('credit')) reportTitle += " (Credit)";
+      if (paymentFilters.includes('bank')) reportTitle += " (Bank)";
+      if (paymentFilters.includes('cheque')) reportTitle += " (Cheque)";
 
       // Determine vehicle details for header
       let vehicleNumber = "N/A";
@@ -998,6 +1008,32 @@ export default function Reports() {
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Label htmlFor="status-upi" className="font-normal cursor-pointer">UPI</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="status-bank"
+                    checked={paymentFilters.includes('bank')}
+                    onChange={(e) => {
+                      if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'bank']);
+                      else setPaymentFilters(prev => prev.filter(p => p !== 'bank'));
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="status-bank" className="font-normal cursor-pointer">Bank</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="status-cheque"
+                    checked={paymentFilters.includes('cheque')}
+                    onChange={(e) => {
+                      if (e.target.checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'cheque']);
+                      else setPaymentFilters(prev => prev.filter(p => p !== 'cheque'));
+                    }}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="status-cheque" className="font-normal cursor-pointer">Cheque</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
