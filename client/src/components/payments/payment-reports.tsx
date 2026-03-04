@@ -46,7 +46,6 @@ export function PaymentReports({
     const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
     const [reportType, setReportType] = useState<ReportType>("all");
     const [selectedEntityId, setSelectedEntityId] = useState<string>("all");
-    const [showCashSalesOnly, setShowCashSalesOnly] = useState(false);
     const [paymentFilters, setPaymentFilters] = useState<string[]>(['all']);
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -105,29 +104,18 @@ export function PaymentReports({
             data = data.filter(item => item.partyId === selectedEntityId);
         }
 
-        // Cash Sale Account Filter
-        if (showCashSalesOnly) {
-            // Show ONLY Cash Sale Account records
-            data = data.filter(item => {
-                const nameLower = item.partyName.toLowerCase();
-                return nameLower.includes("cash sale account") || nameLower === "cash account";
-            });
-        } else {
-            // Default: Show EVERYTHING, but if the user wants to see ONLY regular customers, 
-            // they would select them individually. 
-            // The previous logic was hiding Cash Account entirely by default, which confused the user.
-            // We keep it visible unless showCashSalesOnly is used to ISOLATE it.
-        }
+
+        // Exclude Direct Customers (CASH ACCOUNT) from this tab entirely
+        data = data.filter(item => {
+            const partyLower = item.partyName.toLowerCase();
+            return partyLower !== "cash account" && partyLower !== "cash sale account";
+        });
 
         // Payment Method Filter
         if (paymentFilters.length > 0 && !paymentFilters.includes('all')) {
             data = data.filter(item => {
                 const method = (item.paymentMethod || '').toLowerCase();
-                const partyLower = item.partyName.toLowerCase();
-                const isCashAccount = partyLower === "cash account" || partyLower === "cash sale account";
-
-                if (paymentFilters.includes('direct') && isCashAccount) return true;
-                if (paymentFilters.includes('cash') && method === 'cash' && !isCashAccount) return true;
+                if (paymentFilters.includes('cash') && method === 'cash') return true;
                 if (paymentFilters.includes('upi') && method === 'upi') return true;
                 if (paymentFilters.includes('bank') && (method === 'bank' || method === 'bank transfer')) return true;
                 if (paymentFilters.includes('cheque') && method === 'cheque') return true;
@@ -136,7 +124,7 @@ export function PaymentReports({
         }
 
         return data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [vendorPayments, customerPayments, vendors, customers, dateFrom, dateTo, reportType, selectedEntityId, showCashSalesOnly, paymentFilters]);
+    }, [vendorPayments, customerPayments, vendors, customers, dateFrom, dateTo, reportType, selectedEntityId, paymentFilters]);
 
     // Pagination Logic
     const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
@@ -288,18 +276,6 @@ export function PaymentReports({
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox
-                                        id="pay-direct"
-                                        checked={paymentFilters.includes('direct')}
-                                        onCheckedChange={(checked) => {
-                                            if (checked) setPaymentFilters(prev => [...prev.filter(p => p !== 'all'), 'direct']);
-                                            else setPaymentFilters(prev => prev.filter(f => f !== 'direct'));
-                                            setCurrentPage(1);
-                                        }}
-                                    />
-                                    <Label htmlFor="pay-direct" className="text-xs">Direct Customer</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
                                         id="pay-upi"
                                         checked={paymentFilters.includes('upi')}
                                         onCheckedChange={(checked) => {
@@ -334,19 +310,6 @@ export function PaymentReports({
                                     />
                                     <Label htmlFor="pay-cheque" className="text-xs">Cheque</Label>
                                 </div>
-                            </div>
-                        </div>
-                        <div className="flex flex-col justify-end space-y-2">
-                            <div className="flex items-center space-x-2 pb-2">
-                                <Checkbox
-                                    id="cash-sales"
-                                    checked={showCashSalesOnly}
-                                    onCheckedChange={(checked) => {
-                                        setShowCashSalesOnly(checked as boolean);
-                                        setCurrentPage(1); // Reset page on filter change
-                                    }}
-                                />
-                                <Label htmlFor="cash-sales">Cash Sale Account</Label>
                             </div>
                         </div>
                         <div className="flex items-end">
@@ -390,9 +353,7 @@ export function PaymentReports({
                                         </TableCell>
                                         <TableCell className="font-medium">{row.partyName}</TableCell>
                                         <TableCell className="capitalize">
-                                            {(row.partyName.toLowerCase() === "cash account" || row.partyName.toLowerCase() === "cash sale account")
-                                                ? "Direct Customer"
-                                                : row.paymentMethod}
+                                            {row.paymentMethod}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">{row.notes || "-"}</TableCell>
                                         <TableCell className="text-right font-mono font-bold">
