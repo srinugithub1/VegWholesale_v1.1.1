@@ -37,10 +37,16 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Search, Plus, Calendar, Save, Trash2, Printer, CreditCard, Wallet, X, CheckCircle, Download, Loader2, Edit2 as Pencil } from "lucide-react"; // Aliasing Edit2 to Pencil to avoid changing all usages
+import { Search, Plus, Calendar, Save, Trash2, Printer, CreditCard, Wallet, X, CheckCircle, Download, Loader2, Edit2 as Pencil, HelpCircle } from "lucide-react"; // Aliasing Edit2 to Pencil to avoid changing all usages
 import type { Vendor, Customer, VendorPayment, CustomerPayment, HamaliCashPayment, Invoice, InvoiceItem, Product, Purchase, PurchaseItem, Vehicle } from "@shared/schema";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type VendorWithBalance = Vendor & { totalPurchases: number; totalPayments: number; balance: number };
 type CustomerWithBalance = Customer & { totalInvoices: number; totalPayments: number; balance: number };
@@ -2516,7 +2522,7 @@ export default function Payments() {
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="activity" id="r-activity" />
-                        <Label htmlFor="r-activity">Activity (Sales/Paid)</Label>
+                        <Label htmlFor="r-activity">Activity (Sales Credit/Sales paid)</Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="all" id="r-all" />
@@ -2528,9 +2534,24 @@ export default function Payments() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Customer Name</TableHead>
-                        <TableHead className="text-right">Total Invoice</TableHead>
-                        <TableHead className="text-right">Total Paid</TableHead>
-                        <TableHead className="text-right">Balance</TableHead>
+                        <TableHead className="text-right">Previous Balance</TableHead>
+                        <TableHead className="text-right">Today Customer Credit</TableHead>
+                        <TableHead className="text-right">Today Customer Paid</TableHead>
+                        <TableHead className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            Remain Balance
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Calculation: Previous Balance + Today Customer Credit - Today Customer Paid</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -2540,6 +2561,14 @@ export default function Payments() {
                         .map((customer) => (
                           <TableRow key={customer.id} data-testid={`row-customer-${customer.id}`}>
                             <TableCell className="font-medium">{customer.name}</TableCell>
+                            <TableCell className="text-right font-mono">
+                              {(() => {
+                                const todayCredit = customerListFilterMode === 'activity' ? (periodInvoiceStats[customer.id] || 0) : customer.totalInvoices;
+                                const todayPaid = customerListFilterMode === 'activity' ? (customerPaymentStats[customer.id] || 0) : customer.totalPayments;
+                                const prevBalance = customer.balance - todayCredit + todayPaid;
+                                return prevBalance.toLocaleString("en-IN", { style: "currency", currency: "INR" });
+                              })()}
+                            </TableCell>
                             <TableCell className="text-right font-mono">
                               {/* If Activity Mode: Show Period Total. If All Mode: Show All-Time Total */}
                               {customerListFilterMode === 'activity'
@@ -2591,6 +2620,16 @@ export default function Payments() {
                       {filteredCustomers.length > 0 && (
                         <TableRow className="bg-muted/50 font-bold border-t-2">
                           <TableCell>Total</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {filteredCustomers
+                              .reduce((sum, c) => {
+                                const todayCredit = customerListFilterMode === 'activity' ? (periodInvoiceStats[c.id] || 0) : c.totalInvoices;
+                                const todayPaid = customerListFilterMode === 'activity' ? (customerPaymentStats[c.id] || 0) : c.totalPayments;
+                                const prevBalance = c.balance - todayCredit + todayPaid;
+                                return sum + prevBalance;
+                              }, 0)
+                              .toLocaleString("en-IN", { style: "currency", currency: "INR" })}
+                          </TableCell>
                           <TableCell className="text-right font-mono">
                             {filteredCustomers
                               .reduce((sum, c) => {
