@@ -487,6 +487,7 @@ export class DatabaseStorage implements IStorage {
       await db.insert(invoiceItems).values({
         ...item,
         invoiceId: invoice.id,
+        vehicleId: item.vehicleId || insertInvoice.vehicleId, // Ensure vehicleId is populated for tracking
       });
 
       // Only update product stock if no vehicle is specified

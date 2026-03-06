@@ -174,12 +174,16 @@ export default function Products() {
     const salesStats = new Map<string, { totalVal: number; totalQty: number }>();
 
     invoiceItems.forEach(item => {
-      // Assuming today's items as requested.
-      const key = `${item.productId}-${item.vehicleId || 'none'}`;
-      const stats = salesStats.get(key) || { totalVal: 0, totalQty: 0 };
-      stats.totalVal += item.total;
-      stats.totalQty += item.quantity;
-      salesStats.set(key, stats);
+      // Filter for today's items for accurate ASP
+      const itemDate = item.createdAt ? format(new Date(item.createdAt), "yyyy-MM-dd") : "";
+
+      if (itemDate === today) {
+        const key = `${item.productId}-${item.vehicleId || 'none'}`;
+        const stats = salesStats.get(key) || { totalVal: 0, totalQty: 0 };
+        stats.totalVal += item.total;
+        stats.totalQty += item.quantity;
+        salesStats.set(key, stats);
+      }
     });
 
     products.forEach(product => {
