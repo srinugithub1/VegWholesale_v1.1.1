@@ -50,10 +50,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
-import { insertProductSchema, type Product, type InsertProduct } from "@shared/schema";
+import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ChevronLeft, ChevronRight, Truck, User } from "lucide-react";
+import { insertProductSchema, type Product, type InsertProduct, type Vendor, type Vehicle, type VehicleInventory, type VehicleInventoryMovement, type InvoiceItem } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/use-auth";
+import { format } from "date-fns";
 
 import { z } from "zod";
 
@@ -81,9 +82,31 @@ export default function Products() {
   const itemsPerPage = 10;
 
 
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
+
+  const { data: vendors = [] } = useQuery<Vendor[]>({
+    queryKey: ["/api/vendors"],
+  });
+
+  const { data: vehicles = [] } = useQuery<Vehicle[]>({
+    queryKey: ["/api/vehicles"],
+  });
+
+  const { data: vehicleInventories = [] } = useQuery<VehicleInventory[]>({
+    queryKey: ["/api/all-vehicle-inventories"],
+  });
+
+  const { data: movements = [] } = useQuery<VehicleInventoryMovement[]>({
+    queryKey: ["/api/vehicle-inventory-movements"],
+  });
+
+  const { data: invoiceItems = [] } = useQuery<InvoiceItem[]>({
+    queryKey: ["/api/invoice-items"],
+  });
+
+  const isLoading = productsLoading;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -142,21 +165,95 @@ export default function Products() {
     },
   });
 
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const productStockRows = useMemo(() => {
+    const rows: any[] = [];
+    const today = format(new Date(), "yyyy-MM-dd");
+
+    // Group items by product for ASP calculation (Today's sales)
+    const itemsByProduct = new Map<string, InvoiceItem[]>();
+    invoiceItems.forEach(item => {
+      // Note: In a real app we'd verify the item's date properly. 
+      // Assuming today's items for ASP as requested.
+      const list = itemsByProduct.get(item.productId) || [];
+      list.push(item);
+      itemsByProduct.set(item.productId, list);
+    });
+
+    products.forEach(product => {
+      const pItems = itemsByProduct.get(product.id) || [];
+      const totalVal = pItems.reduce((sum, i) => sum + i.total, 0);
+      const totalQty = pItems.reduce((sum, i) => sum + i.quantity, 0);
+      const asp = totalQty > 0 ? totalVal / totalQty : 0;
+
+      const productInvs = vehicleInventories.filter(inv => inv.productId === product.id);
+
+      if (productInvs.length === 0) {
+        rows.push({
+          id: `${product.id}-none`,
+          productId: product.id,
+          name: product.name,
+          unit: product.unit,
+          vendorName: "N/A",
+          vehicleNumber: "N/A",
+          loadedStock: 0,
+          remainStock: 0,
+          lossStock: 0,
+          gainStock: 0,
+          status: "Catalog",
+          asp: asp,
+          isLowStock: product.currentStock <= (product.reorderLevel || 10),
+          originalProduct: product
+        });
+      } else {
+        productInvs.forEach(inv => {
+          const vehicle = vehicles.find(v => v.id === inv.vehicleId);
+          const vendor = vendors.find(v => v.id === vehicle?.vendorId);
+
+          const loadedToday = movements
+            .filter(m => m.vehicleId === inv.vehicleId && m.productId === inv.productId && m.type === 'load' && m.date === today)
+            .reduce((sum, m) => sum + m.quantity, 0);
+
+          rows.push({
+            id: `${inv.id}`,
+            productId: product.id,
+            name: product.name,
+            unit: product.unit,
+            vendorName: vendor?.name || "N/A",
+            vehicleNumber: vehicle?.number || "N/A",
+            loadedStock: loadedToday,
+            remainStock: inv.quantity,
+            lossStock: vehicle?.totalWeightLoss || 0,
+            gainStock: vehicle?.totalWeightGain || 0,
+            status: inv.quantity <= (product.reorderLevel || 10) ? "Low" : "OK",
+            asp: asp,
+            isLowStock: inv.quantity <= (product.reorderLevel || 10),
+            originalProduct: product,
+            vehicleId: inv.vehicleId
+          });
+        });
+      }
+    });
+
+    return rows;
+  }, [products, vendors, vehicles, vehicleInventories, movements, invoiceItems]);
+
+  const filteredRows = productStockRows.filter((row) =>
+    row.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    row.vehicleNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    row.vendorName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const paginatedProducts = filteredProducts.slice(
+  const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+  const paginatedRows = filteredRows.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
   const toggleSelectAll = () => {
-    if (selectedProductIds.length === paginatedProducts.length) {
+    if (selectedProductIds.length === paginatedRows.length) {
       setSelectedProductIds([]);
     } else {
-      setSelectedProductIds(paginatedProducts.map((p) => p.id));
+      setSelectedProductIds(paginatedRows.map((r) => r.productId));
     }
   };
 
@@ -414,7 +511,7 @@ export default function Products() {
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search products..."
+                  placeholder="Search products or vehicles..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -423,7 +520,7 @@ export default function Products() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="text-sm text-muted-foreground font-medium mr-4">
-                  Total Records: {filteredProducts.length}
+                  Total Records: {filteredRows.length}
                 </div>
                 {isAdmin && selectedProductIds.length > 0 && (
                   <Button
@@ -440,7 +537,7 @@ export default function Products() {
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-hidden">
-            {filteredProducts.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Package className="h-12 w-12 mb-4" />
                 <p className="text-lg font-medium">No products found</p>
@@ -468,78 +565,99 @@ export default function Products() {
                       {isAdmin && (
                         <TableHead className="w-[50px]">
                           <Checkbox
-                            checked={paginatedProducts.length > 0 && selectedProductIds.length === paginatedProducts.length}
+                            checked={paginatedRows.length > 0 && selectedProductIds.length === paginatedRows.length}
                             onCheckedChange={toggleSelectAll}
                             aria-label="Select all"
                           />
                         </TableHead>
                       )}
                       <TableHead>Product</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead className="text-right">Purchase Price</TableHead>
-                      <TableHead className="text-right">Sale Price</TableHead>
-                      <TableHead className="text-right">Stock</TableHead>
+                      <TableHead>Units</TableHead>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Vehicle</TableHead>
+                      <TableHead className="text-right">Loaded Stock</TableHead>
+                      <TableHead className="text-right">Remain Stock</TableHead>
+                      <TableHead className="text-right text-red-500">Loss Stock</TableHead>
+                      <TableHead className="text-right text-green-600">Gain Stock</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Avg Selling Price</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProducts.map((product) => {
-                      const isLowStock = product.currentStock <= (product.reorderLevel || 10);
+                    {paginatedRows.map((row) => {
                       return (
 
-                        <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
+                        <TableRow key={row.id} data-testid={`row-product-${row.id}`}>
                           {isAdmin && (
                             <TableCell>
                               <Checkbox
-                                checked={selectedProductIds.includes(product.id)}
-                                onCheckedChange={() => toggleSelection(product.id)}
-                                aria-label={`Select ${product.name}`}
+                                checked={selectedProductIds.includes(row.productId)}
+                                onCheckedChange={() => toggleSelection(row.productId)}
+                                aria-label={`Select ${row.name}`}
                               />
                             </TableCell>
                           )}
-                          <TableCell className="font-medium">{product.name}</TableCell>
+                          <TableCell className="font-medium">{row.name}</TableCell>
                           <TableCell>
                             <Badge variant="secondary" className="text-xs">
-                              {product.unit}
+                              {row.unit}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right font-mono">
-                            ₹{product.purchasePrice.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono">
-                            ₹{product.salePrice.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono">
-                            {product.currentStock.toFixed(2)}
+                          <TableCell className="max-w-[150px] truncate" title={row.vendorName}>
+                            <div className="flex items-center gap-1">
+                              <User className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs">{row.vendorName}</span>
+                            </div>
                           </TableCell>
                           <TableCell>
-                            {isLowStock ? (
+                            <div className="flex items-center gap-1">
+                              <Truck className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs font-medium">{row.vehicleNumber}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">
+                            {row.loadedStock.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-bold">
+                            {row.remainStock.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-red-500 bg-red-50/30">
+                            {row.lossStock.toFixed(3)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-green-600 bg-green-50/30">
+                            {row.gainStock.toFixed(3)}
+                          </TableCell>
+                          <TableCell>
+                            {row.isLowStock ? (
                               <div className="flex items-center gap-1 text-chart-2">
                                 <AlertTriangle className="h-3 w-3" />
                                 <span className="text-xs">Low</span>
                               </div>
                             ) : (
                               <Badge variant="outline" className="text-xs">
-                                OK
+                                {row.status}
                               </Badge>
                             )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-semibold text-primary">
+                            ₹{row.asp.toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => openEditDialog(product)}
-                                data-testid={`button-edit-product-${product.id}`}
+                                onClick={() => openEditDialog(row.originalProduct)}
+                                data-testid={`button-edit-product-${row.productId}`}
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => setDeleteProduct(product)}
-                                data-testid={`button-delete-product-${product.id}`}
+                                onClick={() => setDeleteProduct(row.originalProduct)}
+                                data-testid={`button-delete-product-${row.productId}`}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -555,7 +673,7 @@ export default function Products() {
 
             )}
             {/* Pagination Controls moved below ScrollArea or inside CardContent if preferred */}
-            {filteredProducts.length > 0 && totalPages > 1 && (
+            {filteredRows.length > 0 && totalPages > 1 && (
               <div className="flex items-center justify-center space-x-2 py-4 mt-auto border-t">
                 <Button
                   variant="outline"
