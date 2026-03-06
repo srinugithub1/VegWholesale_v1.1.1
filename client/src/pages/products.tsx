@@ -169,25 +169,27 @@ export default function Products() {
     const rows: any[] = [];
     const today = format(new Date(), "yyyy-MM-dd");
 
-    // Group items by product for ASP calculation (Today's sales)
-    const itemsByProduct = new Map<string, InvoiceItem[]>();
+    // Group items by product AND vehicle for ASP and Total Sold calculation (Today's sales)
+    // Map key: `${productId}-${vehicleId || 'none'}`
+    const salesStats = new Map<string, { totalVal: number; totalQty: number }>();
+
     invoiceItems.forEach(item => {
-      // Note: In a real app we'd verify the item's date properly. 
-      // Assuming today's items for ASP as requested.
-      const list = itemsByProduct.get(item.productId) || [];
-      list.push(item);
-      itemsByProduct.set(item.productId, list);
+      // Assuming today's items as requested.
+      const key = `${item.productId}-${item.vehicleId || 'none'}`;
+      const stats = salesStats.get(key) || { totalVal: 0, totalQty: 0 };
+      stats.totalVal += item.total;
+      stats.totalQty += item.quantity;
+      salesStats.set(key, stats);
     });
 
     products.forEach(product => {
-      const pItems = itemsByProduct.get(product.id) || [];
-      const totalVal = pItems.reduce((sum, i) => sum + i.total, 0);
-      const totalQty = pItems.reduce((sum, i) => sum + i.quantity, 0);
-      const asp = totalQty > 0 ? totalVal / totalQty : 0;
-
       const productInvs = vehicleInventories.filter(inv => inv.productId === product.id);
 
       if (productInvs.length === 0) {
+        // Stats for product without vehicle (if any)
+        const stats = salesStats.get(`${product.id}-none`) || { totalVal: 0, totalQty: 0 };
+        const asp = stats.totalQty > 0 ? stats.totalVal / stats.totalQty : 0;
+
         rows.push({
           id: `${product.id}-none`,
           productId: product.id,
@@ -197,6 +199,7 @@ export default function Products() {
           vehicleNumber: "N/A",
           loadedStock: 0,
           remainStock: 0,
+          totalSold: stats.totalQty,
           lossStock: 0,
           gainStock: 0,
           status: "Catalog",
@@ -208,6 +211,9 @@ export default function Products() {
         productInvs.forEach(inv => {
           const vehicle = vehicles.find(v => v.id === inv.vehicleId);
           const vendor = vendors.find(v => v.id === vehicle?.vendorId);
+
+          const stats = salesStats.get(`${product.id}-${inv.vehicleId}`) || { totalVal: 0, totalQty: 0 };
+          const asp = stats.totalQty > 0 ? stats.totalVal / stats.totalQty : 0;
 
           const loadedToday = movements
             .filter(m => m.vehicleId === inv.vehicleId && m.productId === inv.productId && m.type === 'load' && m.date === today)
@@ -222,6 +228,7 @@ export default function Products() {
             vehicleNumber: vehicle?.number || "N/A",
             loadedStock: loadedToday,
             remainStock: inv.quantity,
+            totalSold: stats.totalQty,
             lossStock: vehicle?.totalWeightLoss || 0,
             gainStock: vehicle?.totalWeightGain || 0,
             status: inv.quantity <= (product.reorderLevel || 10) ? "Low" : "OK",
@@ -577,6 +584,7 @@ export default function Products() {
                       <TableHead>Vehicle</TableHead>
                       <TableHead className="text-right">Loaded Stock</TableHead>
                       <TableHead className="text-right">Remain Stock</TableHead>
+                      <TableHead className="text-right text-blue-600">Total Sold</TableHead>
                       <TableHead className="text-right text-red-500">Loss Stock</TableHead>
                       <TableHead className="text-right text-green-600">Gain Stock</TableHead>
                       <TableHead>Status</TableHead>
@@ -621,6 +629,9 @@ export default function Products() {
                           </TableCell>
                           <TableCell className="text-right font-mono font-bold">
                             {row.remainStock.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-blue-600 font-medium">
+                            {row.totalSold.toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-red-500 bg-red-50/30">
                             {row.lossStock.toFixed(3)}
