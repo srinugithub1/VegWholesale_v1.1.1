@@ -92,6 +92,15 @@ export default function ModifiedRecords() {
         { value: "halal_cash_payments", label: "Hamali Payments" },
     ];
 
+    const userMap = useMemo(() => {
+        const map: Record<string, string> = {};
+        users?.forEach((u) => {
+            map[u.id] = u.username;
+            map[u.username] = u.username; // Handle if it's already a username
+        });
+        return map;
+    }, [users]);
+
     const renderTable = (records: DeletedRecord[]) => (
         <Table>
             <TableHeader>
@@ -114,7 +123,20 @@ export default function ModifiedRecords() {
                     </TableRow>
                 ) : records.length === 0 ? (
                     <TableRow>
-                        <TableCell colSpan={9} className="text-center py-10">No records found</TableCell>
+                        <TableCell colSpan={9} className="text-center py-10">
+                            <div className="flex flex-col items-center justify-center space-y-2">
+                                <p className="text-muted-foreground">No {activeTab}ed records found for this period.</p>
+                                {dateRange?.from && (
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setDateRange(undefined)}
+                                        className="text-blue-500 hover:text-blue-600 underline-offset-4 hover:underline"
+                                    >
+                                        Show all {activeTab}ed records
+                                    </Button>
+                                )}
+                            </div>
+                        </TableCell>
                     </TableRow>
                 ) : (
                     records.map((record) => (
@@ -129,7 +151,9 @@ export default function ModifiedRecords() {
                             <TableCell className="whitespace-nowrap">
                                 {record.deletedAt && format(new Date(record.deletedAt), "MMM dd, p")}
                             </TableCell>
-                            <TableCell className="capitalize">{record.deletedBy || "System"}</TableCell>
+                            <TableCell className="capitalize">
+                                {record.deletedBy ? (userMap[record.deletedBy] || record.deletedBy) : "System"}
+                            </TableCell>
                             <TableCell className="text-right">
                                 {record.amount ? `₹${Number(record.amount).toLocaleString()}` : "-"}
                             </TableCell>
