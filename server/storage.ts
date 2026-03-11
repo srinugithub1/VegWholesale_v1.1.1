@@ -239,15 +239,19 @@ export class DatabaseStorage implements IStorage {
     return createdVendors;
   }
 
-  async updateVendor(id: string, updates: Partial<InsertVendor>): Promise<Vendor | undefined> {
-    const [vendor] = await db.update(vendors).set(updates).where(eq(vendors.id, id)).returning();
-    return vendor || undefined;
+  async updateVendor(id: string, updates: Partial<InsertVendor>, userId?: string): Promise<Vendor | undefined> {
+    const vendor = await this.getVendor(id);
+    if (vendor) {
+      await this.archiveRecord('vendors', id, vendor, userId, 'edit');
+    }
+    const [updated] = await db.update(vendors).set(updates).where(eq(vendors.id, id)).returning();
+    return updated || undefined;
   }
 
   async deleteVendor(id: string, userId?: string): Promise<boolean> {
     const vendor = await this.getVendor(id);
     if (vendor) {
-      await this.archiveRecord('vendors', id, vendor, userId);
+      await this.archiveRecord('vendors', id, vendor, userId, 'delete');
     }
     const result = await db.delete(vendors).where(eq(vendors.id, id)).returning();
     return result.length > 0;
@@ -277,15 +281,19 @@ export class DatabaseStorage implements IStorage {
     return createdCustomers;
   }
 
-  async updateCustomer(id: string, updates: Partial<InsertCustomer>): Promise<Customer | undefined> {
-    const [customer] = await db.update(customers).set(updates).where(eq(customers.id, id)).returning();
-    return customer || undefined;
+  async updateCustomer(id: string, updates: Partial<InsertCustomer>, userId?: string): Promise<Customer | undefined> {
+    const customer = await this.getCustomer(id);
+    if (customer) {
+      await this.archiveRecord('customers', id, customer, userId, 'edit');
+    }
+    const [updated] = await db.update(customers).set(updates).where(eq(customers.id, id)).returning();
+    return updated || undefined;
   }
 
   async deleteCustomer(id: string, userId?: string): Promise<boolean> {
     const customer = await this.getCustomer(id);
     if (customer) {
-      await this.archiveRecord('customers', id, customer, userId);
+      await this.archiveRecord('customers', id, customer, userId, 'delete');
     }
     const result = await db.delete(customers).where(eq(customers.id, id)).returning();
     return result.length > 0;
@@ -305,15 +313,19 @@ export class DatabaseStorage implements IStorage {
     return vehicle;
   }
 
-  async updateVehicle(id: string, updates: Partial<InsertVehicle>): Promise<Vehicle | undefined> {
-    const [vehicle] = await db.update(vehicles).set(updates).where(eq(vehicles.id, id)).returning();
-    return vehicle || undefined;
+  async updateVehicle(id: string, updates: Partial<InsertVehicle>, userId?: string): Promise<Vehicle | undefined> {
+    const vehicle = await this.getVehicle(id);
+    if (vehicle) {
+      await this.archiveRecord('vehicles', id, vehicle, userId, 'edit');
+    }
+    const [updated] = await db.update(vehicles).set(updates).where(eq(vehicles.id, id)).returning();
+    return updated || undefined;
   }
 
   async deleteVehicle(id: string, userId?: string): Promise<boolean> {
     const vehicle = await this.getVehicle(id);
     if (vehicle) {
-      await this.archiveRecord('vehicles', id, vehicle, userId);
+      await this.archiveRecord('vehicles', id, vehicle, userId, 'delete');
     }
     const result = await db.delete(vehicles).where(eq(vehicles.id, id)).returning();
     return result.length > 0;
@@ -337,15 +349,19 @@ export class DatabaseStorage implements IStorage {
     return product;
   }
 
-  async updateProduct(id: string, updates: Partial<InsertProduct>): Promise<Product | undefined> {
-    const [product] = await db.update(products).set(updates).where(eq(products.id, id)).returning();
-    return product || undefined;
+  async updateProduct(id: string, updates: Partial<InsertProduct>, userId?: string): Promise<Product | undefined> {
+    const product = await this.getProduct(id);
+    if (product) {
+      await this.archiveRecord('products', id, product, userId, 'edit');
+    }
+    const [updated] = await db.update(products).set(updates).where(eq(products.id, id)).returning();
+    return updated || undefined;
   }
 
   async deleteProduct(id: string, userId?: string): Promise<boolean> {
     const product = await this.getProduct(id);
     if (product) {
-      await this.archiveRecord('products', id, product, userId);
+      await this.archiveRecord('products', id, product, userId, 'delete');
     }
     const result = await db.delete(products).where(eq(products.id, id)).returning();
     return result.length > 0;
@@ -617,7 +633,11 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async updateInvoice(id: string, data: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+  async updateInvoice(id: string, data: Partial<InsertInvoice>, userId?: string): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
+    if (invoice) {
+      await this.archiveRecord('invoices', id, invoice, userId, 'edit');
+    }
     const [updated] = await db
       .update(invoices)
       .set({ ...data, updatedAt: new Date() })
@@ -1435,12 +1455,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Helper to archive record
-  async archiveRecord(tableName: string, recordId: string, data: any, userId?: string) {
+  async archiveRecord(tableName: string, recordId: string, data: any, userId?: string, action: string = 'delete') {
     try {
+      let invoiceNumber = null;
+      let customerName = null;
+      let amount = null;
+      let hamali = null;
+      let grandTotal = null;
+
+      if (tableName === 'invoices') {
+        invoiceNumber = data.invoiceNumber;
+        amount = Number(data.subtotal || 0);
+        hamali = Number(data.hamaliChargeAmount || 0);
+        grandTotal = Number(data.grandTotal || 0);
+
+        // Fetch customer name if possible
+        if (data.customerId) {
+          const [customer] = await db.select().from(customers).where(eq(customers.id, data.customerId));
+          if (customer) customerName = customer.name;
+        }
+      }
+
       await db.insert(deletedRecords).values({
         tableName,
         recordId,
         data: JSON.stringify(data),
+        action,
+        invoiceNumber,
+        customerName,
+        amount,
+        hamali,
+        grandTotal,
         deletedBy: userId || 'system',
       });
     } catch (error) {
@@ -1449,11 +1494,52 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getDeletedRecords(tableName?: string): Promise<DeletedRecord[]> {
-    if (tableName && tableName !== 'all') {
-      return await db.select().from(deletedRecords).where(eq(deletedRecords.tableName, tableName)).orderBy(desc(deletedRecords.deletedAt));
+  async getDeletedRecords(filters: {
+    tableName?: string;
+    action?: string;
+    fromDate?: string;
+    toDate?: string;
+    userId?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ records: DeletedRecord[]; total: number }> {
+    const conditions = [];
+
+    if (filters.tableName && filters.tableName !== 'all') {
+      conditions.push(eq(deletedRecords.tableName, filters.tableName));
     }
-    return await db.select().from(deletedRecords).orderBy(desc(deletedRecords.deletedAt));
+    if (filters.action) {
+      conditions.push(eq(deletedRecords.action, filters.action));
+    }
+    if (filters.fromDate) {
+      conditions.push(gte(deletedRecords.deletedAt, new Date(filters.fromDate)));
+    }
+    if (filters.toDate) {
+      const endOfDay = new Date(filters.toDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(deletedRecords.deletedAt, endOfDay));
+    }
+    if (filters.userId && filters.userId !== 'all') {
+      conditions.push(eq(deletedRecords.deletedBy, filters.userId));
+    }
+
+    const baseQuery = db.select().from(deletedRecords);
+    const countQuery = db.select({ count: sql<number>`count(*)` }).from(deletedRecords);
+
+    if (conditions.length > 0) {
+      baseQuery.where(and(...conditions));
+      countQuery.where(and(...conditions));
+    }
+
+    const [countResult] = await countQuery;
+    const total = Number(countResult?.count || 0);
+
+    const records = await baseQuery
+      .orderBy(desc(deletedRecords.deletedAt))
+      .limit(filters.limit || 50)
+      .offset(filters.offset || 0);
+
+    return { records, total };
   }
 
   async restoreDeletedRecord(id: string): Promise<boolean> {

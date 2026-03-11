@@ -5,11 +5,11 @@ import { z } from "zod";
 
 // Session storage table (compatible with connect-pg-simple)
 // Session storage table (compatible with connect-pg-simple)
-// export const sessions = pgTable("session", {
-//   sid: text("sid").primaryKey(),
-//   sess: text("sess").notNull(), // JSON stored as text
-//   expire: timestamp("expire", { mode: "date" }).notNull(), 
-// });
+export const sessions = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: text("sess").notNull(), // JSON stored as text
+  expire: timestamp("expire", { mode: "date" }).notNull(),
+});
 
 // Vendors - suppliers/farmers who provide vegetables
 export const vendors = pgTable("vendors", {
@@ -311,12 +311,18 @@ export type InsertSystemMetric = z.infer<typeof insertSystemMetricSchema>;
 export type SystemMetric = typeof systemMetrics.$inferSelect;
 
 
-// Deleted Records - Archive for recovery/audit
+// Audit Logs (formerly Deleted Records) - Archive for recovery/audit/history
 export const deletedRecords = pgTable("deleted_records", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   tableName: text("table_name").notNull(),
   recordId: text("record_id").notNull(),
   data: text("data").notNull(), // JSON string of the record
+  action: text("action").notNull().default("delete"), // 'delete' or 'edit'
+  invoiceNumber: text("invoice_number"),
+  customerName: text("customer_name"),
+  amount: real("amount"),
+  hamali: real("hamali"),
+  grandTotal: real("grand_total"),
   deletedAt: timestamp("deleted_at").default(sql`CURRENT_TIMESTAMP`),
   deletedBy: text("deleted_by"),
 });

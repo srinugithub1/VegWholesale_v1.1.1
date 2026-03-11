@@ -149,7 +149,7 @@ const reportItems = [
     roles: ["admin"],
   },
   {
-    title: "Deleted Records",
+    title: "Modified Records",
     url: "/admin/deleted-records",
     icon: Trash2,
     roles: ["admin"],

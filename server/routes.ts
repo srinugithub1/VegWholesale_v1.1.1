@@ -128,11 +128,27 @@ export async function registerRoutes(
 
     try {
       const tableName = req.query.table as string | undefined;
-      const records = await storage.getDeletedRecords(tableName);
-      res.json(records);
+      const action = req.query.action as string | undefined;
+      const fromDate = req.query.fromDate as string | undefined;
+      const toDate = req.query.toDate as string | undefined;
+      const userId = req.query.user as string | undefined;
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 50;
+      const offset = (page - 1) * limit;
+
+      const result = await storage.getDeletedRecords({
+        tableName,
+        action,
+        fromDate,
+        toDate,
+        userId,
+        limit,
+        offset
+      });
+      res.json(result);
     } catch (error) {
       console.error("Error fetching deleted records:", error);
-      res.status(500).json({ error: "Failed to fetch deleted records" });
+      res.status(500).json({ error: "Failed to fetch modified records" });
     }
   });
 
