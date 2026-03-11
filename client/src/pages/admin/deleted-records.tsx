@@ -7,6 +7,7 @@ import {
     TableHead,
     TableHeader,
     TableRow,
+    TableFooter,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -101,7 +102,15 @@ export default function ModifiedRecords() {
         return map;
     }, [users]);
 
-    const renderTable = (records: DeletedRecord[]) => (
+    const totalGrandTotal = useMemo(() => {
+        return records.reduce((sum: number, record: DeletedRecord) => {
+            const jsonData = JSON.parse(record.data || "{}");
+            const total = record.grandTotal !== null ? record.grandTotal : (jsonData.grandTotal || jsonData.grand_total || 0);
+            return sum + Number(total);
+        }, 0);
+    }, [records]);
+
+    const renderTable = (recordsList: DeletedRecord[]) => (
         <Table>
             <TableHeader>
                 <TableRow>
@@ -199,6 +208,17 @@ export default function ModifiedRecords() {
                     })
                 )}
             </TableBody>
+            {recordsList.length > 0 && (
+                <TableFooter>
+                    <TableRow className="bg-muted/50 font-bold">
+                        <TableCell colSpan={7} className="text-right">Total Amount (Current Page):</TableCell>
+                        <TableCell className="text-right text-lg">
+                            ₹{totalGrandTotal.toLocaleString()}
+                        </TableCell>
+                        <TableCell />
+                    </TableRow>
+                </TableFooter>
+            )}
         </Table>
     );
 
