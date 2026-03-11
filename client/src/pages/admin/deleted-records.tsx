@@ -139,54 +139,64 @@ export default function ModifiedRecords() {
                         </TableCell>
                     </TableRow>
                 ) : (
-                    records.map((record) => (
-                        <TableRow key={record.id}>
-                            <TableCell className="font-medium text-blue-600">
-                                {record.invoiceNumber || "-"}
-                            </TableCell>
-                            <TableCell className="font-mono text-[10px] text-muted-foreground">
-                                {record.recordId}
-                            </TableCell>
-                            <TableCell>{record.customerName || "-"}</TableCell>
-                            <TableCell className="whitespace-nowrap">
-                                {record.deletedAt && format(new Date(record.deletedAt), "MMM dd, p")}
-                            </TableCell>
-                            <TableCell className="capitalize">
-                                {record.deletedBy ? (userMap[record.deletedBy] || record.deletedBy) : "System"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                                {record.amount ? `₹${Number(record.amount).toLocaleString()}` : "-"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                                {record.hamali ? `₹${Number(record.hamali).toLocaleString()}` : "-"}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold">
-                                {record.grandTotal ? `₹${Number(record.grandTotal).toLocaleString()}` : "-"}
-                            </TableCell>
-                            <TableCell className="text-center">
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="max-w-2xl max-h-[80vh]">
-                                        <DialogHeader>
-                                            <DialogTitle>Record Details</DialogTitle>
-                                            <DialogDescription>
-                                                Table: {record.tableName} | ID: {record.recordId}
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <ScrollArea className="h-[400px] w-full rounded-md border p-4 bg-muted/30">
-                                            <pre className="text-xs font-mono">
-                                                {JSON.stringify(JSON.parse(record.data), null, 2)}
-                                            </pre>
-                                        </ScrollArea>
-                                    </DialogContent>
-                                </Dialog>
-                            </TableCell>
-                        </TableRow>
-                    ))
+                    records.map((record) => {
+                        // Robust data extraction with fallbacks
+                        const jsonData = JSON.parse(record.data || "{}");
+                        const invNo = record.invoiceNumber || jsonData.invoiceNumber || jsonData.invoice_number || "-";
+                        const custName = record.customerName || jsonData.customerName || "-";
+                        const amt = record.amount !== null ? record.amount : (jsonData.subtotal || jsonData.amount || null);
+                        const ham = record.hamali !== null ? record.hamali : (jsonData.hamaliChargeAmount || jsonData.hamali || null);
+                        const total = record.grandTotal !== null ? record.grandTotal : (jsonData.grandTotal || jsonData.grand_total || null);
+
+                        return (
+                            <TableRow key={record.id}>
+                                <TableCell className="font-medium text-blue-600">
+                                    {invNo}
+                                </TableCell>
+                                <TableCell className="font-mono text-[10px] text-muted-foreground">
+                                    {record.recordId}
+                                </TableCell>
+                                <TableCell>{custName}</TableCell>
+                                <TableCell className="whitespace-nowrap">
+                                    {record.deletedAt && format(new Date(record.deletedAt), "MMM dd, p")}
+                                </TableCell>
+                                <TableCell className="capitalize">
+                                    {record.deletedBy ? (userMap[record.deletedBy] || record.deletedBy) : "System"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    {amt !== null ? `₹${Number(amt).toLocaleString()}` : "-"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    {ham !== null ? `₹${Number(ham).toLocaleString()}` : "-"}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold">
+                                    {total !== null ? `₹${Number(total).toLocaleString()}` : "-"}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-2xl max-h-[80vh]">
+                                            <DialogHeader>
+                                                <DialogTitle>Record Details</DialogTitle>
+                                                <DialogDescription>
+                                                    Table: {record.tableName} | ID: {record.recordId}
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <ScrollArea className="h-[400px] w-full rounded-md border p-4 bg-muted/30">
+                                                <pre className="text-xs font-mono">
+                                                    {JSON.stringify(jsonData, null, 2)}
+                                                </pre>
+                                            </ScrollArea>
+                                        </DialogContent>
+                                    </Dialog>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })
                 )}
             </TableBody>
         </Table>
