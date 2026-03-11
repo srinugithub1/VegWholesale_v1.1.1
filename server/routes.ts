@@ -256,7 +256,7 @@ export async function registerRoutes(
   app.patch("/api/vendors/:id", async (req, res) => {
     try {
       const data = insertVendorSchema.partial().parse(req.body);
-      const vendor = await storage.updateVendor(req.params.id, data);
+      const vendor = await storage.updateVendor(req.params.id, data, (req.user as any)?.id);
       if (!vendor) {
         return res.status(404).json({ error: "Vendor not found" });
       }
@@ -267,7 +267,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/vendors/:id", async (req, res) => {
-    const success = await storage.deleteVendor(req.params.id);
+    const success = await storage.deleteVendor(req.params.id, (req.user as any)?.id);
     if (!success) {
       return res.status(404).json({ error: "Vendor not found" });
     }
@@ -317,7 +317,7 @@ export async function registerRoutes(
   app.patch("/api/customers/:id", async (req, res) => {
     try {
       const data = insertCustomerSchema.partial().parse(req.body);
-      const customer = await storage.updateCustomer(req.params.id, data);
+      const customer = await storage.updateCustomer(req.params.id, data, (req.user as any)?.id);
       if (!customer) {
         return res.status(404).json({ error: "Customer not found" });
       }
@@ -328,7 +328,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/customers/:id", async (req, res) => {
-    const success = await storage.deleteCustomer(req.params.id);
+    const success = await storage.deleteCustomer(req.params.id, (req.user as any)?.id);
     if (!success) {
       return res.status(404).json({ error: "Customer not found" });
     }
@@ -373,9 +373,18 @@ export async function registerRoutes(
   });
 
   app.delete("/api/vehicles/:id", async (req, res) => {
-    const success = await storage.deleteVehicle(req.params.id);
+    const success = await storage.deleteVehicle(req.params.id, (req.user as any)?.id);
     if (!success) {
       return res.status(404).json({ error: "Vehicle not found" });
+    }
+    res.status(204).send();
+  });
+
+  // Invoices (DELETE route added here as per instruction)
+  app.delete("/api/invoices/:id", async (req, res) => {
+    const success = await storage.deleteInvoice(req.params.id, (req.user as any)?.id);
+    if (!success) {
+      return res.status(404).json({ error: "Invoice not found" });
     }
     res.status(204).send();
   });
@@ -426,7 +435,7 @@ export async function registerRoutes(
   app.patch("/api/products/:id", async (req, res) => {
     try {
       const data = insertProductSchema.partial().parse(req.body);
-      const product = await storage.updateProduct(req.params.id, data);
+      const product = await storage.updateProduct(req.params.id, data, (req.user as any)?.id);
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
       }
@@ -437,7 +446,7 @@ export async function registerRoutes(
   });
 
   app.delete("/api/products/:id", async (req, res) => {
-    const success = await storage.deleteProduct(req.params.id);
+    const success = await storage.deleteProduct(req.params.id, (req.user as any)?.id);
     if (!success) {
       return res.status(404).json({ error: "Product not found" });
     }
@@ -625,7 +634,7 @@ export async function registerRoutes(
       const data = insertInvoiceSchema.partial().parse(req.body);
       // const invoice = await storage.updateInvoice(id, data); // updateInvoice is complex, let's implement basic update
       // For now, assume storage has updateInvoice or we add it
-      const invoice = await storage.updateInvoice(id, data);
+      const invoice = await storage.updateInvoice(req.params.id, data, (req.user as any)?.id);
       if (!invoice) {
         return res.status(404).json({ error: "Invoice not found" });
       }

@@ -331,6 +331,15 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
+  async deleteInvoice(id: string, userId?: string): Promise<boolean> {
+    const invoice = await this.getInvoice(id);
+    if (invoice) {
+      await this.archiveRecord('invoices', id, invoice, userId, 'delete');
+    }
+    const result = await db.delete(invoices).where(eq(invoices.id, id)).returning();
+    return result.length > 0;
+  }
+
   async getProducts(): Promise<Product[]> {
     return await db.select().from(products);
   }
@@ -1464,15 +1473,18 @@ export class DatabaseStorage implements IStorage {
       let grandTotal = null;
 
       if (tableName === 'invoices') {
-        invoiceNumber = data.invoiceNumber;
-        amount = Number(data.subtotal || 0);
-        hamali = Number(data.hamaliChargeAmount || 0);
-        grandTotal = Number(data.grandTotal || 0);
+        invoiceNumber = data.invoiceNumber || data.invoice_number;
+        amount = Number(data.subtotal || data.amount || 0);
+        hamali = Number(data.hamaliChargeAmount || data.hamali || 0);
+        grandTotal = Number(data.grandTotal || data.grand_total || 0);
 
         // Fetch customer name if possible
-        if (data.customerId) {
-          const [customer] = await db.select().from(customers).where(eq(customers.id, data.customerId));
+        const customerId = data.customerId || data.customer_id;
+        if (customerId) {
+          const [customer] = await db.select().from(customers).where(eq(customers.id, customerId));
           if (customer) customerName = customer.name;
+        } else if (data.customerName) {
+          customerName = data.customerName;
         }
       }
 
