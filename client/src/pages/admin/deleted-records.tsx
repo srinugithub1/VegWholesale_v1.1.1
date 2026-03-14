@@ -20,7 +20,9 @@ import {
 import { useState, useMemo } from "react";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
     Dialog,
     DialogContent,
@@ -109,6 +111,102 @@ export default function ModifiedRecords() {
             return sum + Number(total);
         }, 0);
     }, [records]);
+
+    const handleDownloadPDF = () => {
+        const doc = new jsPDF("landscape");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text("Modified Records Report", 14, 15);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.text(`Type: ${activeTab === 'delete' ? 'Deleted' : 'Edited'} Records`, 14, 22);
+
+        let filterText = `Table: ${tableOptions.find(t => t.value === selectedTable)?.label || 'All'} | User: ${selectedUser === 'all' ? 'All' : selectedUser}`;
+        if (dateRange?.from) {
+            filterText += ` | From: ${format(dateRange.from, 'PP')}`;
+            if (dateRange?.to) filterText += ` To: ${format(dateRange.to, 'PP')}`;
+        }
+        doc.text(filterText, 14, 28);
+
+        const tableColumn = [
+            "Invoice",
+            "Record ID",
+            "Customer Name",
+            activeTab === "delete" ? "Deleted At" : "Edited At",
+            activeTab === "delete" ? "Deleted By" : "Edited By",
+            "Amount",
+            "Hamali",
+            "Grand Total"
+        ];
+
+        const tableRows: any[] = [];
+
+        records.forEach(record => {
+            const jsonData = JSON.parse(record.data || "{}");
+            const invNo = record.invoiceNumber || jsonData.invoiceNumber || jsonData.invoice_number || "-";
+            const custName = record.customerName || jsonData.customerName || "-";
+            const amt = record.amount !== null ? record.amount : (jsonData.subtotal || jsonData.amount || null);
+            const ham = record.hamali !== null ? record.hamali : (jsonData.hamaliChargeAmount || jsonData.hamali || null);
+            const total = record.grandTotal !== null ? record.grandTotal : (jsonData.grandTotal || jsonData.grand_total || null);
+
+            const recordData = [
+                invNo,
+                record.recordId,
+                custName,
+                record.deletedAt ? format(new Date(record.deletedAt), "MMM dd, yyyy h:mm a") : "-",
+                record.deletedBy ? (userMap[record.deletedBy] || record.deletedBy) : "System",
+                amt !== null ? `Rs ${Number(amt).toLocaleString()}` : "-",
+                ham !== null ? `Rs ${Number(ham).toLocaleString()}` : "-",
+                total !== null ? `Rs ${Number(total).toLocaleString()}` : "-"
+            ];
+
+            tableRows.push(recordData);
+        });
+
+        // Footer Row
+        const footRows = [
+            [
+                { content: 'Total Amount (Current Page)', colSpan: 7, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+                { content: `Rs ${totalGrandTotal.toLocaleString()}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const, fillColor: [220, 252, 231] as [number, number, number] } }
+            ]
+        ];
+
+        autoTable(doc, {
+            startY: 35,
+            head: [tableColumn],
+            body: tableRows,
+            foot: records.length > 0 ? footRows : undefined,
+            theme: 'grid',
+            styles: {
+                fontSize: 9,
+                cellPadding: 3,
+                lineColor: [229, 231, 235],
+                lineWidth: 0.1,
+                textColor: [31, 41, 55],
+                fillColor: [255, 255, 255]
+            },
+            headStyles: {
+                fillColor: [22, 163, 74],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                lineWidth: 0.1,
+                lineColor: [22, 163, 74]
+            },
+            alternateRowStyles: {
+                fillColor: [249, 250, 251]
+            },
+            columnStyles: {
+                5: { halign: 'right' },
+                6: { halign: 'right' },
+                7: { halign: 'right', fontStyle: 'bold' }
+            }
+        });
+
+        const timestamp = new Date().toISOString().split('T')[0];
+        doc.save(`Modified_Records_${activeTab}_${timestamp}.pdf`);
+    };
 
     const renderTable = (recordsList: DeletedRecord[]) => (
         <Table>
@@ -226,6 +324,10 @@ export default function ModifiedRecords() {
         <div className="flex-1 space-y-4 p-8 pt-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight text-white">Modified Records</h2>
+                <Button onClick={handleDownloadPDF} className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                </Button>
             </div>
 
             <Tabs defaultValue="edit" onValueChange={(v) => { setActiveTab(v); setPage(1); }}>
