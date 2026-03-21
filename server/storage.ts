@@ -799,6 +799,13 @@ export class DatabaseStorage implements IStorage {
 
     if (finalIdsToDelete.length === 0) return true;
 
+    // Also delete associated customer payments to prevent orphaned payments in reports
+    const orphanedPayments = await db.select().from(customerPayments).where(inArray(customerPayments.invoiceId, finalIdsToDelete));
+    for (const payment of orphanedPayments) {
+      await this.archiveRecord('customer_payments', payment.id, payment, userId);
+    }
+    await db.delete(customerPayments).where(inArray(customerPayments.invoiceId, finalIdsToDelete));
+
     // Delete the invoices
     await db.delete(invoices).where(inArray(invoices.id, finalIdsToDelete));
 

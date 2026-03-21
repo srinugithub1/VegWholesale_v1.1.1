@@ -104,6 +104,8 @@ export default function InvoicesPage() {
             });
             setSelectedIds([]);
             queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/customer-payments"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/reports/customer-balances"] });
         },
         onError: (error: Error) => {
             toast({
