@@ -162,7 +162,7 @@ function VehicleSalePane({
           ...inv,
           product,
           weight: draftProduct?.weight || 0,
-          price: draftProduct?.price || product?.salePrice || 0,
+          price: draftProduct?.price || 0,
           weightBreakdown: draftProduct?.weightBreakdown || [],
         };
       })
@@ -188,7 +188,7 @@ function VehicleSalePane({
         unit: product.unit || "Units",
         weight: field === 'weight' ? value : 0,
         bags: field === 'bags' ? value : 0,
-        price: field === 'price' ? value : (product.salePrice || 0),
+        price: field === 'price' ? value : 0,
         available: inv.quantity,
         weightBreakdown: field === 'weight' ? (value > 0 ? [value] : []) : [],
       }];
@@ -678,7 +678,7 @@ function VehicleSalePane({
               const draftProduct = draft.products.find(p => p.productId === item.productId);
               const weight = draftProduct?.weight || 0;
               const bags = draftProduct?.bags || 0;
-              const price = draftProduct?.price || item.product?.salePrice || 0;
+              const price = draftProduct?.price || 0;
               const lineTotal = weight * price;
 
               // Low Stock Check
