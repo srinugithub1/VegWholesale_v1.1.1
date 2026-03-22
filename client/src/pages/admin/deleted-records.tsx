@@ -51,10 +51,31 @@ export default function ModifiedRecords() {
         queryKey: ["/api/users"],
     });
 
-    const { data: shortPayments, isLoading: isShortLoading } = useQuery<any[]>({
-        queryKey: ["/api/admin/short-payments"],
+    const { data: shortData, isLoading: isShortLoading } = useQuery<{ records: any[]; total: number }>({
+        queryKey: [
+            "/api/admin/short-payments",
+            dateRange?.from?.toISOString(),
+            dateRange?.to?.toISOString(),
+            page,
+        ],
+        queryFn: async () => {
+            const params = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString(),
+            });
+
+            if (dateRange?.from) params.append("fromDate", dateRange.from.toISOString());
+            if (dateRange?.to) params.append("toDate", dateRange.to.toISOString());
+
+            const res = await fetch(`/api/admin/short-payments?${params.toString()}`);
+            if (!res.ok) throw new Error("Failed to fetch short payments");
+            return res.json();
+        },
         enabled: activeTab === "short",
     });
+
+    const shortPayments = shortData?.records || [];
+    const shortTotal = shortData?.total || 0;
 
     const { data, isLoading } = useQuery<{ records: DeletedRecord[]; total: number }>({
         queryKey: [
@@ -86,7 +107,9 @@ export default function ModifiedRecords() {
 
     const records = data?.records || [];
     const total = data?.total || 0;
-    const totalPages = Math.ceil(total / limit);
+
+    const activeTotal = activeTab === "short" ? shortTotal : total;
+    const totalPages = Math.ceil(activeTotal / limit);
 
     const tableOptions = [
         { value: "all", label: "All Tables" },
@@ -116,6 +139,10 @@ export default function ModifiedRecords() {
             return sum + Number(total);
         }, 0);
     }, [records]);
+
+    const shortTotalDifference = useMemo(() => {
+        return shortPayments.reduce((sum: number, p: any) => sum + Number(p.difference || 0), 0);
+    }, [shortPayments]);
 
     const handleDownloadPDF = () => {
         const doc = new jsPDF("landscape");
@@ -345,10 +372,9 @@ export default function ModifiedRecords() {
                         </TabsList>
 
                         <div className="flex items-center space-x-2">
+                            <DatePickerWithRange date={dateRange} setDate={setDateRange} />
                             {activeTab !== "short" && (
                                 <>
-                                    <DatePickerWithRange date={dateRange} setDate={setDateRange} />
-
                                     <Select value={selectedTable} onValueChange={(v) => { setSelectedTable(v); setPage(1); }}>
                                         <SelectTrigger className="w-[180px]">
                                             <SelectValue placeholder="All Tables" />
@@ -379,7 +405,7 @@ export default function ModifiedRecords() {
                     <Card className="border-border bg-card/50 backdrop-blur-sm">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium">
-                                {activeTab === "short" ? "Unpaid Cash Sale Discrepancies" : `Showing ${records.length} of ${total} records`}
+                                {activeTab === "short" ? `Showing ${shortPayments.length} of ${shortTotal} short payment records` : `Showing ${records.length} of ${total} records`}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -419,10 +445,20 @@ export default function ModifiedRecords() {
                                             <TableRow><TableCell colSpan={6} className="text-center py-8 text-green-600 font-medium">No short payments found! Everything matches perfectly.</TableCell></TableRow>
                                         )}
                                     </TableBody>
+                                    {shortPayments.length > 0 && (
+                                        <TableFooter>
+                                            <TableRow className="bg-muted/50 font-bold">
+                                                <TableCell colSpan={5} className="text-right">Total Difference (Current Page):</TableCell>
+                                                <TableCell className="text-right text-lg text-red-600">
+                                                    ₹{shortTotalDifference.toLocaleString()}
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableFooter>
+                                    )}
                                 </Table>
                             </TabsContent>
 
-                            {activeTab !== "short" && totalPages > 1 && (
+                            {totalPages > 1 && (
                                 <div className="flex items-center justify-end space-x-2 py-4">
                                     <Button
                                         variant="outline"

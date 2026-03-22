@@ -159,7 +159,18 @@ export async function registerRoutes(
     }
 
     try {
-      const result = await storage.getShortPayments();
+      const fromDate = req.query.fromDate as string | undefined;
+      const toDate = req.query.toDate as string | undefined;
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 50;
+      const offset = (page - 1) * limit;
+
+      const result = await storage.getShortPayments({
+        fromDate,
+        toDate,
+        limit,
+        offset
+      });
       res.json(result);
     } catch (error) {
       console.error("Error fetching short payments:", error);

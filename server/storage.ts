@@ -180,7 +180,7 @@ export interface IStorage {
   clearTable(tableName: string): Promise<boolean>;
   getTableStats(): Promise<Record<string, { count: number; sizeBytes: number }>>;
 
-  getShortPayments(): Promise<{ date: string, invoiceNumber: string, customerName: string, expectedAmount: number, paidAmount: number, difference: number }[]>;
+  getShortPayments(filters?: { fromDate?: string, toDate?: string, limit?: number, offset?: number }): Promise<{ records: any[], total: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1570,7 +1570,7 @@ export class DatabaseStorage implements IStorage {
     return false;
   }
 
-  async getShortPayments(): Promise<{ date: string, invoiceNumber: string, customerName: string, expectedAmount: number, paidAmount: number, difference: number }[]> {
+  async getShortPayments(filters?: { fromDate?: string, toDate?: string, limit?: number, offset?: number }): Promise<{ records: any[], total: number }> {
     const allCustomers = await db.select().from(customers);
     const directCustomerIds = new Set(
       allCustomers
@@ -1579,10 +1579,20 @@ export class DatabaseStorage implements IStorage {
     );
 
     const allInvoices = await db.select().from(invoices);
-    const directInvoices = allInvoices.filter(i => directCustomerIds.has(i.customerId));
+    let directInvoices = allInvoices.filter(i => directCustomerIds.has(i.customerId));
+
+    if (filters?.fromDate) {
+      const fromD = new Date(filters.fromDate).toISOString().split('T')[0];
+      directInvoices = directInvoices.filter(i => i.date >= fromD);
+    }
+    if (filters?.toDate) {
+      const toD = new Date(filters.toDate).toISOString().split('T')[0];
+      directInvoices = directInvoices.filter(i => i.date <= toD);
+    }
+
     const allPayments = await db.select().from(customerPayments);
 
-    const shortPayments = [];
+    let shortPayments = [];
 
     for (const inv of directInvoices) {
       const invPayments = allPayments.filter(p => p.invoiceId === inv.id);
@@ -1593,6 +1603,7 @@ export class DatabaseStorage implements IStorage {
       if (expected - totalPaid > 0.01) {
         const customer = allCustomers.find(c => c.id === inv.customerId);
         shortPayments.push({
+          id: inv.id,
           date: inv.date,
           invoiceNumber: inv.invoiceNumber,
           customerName: customer?.name || "Unknown",
@@ -1603,7 +1614,14 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    return shortPayments.sort((a, b) => b.date.localeCompare(a.date));
+    shortPayments.sort((a, b) => b.date.localeCompare(a.date));
+
+    const total = shortPayments.length;
+    const limit = filters?.limit || 50;
+    const offset = filters?.offset || 0;
+    const records = shortPayments.slice(offset, offset + limit);
+
+    return { records, total };
   }
 
   async createOpeningBalanceInvoice(customerId: string, amount: number): Promise<Invoice> {
