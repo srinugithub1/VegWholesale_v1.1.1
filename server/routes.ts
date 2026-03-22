@@ -152,6 +152,21 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/short-payments", async (req, res) => {
+    // Check for Admin role
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Unauthorized. Admin access required.");
+    }
+
+    try {
+      const result = await storage.getShortPayments();
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching short payments:", error);
+      res.status(500).json({ error: "Failed to fetch short payments" });
+    }
+  });
+
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const users = await storage.getUsers();

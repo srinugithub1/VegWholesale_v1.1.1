@@ -179,6 +179,8 @@ export interface IStorage {
   // Admin Data Management
   clearTable(tableName: string): Promise<boolean>;
   getTableStats(): Promise<Record<string, { count: number; sizeBytes: number }>>;
+
+  getShortPayments(): Promise<{ date: string, invoiceNumber: string, customerName: string, expectedAmount: number, paidAmount: number, difference: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1566,6 +1568,42 @@ export class DatabaseStorage implements IStorage {
     // For now, we just return true to satisfy interface or implement later.
     // This requires specific logic per table type.
     return false;
+  }
+
+  async getShortPayments(): Promise<{ date: string, invoiceNumber: string, customerName: string, expectedAmount: number, paidAmount: number, difference: number }[]> {
+    const allCustomers = await db.select().from(customers);
+    const directCustomerIds = new Set(
+      allCustomers
+        .filter(c => c.name.toLowerCase().includes("cash") || c.name.toLowerCase() === "direct customer")
+        .map(c => c.id)
+    );
+
+    const allInvoices = await db.select().from(invoices);
+    const directInvoices = allInvoices.filter(i => directCustomerIds.has(i.customerId));
+    const allPayments = await db.select().from(customerPayments);
+
+    const shortPayments = [];
+
+    for (const inv of directInvoices) {
+      const invPayments = allPayments.filter(p => p.invoiceId === inv.id);
+      const totalPaid = invPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      const expected = Number(inv.grandTotal || 0);
+
+      // Catch underpayments (shortfalls)
+      if (expected - totalPaid > 0.01) {
+        const customer = allCustomers.find(c => c.id === inv.customerId);
+        shortPayments.push({
+          date: inv.date,
+          invoiceNumber: inv.invoiceNumber,
+          customerName: customer?.name || "Unknown",
+          expectedAmount: expected,
+          paidAmount: totalPaid,
+          difference: expected - totalPaid
+        });
+      }
+    }
+
+    return shortPayments.sort((a, b) => b.date.localeCompare(a.date));
   }
 
   async createOpeningBalanceInvoice(customerId: string, amount: number): Promise<Invoice> {

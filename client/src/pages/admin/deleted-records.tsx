@@ -51,6 +51,11 @@ export default function ModifiedRecords() {
         queryKey: ["/api/users"],
     });
 
+    const { data: shortPayments, isLoading: isShortLoading } = useQuery<any[]>({
+        queryKey: ["/api/admin/short-payments"],
+        enabled: activeTab === "short",
+    });
+
     const { data, isLoading } = useQuery<{ records: DeletedRecord[]; total: number }>({
         queryKey: [
             "/api/admin/deleted-records",
@@ -333,43 +338,48 @@ export default function ModifiedRecords() {
             <Tabs defaultValue="edit" onValueChange={(v) => { setActiveTab(v); setPage(1); }}>
                 <div className="flex flex-col space-y-4">
                     <div className="flex items-center justify-between bg-card p-2 rounded-lg border border-border">
-                        <TabsList className="grid grid-cols-2 w-[400px]">
+                        <TabsList className="grid grid-cols-3 w-[500px]">
                             <TabsTrigger value="edit">Edited Records</TabsTrigger>
                             <TabsTrigger value="delete">Deleted Records</TabsTrigger>
+                            <TabsTrigger value="short">Short Payments</TabsTrigger>
                         </TabsList>
 
                         <div className="flex items-center space-x-2">
-                            <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+                            {activeTab !== "short" && (
+                                <>
+                                    <DatePickerWithRange date={dateRange} setDate={setDateRange} />
 
-                            <Select value={selectedTable} onValueChange={(v) => { setSelectedTable(v); setPage(1); }}>
-                                <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder="All Tables" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {tableOptions.map((opt) => (
-                                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                    <Select value={selectedTable} onValueChange={(v) => { setSelectedTable(v); setPage(1); }}>
+                                        <SelectTrigger className="w-[180px]">
+                                            <SelectValue placeholder="All Tables" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {tableOptions.map((opt) => (
+                                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
 
-                            <Select value={selectedUser} onValueChange={(v) => { setSelectedUser(v); setPage(1); }}>
-                                <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder="All Users" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Users</SelectItem>
-                                    {users?.map((u) => (
-                                        <SelectItem key={u.id} value={u.username}>{u.username}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                    <Select value={selectedUser} onValueChange={(v) => { setSelectedUser(v); setPage(1); }}>
+                                        <SelectTrigger className="w-[180px]">
+                                            <SelectValue placeholder="All Users" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Users</SelectItem>
+                                            {users?.map((u) => (
+                                                <SelectItem key={u.id} value={u.username}>{u.username}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </>
+                            )}
                         </div>
                     </div>
 
                     <Card className="border-border bg-card/50 backdrop-blur-sm">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium">
-                                Showing {records.length} of {total} records
+                                {activeTab === "short" ? "Unpaid Cash Sale Discrepancies" : `Showing ${records.length} of ${total} records`}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -379,8 +389,40 @@ export default function ModifiedRecords() {
                             <TabsContent value="delete" className="mt-0">
                                 {renderTable(records)}
                             </TabsContent>
+                            <TabsContent value="short" className="mt-0">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Invoice</TableHead>
+                                            <TableHead>Customer</TableHead>
+                                            <TableHead className="text-right">Expected Amount</TableHead>
+                                            <TableHead className="text-right">Paid Amount</TableHead>
+                                            <TableHead className="text-right text-red-600">Difference</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {isShortLoading ? (
+                                            <TableRow><TableCell colSpan={6} className="text-center py-4">Loading short payments...</TableCell></TableRow>
+                                        ) : shortPayments && shortPayments.length > 0 ? (
+                                            shortPayments.map((p, i) => (
+                                                <TableRow key={i}>
+                                                    <TableCell className="text-muted-foreground">{p.date}</TableCell>
+                                                    <TableCell className="font-medium text-blue-600">{p.invoiceNumber}</TableCell>
+                                                    <TableCell>{p.customerName}</TableCell>
+                                                    <TableCell className="text-right">₹{Number(p.expectedAmount).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right text-amber-600">₹{Number(p.paidAmount).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right font-bold text-red-600">₹{Number(p.difference).toLocaleString()}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow><TableCell colSpan={6} className="text-center py-8 text-green-600 font-medium">No short payments found! Everything matches perfectly.</TableCell></TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TabsContent>
 
-                            {totalPages > 1 && (
+                            {activeTab !== "short" && totalPages > 1 && (
                                 <div className="flex items-center justify-end space-x-2 py-4">
                                     <Button
                                         variant="outline"
