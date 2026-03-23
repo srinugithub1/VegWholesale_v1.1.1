@@ -260,14 +260,44 @@ export default function Reports() {
     const openingBalance = salesBeforePeriod - paymentsBeforePeriod;
 
     const salesInPeriod = filteredInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
-    const paymentsInPeriod = safeCustomerPayments
+    const paymentsBreakdown = {
+      directCash: 0,
+      customerPayments: 0,
+    };
+
+    const paymentsInPeriodList = safeCustomerPayments
       .filter(p => {
         if (!matchesFilters(p)) return false;
         if (startDate && p.date < startDate) return false;
         if (endDate && p.date > endDate) return false;
         return true;
-      })
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      });
+
+    const paymentsInPeriod = paymentsInPeriodList.reduce((sum, p) => {
+      let isDirect = false;
+      let cName = "";
+
+      if (p.invoiceId) {
+        const inv = safeAllInvoices.find(i => i.id === p.invoiceId);
+        if (inv) {
+          const customer = customers.find(c => c.id === inv.customerId);
+          if (customer) cName = (customer.name || "").toLowerCase();
+        }
+      }
+
+      if (!cName && (p as any).customerId) {
+        const customer = customers.find(c => c.id === (p as any).customerId);
+        if (customer) cName = (customer.name || "").toLowerCase();
+      }
+
+      if (cName.includes('cash') || cName === 'direct customer') {
+        paymentsBreakdown.directCash += (p.amount || 0);
+      } else {
+        paymentsBreakdown.customerPayments += (p.amount || 0);
+      }
+
+      return sum + (p.amount || 0);
+    }, 0);
 
     // Discrepancy Fix: Closing Balance must be consistent with opening + change
     const closingBalance = openingBalance + salesInPeriod - paymentsInPeriod;
@@ -285,8 +315,9 @@ export default function Reports() {
       openingBalance,
       closingBalance,
       paymentsInPeriod,
+      paymentsBreakdown,
     };
-  }, [filteredInvoices, customerPayments, invoices, startDate, endDate]);
+  }, [filteredInvoices, customerPayments, invoices, startDate, endDate, customers]);
 
   const dailySummary = useMemo((): DailySummary[] => {
     const dateMap = new Map<string, DailySummary>();
@@ -1307,11 +1338,20 @@ export default function Reports() {
                   </div>
                   <CreditCard className="h-4 w-4 text-primary" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold font-mono text-green-600 dark:text-green-500" data-testid="text-period-payments">
+                <CardContent className="space-y-1">
+                  <div className="text-2xl font-bold font-mono text-green-600 dark:text-green-500" data-testid="text-payments-received">
                     {formatCurrency(summary.paymentsInPeriod)}
                   </div>
-                  <p className="text-xs text-muted-foreground">During selected period</p>
+                  <div className="pt-2 border-t border-muted/30">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground">Cash Sales (Direct):</span>
+                      <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.paymentsBreakdown.directCash)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs mt-1">
+                      <span className="text-muted-foreground">Customer Payments:</span>
+                      <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.customerPayments)}</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
