@@ -128,6 +128,16 @@ export default function Reports() {
   });
   const customerPayments = Array.isArray(rawCustomerPayments) ? rawCustomerPayments : [];
 
+  const { data: deletedRecordsResult } = useQuery<{ records: any[], total: number }>({
+    queryKey: ["/api/admin/deleted-records", {
+      fromDate: fromDate ? format(fromDate, "yyyy-MM-dd") : undefined,
+      toDate: toDate ? format(toDate, "yyyy-MM-dd") : undefined,
+      limit: 1000
+    }],
+    enabled: !!fromDate && !!toDate,
+  });
+  const deletedInvoicesForPeriod = (deletedRecordsResult?.records || []).filter(r => r.tableName === 'invoices');
+
   const getCustomerName = (id: string) => customers.find((c) => c.id === id)?.name || "Unknown";
   const getVendorName = (id: string | null) => vendors.find((v) => v.id === id)?.name || "-";
   const getProductName = (id: string) => products.find((p) => p.id === id)?.name || "Unknown";
@@ -263,7 +273,11 @@ export default function Reports() {
     const paymentsBreakdown = {
       directCash: 0,
       customerPayments: 0,
+      deletedAmount: 0,
     };
+
+    // Calculate Deleted Amount from archived invoices in this period
+    paymentsBreakdown.deletedAmount = deletedInvoicesForPeriod.reduce((sum, r) => sum + (Number(r.grandTotal) || 0), 0);
 
     const paymentsInPeriodList = safeCustomerPayments
       .filter(p => {
@@ -273,27 +287,36 @@ export default function Reports() {
         return true;
       });
 
+    const activeInvoiceIds = new Set(filteredInvoices.map(i => i.id));
+
     const paymentsInPeriod = paymentsInPeriodList.reduce((sum, p) => {
-      let isDirect = false;
-      let cName = "";
+      // If it's linked to an active invoice, count it in active categories
+      if (p.invoiceId && activeInvoiceIds.has(p.invoiceId)) {
+        const inv = filteredInvoices.find(i => i.id === p.invoiceId);
+        const customer = customers.find(c => c.id === (inv?.customerId || p.customerId));
+        const cName = (customer?.name || "").toLowerCase();
 
-      if (p.invoiceId) {
-        const inv = safeAllInvoices.find(i => i.id === p.invoiceId);
-        if (inv) {
-          const customer = customers.find(c => c.id === inv.customerId);
-          if (customer) cName = (customer.name || "").toLowerCase();
+        if (cName.includes('cash') || cName === 'direct customer') {
+          paymentsBreakdown.directCash += (p.amount || 0);
+        } else {
+          paymentsBreakdown.customerPayments += (p.amount || 0);
         }
-      }
-
-      if (!cName && (p as any).customerId) {
-        const customer = customers.find(c => c.id === (p as any).customerId);
-        if (customer) cName = (customer.name || "").toLowerCase();
-      }
-
-      if (cName.includes('cash') || cName === 'direct customer') {
-        paymentsBreakdown.directCash += (p.amount || 0);
       } else {
-        paymentsBreakdown.customerPayments += (p.amount || 0);
+        // If it's NOT linked to an active invoice, it's either:
+        // 1. A payment for a deleted invoice (orphan)
+        // 2. A generic customer payment not linked to any invoice
+
+        // Check if it's an orphan (linked to a deleted invoice in this period)
+        const isOrphan = deletedInvoicesForPeriod.some(r => r.recordId === p.invoiceId);
+
+        if (isOrphan) {
+          // Already accounted for in paymentsBreakdown.deletedAmount via deletedInvoicesForPeriod
+          // We don't need to add it again to deletedAmount here, but we should not add to active ones.
+        } else {
+          // Generic payment or linked to ancient deleted invoice? 
+          // For now, treat as Customer Payment (Credit)
+          paymentsBreakdown.customerPayments += (p.amount || 0);
+        }
       }
 
       return sum + (p.amount || 0);
@@ -317,7 +340,7 @@ export default function Reports() {
       paymentsInPeriod,
       paymentsBreakdown,
     };
-  }, [filteredInvoices, customerPayments, invoices, startDate, endDate, customers]);
+  }, [filteredInvoices, customerPayments, invoices, startDate, endDate, customers, deletedInvoicesForPeriod]);
 
   const dailySummary = useMemo((): DailySummary[] => {
     const dateMap = new Map<string, DailySummary>();
@@ -1344,12 +1367,16 @@ export default function Reports() {
                   </div>
                   <div className="pt-2 border-t border-muted/30">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Cash Sales (Direct):</span>
+                      <span className="text-muted-foreground">1. Cash Sale (Direct):</span>
                       <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.paymentsBreakdown.directCash)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs mt-1">
-                      <span className="text-muted-foreground">Customer Payments:</span>
+                      <span className="text-muted-foreground">2. Customer Payment:</span>
                       <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.customerPayments)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs mt-1">
+                      <span className="text-muted-foreground">3. Deleted Record Amount:</span>
+                      <span className="font-medium text-destructive">{formatCurrency(summary.paymentsBreakdown.deletedAmount)}</span>
                     </div>
                   </div>
                 </CardContent>

@@ -1495,6 +1495,15 @@ export class DatabaseStorage implements IStorage {
         } else if (data.customerName) {
           customerName = data.customerName;
         }
+      } else if (tableName === 'customer_payments') {
+        amount = Number(data.amount || 0);
+        grandTotal = amount; // For payments, grandTotal is the amount
+        const customerId = data.customerId || data.customer_id;
+        if (customerId) {
+          const [customer] = await db.select().from(customers).where(eq(customers.id, customerId));
+          if (customer) customerName = customer.name;
+        }
+        invoiceNumber = data.invoiceNumber || data.invoice_number || null;
       }
 
       await db.insert(deletedRecords).values({
@@ -1582,11 +1591,11 @@ export class DatabaseStorage implements IStorage {
     let directInvoices = allInvoices.filter(i => directCustomerIds.has(i.customerId));
 
     if (filters?.fromDate) {
-      const fromD = new Date(filters.fromDate).toISOString().split('T')[0];
+      const fromD = filters.fromDate.split('T')[0];
       directInvoices = directInvoices.filter(i => i.date >= fromD);
     }
     if (filters?.toDate) {
-      const toD = new Date(filters.toDate).toISOString().split('T')[0];
+      const toD = filters.toDate.split('T')[0];
       directInvoices = directInvoices.filter(i => i.date <= toD);
     }
 
