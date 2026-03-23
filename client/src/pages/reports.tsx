@@ -136,7 +136,7 @@ export default function Reports() {
     }],
     enabled: !!fromDate && !!toDate,
   });
-  const deletedInvoicesForPeriod = (deletedRecordsResult?.records || []).filter(r => r.tableName === 'invoices');
+  const deletedInvoicesForPeriod = (deletedRecordsResult?.records || []).filter(r => r.tableName === 'invoices' && r.action === 'delete');
 
   const getCustomerName = (id: string) => customers.find((c) => c.id === id)?.name || "Unknown";
   const getVendorName = (id: string | null) => vendors.find((v) => v.id === id)?.name || "-";
