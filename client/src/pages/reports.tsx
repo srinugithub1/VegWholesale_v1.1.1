@@ -216,6 +216,20 @@ export default function Reports() {
     const totalHamali = filteredInvoices.reduce((sum, inv) => sum + (inv.hamaliChargeAmount || 0), 0);
     const totalWeight = filteredInvoices.reduce((sum, inv) => sum + (inv.totalKgWeight || 0), 0);
     const totalBags = filteredInvoices.reduce((sum, inv) => sum + (inv.bags || 0), 0);
+
+    const salesBreakdown = filteredInvoices.reduce((acc, inv) => {
+      const customer = customers.find(c => c.id === inv.customerId);
+      const cName = (customer?.name || "").toLowerCase();
+      const isCash = cName.includes('cash') || cName === 'direct customer';
+
+      if (isCash) {
+        acc.cashSales += (inv.subtotal || 0);
+      } else {
+        acc.creditSales += (inv.subtotal || 0);
+      }
+      return acc;
+    }, { cashSales: 0, creditSales: 0 });
+
     const invoiceCount = filteredInvoices.length;
     const invoicesWithHamali = filteredInvoices.filter(inv => (inv.hamaliChargeAmount || 0) > 0).length;
 
@@ -339,6 +353,7 @@ export default function Reports() {
       closingBalance,
       paymentsInPeriod,
       paymentsBreakdown,
+      salesBreakdown,
     };
   }, [filteredInvoices, customerPayments, invoices, startDate, endDate, customers, deletedInvoicesForPeriod]);
 
@@ -531,6 +546,16 @@ export default function Reports() {
     const totalHamali = reportItems.reduce((sum, i) => sum + i.hamali, 0);
     const totalSales = reportItems.reduce((sum, i) => sum + i.total, 0);
 
+    const salesBreakdown = reportItems.reduce((acc, item) => {
+      const isCash = item.type === "Direct Customer" || item.type === "CASH";
+      if (isCash) {
+        acc.cashSales += (item.subtotal || 0);
+      } else {
+        acc.creditSales += (item.subtotal || 0);
+      }
+      return acc;
+    }, { cashSales: 0, creditSales: 0 });
+
     return {
       ...summary,
       totalWeight,
@@ -538,6 +563,7 @@ export default function Reports() {
       totalSubtotal,
       totalHamali,
       totalSales,
+      salesBreakdown,
       grandTotal: totalSales
     };
   }, [reportItems, summary]);
@@ -1438,6 +1464,20 @@ export default function Reports() {
                   {formatCurrency(reportSummary.totalSales)}
                 </div>
                 <p className="text-xs text-muted-foreground">{reportSummary.invoiceCount} sales</p>
+                <div className="pt-2 border-t border-muted/30 mt-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">1. Cash Sale:</span>
+                    <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(reportSummary.salesBreakdown.cashSales)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs mt-1">
+                    <span className="text-muted-foreground">2. Credit Sale:</span>
+                    <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.creditSales)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs mt-1">
+                    <span className="text-muted-foreground">3. Hamali Amount:</span>
+                    <span className="font-medium text-green-600 dark:text-green-500">{formatCurrency(reportSummary.totalHamali)}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
