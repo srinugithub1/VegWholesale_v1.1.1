@@ -223,9 +223,9 @@ export default function Reports() {
       const isCash = cName.includes('cash') || cName === 'direct customer';
 
       if (isCash) {
-        acc.cashSales += (inv.grandTotal || 0);
+        acc.cashSales += (inv.subtotal || 0);
       } else {
-        acc.creditSales += (inv.grandTotal || 0);
+        acc.creditSales += (inv.subtotal || 0);
       }
       return acc;
     }, { cashSales: 0, creditSales: 0 });
@@ -287,6 +287,7 @@ export default function Reports() {
     const paymentsBreakdown = {
       directCash: 0,
       customerPayments: 0,
+      hamaliCollected: 0,
       deletedAmount: 0,
     };
 
@@ -311,7 +312,8 @@ export default function Reports() {
         const cName = (customer?.name || "").toLowerCase();
 
         if (cName.includes('cash') || cName === 'direct customer') {
-          paymentsBreakdown.directCash += (p.amount || 0);
+          paymentsBreakdown.directCash += (inv?.subtotal || p.amount || 0);
+          paymentsBreakdown.hamaliCollected += (inv?.hamaliChargeAmount || 0);
         } else {
           paymentsBreakdown.customerPayments += (p.amount || 0);
         }
@@ -334,8 +336,8 @@ export default function Reports() {
       }
     });
 
-    // The main total (Big No) only includes active Cash + Credit payments
-    const paymentsInPeriod = paymentsBreakdown.directCash + paymentsBreakdown.customerPayments;
+    // The main total (Big No) only includes active Cash + Credit + Hamali payments
+    const paymentsInPeriod = paymentsBreakdown.directCash + paymentsBreakdown.customerPayments + paymentsBreakdown.hamaliCollected;
 
     // Discrepancy Fix: Closing Balance must be consistent with opening + change
     const closingBalance = openingBalance + salesInPeriod - paymentsInPeriod;
@@ -550,9 +552,9 @@ export default function Reports() {
     const salesBreakdown = reportItems.reduce((acc, item) => {
       const isCash = item.type === "Direct Customer" || item.type === "CASH";
       if (isCash) {
-        acc.cashSales += (item.total || 0);
+        acc.cashSales += (item.subtotal || 0);
       } else {
-        acc.creditSales += (item.total || 0);
+        acc.creditSales += (item.subtotal || 0);
       }
       return acc;
     }, { cashSales: 0, creditSales: 0 });
@@ -1402,7 +1404,11 @@ export default function Reports() {
                       <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.customerPayments)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs mt-1">
-                      <span className="text-muted-foreground">3. Deleted Record Amount:</span>
+                      <span className="text-muted-foreground">3. Hamali Collected:</span>
+                      <span className="font-medium text-green-600 dark:text-green-500">{formatCurrency(summary.paymentsBreakdown.hamaliCollected)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs mt-1">
+                      <span className="text-muted-foreground">4. Deleted Record Info:</span>
                       <span className="font-medium text-destructive">{formatCurrency(summary.paymentsBreakdown.deletedAmount)}</span>
                     </div>
                   </div>
@@ -1473,6 +1479,10 @@ export default function Reports() {
                   <div className="flex justify-between items-center text-xs mt-1">
                     <span className="text-muted-foreground">2. Credit Sale:</span>
                     <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.creditSales)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs mt-1">
+                    <span className="text-muted-foreground">3. Hamali Amount:</span>
+                    <span className="font-medium text-green-600 dark:text-green-500">{formatCurrency(reportSummary.totalHamali)}</span>
                   </div>
                 </div>
               </CardContent>
