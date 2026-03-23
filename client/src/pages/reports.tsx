@@ -1404,11 +1404,7 @@ export default function Reports() {
                       <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.customerPayments)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs mt-1">
-                      <span className="text-muted-foreground">3. Hamali Collected:</span>
-                      <span className="font-medium text-green-600 dark:text-green-500">{formatCurrency(summary.paymentsBreakdown.hamaliCollected)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs mt-1">
-                      <span className="text-muted-foreground">4. Deleted Record Info:</span>
+                      <span className="text-muted-foreground">3. Deleted Record Info:</span>
                       <span className="font-medium text-destructive">{formatCurrency(summary.paymentsBreakdown.deletedAmount)}</span>
                     </div>
                   </div>
