@@ -303,7 +303,7 @@ export default function Reports() {
 
     const activeInvoiceIds = new Set(filteredInvoices.map(i => i.id));
 
-    const paymentsInPeriod = paymentsInPeriodList.reduce((sum, p) => {
+    paymentsInPeriodList.forEach(p => {
       // If it's linked to an active invoice, count it in active categories
       if (p.invoiceId && activeInvoiceIds.has(p.invoiceId)) {
         const inv = filteredInvoices.find(i => i.id === p.invoiceId);
@@ -325,16 +325,17 @@ export default function Reports() {
 
         if (isOrphan) {
           // Already accounted for in paymentsBreakdown.deletedAmount via deletedInvoicesForPeriod
-          // We don't need to add it again to deletedAmount here, but we should not add to active ones.
+          // We don't add to active ones as per user request to exclude deleted from main total
         } else {
           // Generic payment or linked to ancient deleted invoice? 
           // For now, treat as Customer Payment (Credit)
           paymentsBreakdown.customerPayments += (p.amount || 0);
         }
       }
+    });
 
-      return sum + (p.amount || 0);
-    }, 0);
+    // The main total (Big No) only includes active Cash + Credit payments
+    const paymentsInPeriod = paymentsBreakdown.directCash + paymentsBreakdown.customerPayments;
 
     // Discrepancy Fix: Closing Balance must be consistent with opening + change
     const closingBalance = openingBalance + salesInPeriod - paymentsInPeriod;
