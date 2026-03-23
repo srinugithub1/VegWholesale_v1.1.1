@@ -97,7 +97,7 @@ function ProtectedApp() {
     }
 
     // Regular User
-    const allowed = ['/sell', '/customer-edit', '/print'];
+    const allowed = ['/sell', '/customer-edit', '/print', '/reports'];
     if (!allowed.includes(location)) {
       setLocation('/sell');
     }
@@ -110,7 +110,7 @@ function ProtectedApp() {
 
   // Prevent rendering if redirecting
   if (isPaymentUser && location !== '/payments') return null;
-  if (!isAdmin && !isRestrictedAdmin && !isPaymentUser && location !== '/sell' && location !== '/customer-edit' && location !== '/print') {
+  if (!isAdmin && !isRestrictedAdmin && !isPaymentUser && location !== '/sell' && location !== '/customer-edit' && location !== '/print' && location !== '/reports') {
     return null;
   }
 

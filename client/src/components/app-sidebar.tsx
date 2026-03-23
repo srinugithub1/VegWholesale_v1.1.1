@@ -122,7 +122,7 @@ const reportItems = [
     title: "Reports",
     url: "/reports",
     icon: BarChart3,
-    roles: ["admin", "restricted_admin"],
+    roles: ["admin", "restricted_admin", "user"],
   },
   {
     title: "Print Center",

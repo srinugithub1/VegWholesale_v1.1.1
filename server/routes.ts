@@ -122,7 +122,7 @@ export async function registerRoutes(
   // Deleted Records - Admin Only
   app.get("/api/admin/deleted-records", async (req, res) => {
     // Check for Admin role
-    if (!req.isAuthenticated() || (req.user.role !== "admin" && req.user.role !== "restricted_admin")) {
+    if (!req.isAuthenticated() || (req.user.role !== "admin" && req.user.role !== "restricted_admin" && req.user.role !== "user")) {
       return res.status(403).send("Unauthorized. Admin access required.");
     }
 
@@ -154,7 +154,7 @@ export async function registerRoutes(
 
   app.get("/api/admin/short-payments", async (req, res) => {
     // Check for Admin role
-    if (!req.isAuthenticated() || (req.user.role !== "admin" && req.user.role !== "restricted_admin")) {
+    if (!req.isAuthenticated() || (req.user.role !== "admin" && req.user.role !== "restricted_admin" && req.user.role !== "user")) {
       return res.status(403).send("Unauthorized. Admin access required.");
     }
 
