@@ -1407,6 +1407,20 @@ export default function Reports() {
                     {formatCurrency(summary.closingBalance)}
                   </div>
                   <p className="text-xs text-muted-foreground">Outstanding after period</p>
+                  <div className="pt-2 border-t border-muted/30 mt-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground">1. Opening Balance:</span>
+                      <span className={`font-medium ${summary.openingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`}>{formatCurrency(summary.openingBalance)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs mt-1">
+                      <span className="text-muted-foreground">2. Total Sales (+):</span>
+                      <span className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(summary.totalSales)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs mt-1">
+                      <span className="text-muted-foreground">3. Payments (-):</span>
+                      <span className="font-medium text-green-600 dark:text-green-500">{formatCurrency(summary.paymentsInPeriod)}</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
