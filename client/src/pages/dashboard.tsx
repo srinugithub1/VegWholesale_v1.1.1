@@ -169,7 +169,16 @@ export default function Dashboard() {
     queryKey: ["/api/all-vehicle-inventories"],
   });
 
-  const isLoading = vendorsLoading || customersLoading || productsLoading || invoicesLoading || purchasesLoading || paymentsLoading || vehiclesLoading;
+  const { data: deletedRecordsResult, isLoading: deletedLoading } = useQuery<{ records: any[] }>({
+    queryKey: ["/api/admin/deleted-records", {
+      // Fetch a wide range or just for general history if needed
+      // For dashboard, we might need all deletions that affect balance
+      limit: 1000
+    }],
+  });
+  const deletedRecords = deletedRecordsResult?.records || [];
+
+  const isLoading = vendorsLoading || customersLoading || productsLoading || invoicesLoading || purchasesLoading || paymentsLoading || vehiclesLoading || deletedLoading;
 
   // Filter data by selected shop
   const { invoices, purchases, shopStock } = useMemo(() => {
@@ -236,15 +245,19 @@ export default function Dashboard() {
       .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
 
     const shopInvoiceIds = new Set(invoices.map(i => i.id));
+    const deletedInvoiceIds = new Set(deletedRecords.map(r => r.recordId));
 
     const filteredPayments = customerPayments.filter(p => {
       // If payment is linked to an invoice, check if that invoice is in our current list
       if (p.invoiceId) {
-        // If the invoice exists in DB but isn't in our shop list, exclude it
-        // BUT if the invoice was DELETED (orphan), we should include the payment
-        // to match the realized cash reporting.
+        // If it's linked to an active invoice BUT not in this shop, exclude it
         const linkedInvoiceExists = allInvoices.some(inv => inv.id === p.invoiceId);
         if (linkedInvoiceExists && !shopInvoiceIds.has(p.invoiceId)) {
+          return false;
+        }
+
+        // If it's linked to a deleted invoice, exclude it (to match reports logic)
+        if (deletedInvoiceIds.has(p.invoiceId)) {
           return false;
         }
       }
