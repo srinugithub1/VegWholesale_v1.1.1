@@ -223,9 +223,9 @@ export default function Reports() {
       const isCash = cName.includes('cash') || cName === 'direct customer';
 
       if (isCash) {
-        acc.cashSales += (inv.subtotal || 0);
+        acc.cashSales += (inv.grandTotal || 0);
       } else {
-        acc.creditSales += (inv.subtotal || 0);
+        acc.creditSales += (inv.grandTotal || 0);
       }
       return acc;
     }, { cashSales: 0, creditSales: 0 });
@@ -550,9 +550,9 @@ export default function Reports() {
     const salesBreakdown = reportItems.reduce((acc, item) => {
       const isCash = item.type === "Direct Customer" || item.type === "CASH";
       if (isCash) {
-        acc.cashSales += (item.subtotal || 0);
+        acc.cashSales += (item.total || 0);
       } else {
-        acc.creditSales += (item.subtotal || 0);
+        acc.creditSales += (item.total || 0);
       }
       return acc;
     }, { cashSales: 0, creditSales: 0 });
@@ -1473,10 +1473,6 @@ export default function Reports() {
                   <div className="flex justify-between items-center text-xs mt-1">
                     <span className="text-muted-foreground">2. Credit Sale:</span>
                     <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.creditSales)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs mt-1">
-                    <span className="text-muted-foreground">3. Hamali Amount:</span>
-                    <span className="font-medium text-green-600 dark:text-green-500">{formatCurrency(reportSummary.totalHamali)}</span>
                   </div>
                 </div>
               </CardContent>
