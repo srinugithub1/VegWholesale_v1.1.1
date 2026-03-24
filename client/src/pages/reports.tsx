@@ -134,7 +134,7 @@ export default function Reports() {
     }],
   });
   const allDeletedInvoiceIds = new Set((allDeletedRecordsResult?.records || [])
-    .filter(r => r.tableName === 'invoices')
+    .filter(r => r.tableName === 'invoices' && r.action === 'delete')
     .map(r => r.recordId));
 
   const { data: deletedRecordsResult } = useQuery<{ records: any[], total: number }>({

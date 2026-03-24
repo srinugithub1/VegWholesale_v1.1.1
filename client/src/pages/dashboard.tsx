@@ -244,7 +244,9 @@ export default function Dashboard() {
       .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
 
     const shopInvoiceIds = new Set(invoices.map(i => i.id));
-    const deletedInvoiceIds = new Set(deletedRecords.map(r => r.recordId));
+    const deletedInvoiceIds = new Set(deletedRecords
+      .filter(r => r.tableName === 'invoices' && r.action === 'delete')
+      .map(r => r.recordId));
 
     const filteredPayments = customerPayments.filter(p => {
       // If payment is linked to an invoice, check if that invoice is in our current list
