@@ -128,6 +128,15 @@ export default function Reports() {
   });
   const customerPayments = Array.isArray(rawCustomerPayments) ? rawCustomerPayments : [];
 
+  const { data: allDeletedRecordsResult } = useQuery<{ records: any[], total: number }>({
+    queryKey: ["/api/admin/deleted-records", {
+      limit: 10000 // Large limit to catch all relevant deletions for balance filtering
+    }],
+  });
+  const allDeletedInvoiceIds = new Set((allDeletedRecordsResult?.records || [])
+    .filter(r => r.tableName === 'invoices')
+    .map(r => r.recordId));
+
   const { data: deletedRecordsResult } = useQuery<{ records: any[], total: number }>({
     queryKey: ["/api/admin/deleted-records", {
       fromDate: fromDate ? format(fromDate, "yyyy-MM-dd") : undefined,
@@ -270,6 +279,16 @@ export default function Reports() {
         const vId = vehicleId || linkedInvoice?.vehicleId;
         const vehicle = vehicles.find(v => v.id === vId);
         if (vehicle && vehicle.shop !== shop) return false;
+
+        // If it's a payment linked to an invoice, and that invoice exists but is in a different shop
+        if (item.invoiceId && linkedInvoice && !invoices.some(inv => inv.id === item.invoiceId)) {
+          return false;
+        }
+      }
+
+      // Exclude payments linked to deleted invoices (orphans)
+      if (item.invoiceId && allDeletedInvoiceIds.has(item.invoiceId)) {
+        return false;
       }
 
       return true;

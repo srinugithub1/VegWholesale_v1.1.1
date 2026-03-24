@@ -171,9 +171,8 @@ export default function Dashboard() {
 
   const { data: deletedRecordsResult, isLoading: deletedLoading } = useQuery<{ records: any[] }>({
     queryKey: ["/api/admin/deleted-records", {
-      // Fetch a wide range or just for general history if needed
-      // For dashboard, we might need all deletions that affect balance
-      limit: 1000
+      // Fetch a wide range for balance filtering
+      limit: 10000
     }],
   });
   const deletedRecords = deletedRecordsResult?.records || [];
