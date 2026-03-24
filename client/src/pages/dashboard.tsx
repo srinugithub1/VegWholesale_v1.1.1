@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   TrendingUp,
   TrendingDown,
+  Wallet,
 } from "lucide-react";
 import {
   BarChart,
@@ -237,7 +238,7 @@ export default function Dashboard() {
     .filter((i) => i.date === today)
     .reduce((acc, i) => acc + i.grandTotal, 0);
 
-  // Calculate opening and closing balances
+  // Calculate opening and closing balances with detailed breakdowns
   const balances = useMemo(() => {
     const totalSalesBeforeToday = invoices
       .filter(inv => inv.date < today)
@@ -271,18 +272,64 @@ export default function Dashboard() {
 
     const openingBalance = totalSalesBeforeToday - totalPaymentsBeforeToday;
 
-    const todayTotalSales = invoices
-      .filter(inv => inv.date === today)
-      .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+    // Today's Sales Breakdown
+    const todayInvoices = invoices.filter(inv => inv.date === today);
+    const todaySalesBreakdown = todayInvoices.reduce((acc, inv) => {
+      const customer = customers.find(c => c.id === inv.customerId);
+      const cName = (customer?.name || "").toLowerCase();
+      const isCash = cName.includes('cash') || cName === 'direct customer';
 
-    const todayPayments = filteredPayments
-      .filter(p => p.date === today)
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      if (isCash) {
+        acc.cashSales += (inv.subtotal || 0);
+      } else {
+        acc.creditSales += (inv.subtotal || 0);
+      }
+      acc.hamaliAmount += (inv.hamaliChargeAmount || 0);
+      return acc;
+    }, { cashSales: 0, creditSales: 0, hamaliAmount: 0 });
 
-    const closingBalance = openingBalance + todayTotalSales - todayPayments;
+    const todayTotalSales = todayInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
 
-    return { openingBalance, closingBalance, todayPayments };
-  }, [invoices, customerPayments, today, customers, allInvoices, vehicles, shop]);
+    // Payments Received Breakdown
+    const todayPaymentsList = filteredPayments.filter(p => p.date === today);
+    const todayPaymentsBreakdown = {
+      directCash: 0,
+      customerPayments: 0,
+      deletedAmount: 0,
+    };
+
+    // Calculate Deleted Amount from archived invoices today
+    todayPaymentsBreakdown.deletedAmount = deletedRecords
+      .filter(r => r.tableName === 'invoices' && r.action === 'delete')
+      .reduce((sum, r) => sum + (Number(r.grandTotal) || 0), 0);
+
+    todayPaymentsList.forEach(p => {
+      if (p.invoiceId) {
+        const inv = allInvoices.find(i => i.id === p.invoiceId);
+        const customer = customers.find(c => c.id === (inv?.customerId || p.customerId));
+        const cName = (customer?.name || "").toLowerCase();
+        if (cName.includes('cash') || cName === 'direct customer') {
+          todayPaymentsBreakdown.directCash += (inv?.subtotal || p.amount || 0);
+        } else {
+          todayPaymentsBreakdown.customerPayments += (p.amount || 0);
+        }
+      } else {
+        todayPaymentsBreakdown.customerPayments += (p.amount || 0);
+      }
+    });
+
+    const todayPaymentsBigNumber = todayPaymentsBreakdown.directCash + todayPaymentsBreakdown.customerPayments;
+    const closingBalance = openingBalance + todayTotalSales - todayPaymentsBigNumber;
+
+    return {
+      openingBalance,
+      closingBalance,
+      todayTotalSales,
+      todayPayments: todayPaymentsBigNumber,
+      todaySalesBreakdown,
+      todayPaymentsBreakdown,
+    };
+  }, [invoices, customerPayments, today, customers, allInvoices, vehicles, shop, deletedRecords]);
 
   const recentInvoices = [...invoices]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -369,7 +416,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Opening Balance */}
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
             <div className="flex items-center gap-2">
@@ -388,38 +436,93 @@ export default function Dashboard() {
             <IndianRupee className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold font-mono ${balances.openingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-opening-balance">
+            <div className={`text-2xl font-bold font-mono ${balances.openingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`}>
               ₹{balances.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">Outstanding at start of day</p>
+            <p className="text-xs text-muted-foreground">Outstanding before period</p>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Card 2: Today's Sales */}
+        <Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Today's Sales</CardTitle>
+              <CardTitle className="text-sm font-medium text-white">Today's Sales</CardTitle>
               <TooltipProvider>
                 <UiTooltip>
                   <TooltipTrigger asChild>
                     <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[300px]">
-                    <p>Grand total of all invoices created today (including Hamali charges). These are credits added to customer accounts today.</p>
+                    <p>Total of all invoices created today. Broken down into Cash sales vs Credit sales.</p>
                   </TooltipContent>
                 </UiTooltip>
               </TooltipProvider>
             </div>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono" data-testid="text-today-sales">
-              ₹{todaySales.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            <div className="text-2xl font-bold font-mono">
+              ₹{balances.todayTotalSales.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">{invoices.filter((i) => i.date === today).length} invoices today</p>
+            <p className="text-xs text-muted-foreground mt-1">{invoices.filter(i => i.date === today).length} invoices today</p>
+            <div className="mt-4 space-y-1 text-sm border-t pt-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">1. Cash Sale:</span>
+                <span className="font-medium text-orange-500">₹{balances.todaySalesBreakdown.cashSales.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">2. Credit Sale:</span>
+                <span className="font-medium text-blue-500">₹{balances.todaySalesBreakdown.creditSales.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between border-t border-dashed mt-1 pt-1">
+                <span className="text-muted-foreground">3. Hamali Amount:</span>
+                <span className="font-medium text-green-500">₹{balances.todaySalesBreakdown.hamaliAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
+        {/* Card 3: Payments Received */}
+        <Card className="bg-card">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium text-green-500">Payments Received</CardTitle>
+              <TooltipProvider>
+                <UiTooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[300px]">
+                    <p>Total money collected today. Includes immediate cash from sales and payments for past credits.</p>
+                  </TooltipContent>
+                </UiTooltip>
+              </TooltipProvider>
+            </div>
+            <Wallet className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold font-mono">
+              ₹{balances.todayPayments.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            </div>
+            <div className="mt-4 space-y-1 text-sm border-t pt-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">1. Cash Sale (Direct):</span>
+                <span className="font-medium text-orange-500">₹{balances.todayPaymentsBreakdown.directCash.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">2. Customer Payment:</span>
+                <span className="font-medium text-blue-500">₹{balances.todayPaymentsBreakdown.customerPayments.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between border-t border-dashed mt-1 pt-1">
+                <span className="text-muted-foreground">3. Deleted Record Info:</span>
+                <span className="font-medium text-red-500">₹{balances.todayPaymentsBreakdown.deletedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card 4: Closing Balance */}
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
             <div className="flex items-center gap-2">
@@ -432,19 +535,33 @@ export default function Dashboard() {
                   <TooltipContent className="max-w-[300px]">
                     <div className="space-y-2">
                       <p className="font-semibold underline">Closing Balance = Opening + Sales - Payments</p>
-                      <p>This is the total net credit owed by all customers right now.</p>
+                      <p>Outstanding credit at the END of today based on today's activity.</p>
                     </div>
                   </TooltipContent>
                 </UiTooltip>
               </TooltipProvider>
             </div>
-            <IndianRupee className="h-4 w-4 text-primary" />
+            <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold font-mono ${balances.closingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`} data-testid="text-closing-balance">
+            <div className={`text-2xl font-bold font-mono ${balances.closingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`}>
               ₹{balances.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs text-muted-foreground">Current outstanding (₹{balances.todayPayments.toLocaleString("en-IN")} received today)</p>
+            <p className="text-xs text-muted-foreground mt-1">Outstanding after period</p>
+            <div className="mt-4 space-y-1 text-sm border-t pt-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">1. Opening Balance:</span>
+                <span className="font-medium text-orange-500">₹{balances.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">2. Total Sales (+):</span>
+                <span className="font-medium text-blue-500">₹{balances.todayTotalSales.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between border-t border-dashed mt-1 pt-1">
+                <span className="text-muted-foreground">3. Payments (-):</span>
+                <span className="font-medium text-green-500">₹{balances.todayPayments.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
