@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { generateMastersXML, generateSalesVouchersXML, generatePurchaseVouchersXML, wrapTallyXML, SALES_FIELDS } from "@/lib/tally-xml";
+import { generateSalesCSV } from "@/lib/tally-csv";
 import type { Invoice, InvoiceItem, Purchase, Customer, Vendor, Product } from "@shared/schema";
 
 export default function TallyExport() {
@@ -112,6 +113,42 @@ export default function TallyExport() {
         }
     };
 
+    const handleCSVExport = () => {
+        if (!date) {
+            toast({ title: "Please select a date", variant: "destructive" });
+            return;
+        }
+
+        try {
+            const selectedDateStr = format(date, "yyyy-MM-dd");
+            const dailyInvoices = invoices.filter(inv => inv.date === selectedDateStr);
+
+            if (dailyInvoices.length === 0) {
+                toast({ title: "No sales found for selected date", variant: "default" });
+                return;
+            }
+
+            const csvContent = generateSalesCSV(dailyInvoices, customers, invoiceItems, productsResult);
+
+            // Trigger Download
+            const blob = new Blob([csvContent], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `Tally_Sales_${selectedDateStr}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            toast({ title: "CSV File Generated", description: "You can now import this file into Tally." });
+
+        } catch (err: any) {
+            console.error("CSV Export error:", err);
+            toast({ title: "CSV Export Failed", description: err.message, variant: "destructive" });
+        }
+    };
+
     return (
         <div className="p-8 space-y-8 max-w-4xl mx-auto">
             <div className="space-y-1">
@@ -200,10 +237,17 @@ export default function TallyExport() {
                         </div>
                     </div>
 
-                    <Button onClick={handleExport} className="w-full sm:w-auto">
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Tally XML
-                    </Button>
+                    <div className="flex flex-wrap gap-4">
+                        <Button onClick={handleExport} variant="outline" className="flex-1 sm:flex-none">
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Tally XML
+                        </Button>
+
+                        <Button onClick={handleCSVExport} className="flex-1 sm:flex-none">
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Tally CSV
+                        </Button>
+                    </div>
 
                 </CardContent>
             </Card>
