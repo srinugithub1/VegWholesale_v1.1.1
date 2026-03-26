@@ -348,9 +348,17 @@ export default function Reports() {
           // Already accounted for in paymentsBreakdown.deletedAmount via deletedInvoicesForPeriod
           // We don't add to active ones as per user request to exclude deleted from main total
         } else {
-          // Generic payment or linked to ancient deleted invoice? 
-          // For now, treat as Customer Payment (Credit)
-          paymentsBreakdown.customerPayments += (p.amount || 0);
+          // Generic payment or linked to ancient deleted invoice?
+          // Fix: Check if this unlinked payment belongs to a "Cash" customer
+          const customer = customers.find(c => c.id === p.customerId);
+          const cName = (customer?.name || "").toLowerCase();
+          const isCash = cName.includes('cash') || cName === 'direct customer';
+
+          if (isCash) {
+            paymentsBreakdown.directCash += (p.amount || 0);
+          } else {
+            paymentsBreakdown.customerPayments += (p.amount || 0);
+          }
         }
       }
     });
