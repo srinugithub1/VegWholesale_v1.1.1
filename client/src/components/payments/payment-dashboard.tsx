@@ -39,7 +39,13 @@ export function PaymentDashboard({
     // Note: detailed logic might include opening balances, but for shop view, this is transaction-based.
     const totalVendorOutstanding = totalPurchases - totalVendorPaid; // Can be negative if overpaid or opening balance missing
 
-    const totalSales = invoices.reduce((sum, i) => sum + (i.grandTotal || 0), 0);
+    const totalSales = invoices.reduce((sum, i) => {
+        let sTotal = Number(i.subtotal) || 0;
+        if (i.invoiceNumber && i.invoiceNumber.startsWith('OB-') && sTotal === 0) {
+            sTotal = Number(i.grandTotal) || 0;
+        }
+        return sum + sTotal;
+    }, 0);
     const totalCustomerReceived = customerPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
     // Customer Receivable = Total Sales - Total Received
@@ -89,7 +95,11 @@ export function PaymentDashboard({
                     balance: 0
                 };
             }
-            customerStats[inv.customerId].balance += (inv.grandTotal || 0);
+            let sTotal = Number(inv.subtotal) || 0;
+            if (inv.invoiceNumber && inv.invoiceNumber.startsWith('OB-') && sTotal === 0) {
+                sTotal = Number(inv.grandTotal) || 0;
+            }
+            customerStats[inv.customerId].balance += sTotal;
         });
 
         // Subtract Credits (Payments)
