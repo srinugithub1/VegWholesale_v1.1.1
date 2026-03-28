@@ -580,18 +580,33 @@ export default function Payments() {
 
   const getInvoiceTotal = (invoiceId: string) => {
     const edited = editedInvoices[invoiceId];
+    const invoice = customerInvoices.find(inv => inv.id === invoiceId);
+    
     if (!edited) return { subtotal: 0, hamali: 0, grandTotal: 0 };
 
-    const subtotal = edited.items.reduce((sum, item) => sum + item.total, 0);
+    // If there are edited items, calculate subtotal from them
+    let subtotal = edited.items.reduce((sum, item) => sum + item.total, 0);
+    
+    // If no items (Opening Balance invoice or empty items), fall back to original subtotal
+    if (edited.items.length === 0 && invoice) {
+      subtotal = invoice.subtotal;
+    }
+
     const hamali = edited.hamaliChargeAmount;
     return { subtotal, hamali, grandTotal: subtotal + hamali };
   };
+
+  const subtotalAllInvoices = useMemo(() => {
+    return Object.keys(editedInvoices).reduce((sum, invoiceId) => {
+      return sum + getInvoiceTotal(invoiceId).subtotal;
+    }, 0);
+  }, [editedInvoices, customerInvoices]);
 
   const grandTotalAllInvoices = useMemo(() => {
     return Object.keys(editedInvoices).reduce((sum, invoiceId) => {
       return sum + getInvoiceTotal(invoiceId).grandTotal;
     }, 0);
-  }, [editedInvoices]);
+  }, [editedInvoices, customerInvoices]);
 
   const handleVendorPaymentClick = (vendorId: string) => {
     setSelectedVendor(vendorId);
@@ -1257,7 +1272,8 @@ export default function Payments() {
 
     await saveInvoiceChanges.mutateAsync();
 
-    const paymentAmount = customerPaymentAmount ? parseFloat(customerPaymentAmount) : grandTotalAllInvoices;
+    const currentCreditBalance = subtotalAllInvoices - (customerSummary?.totalPayments || 0);
+    const paymentAmount = customerPaymentAmount ? parseFloat(customerPaymentAmount) : Math.max(0, currentCreditBalance);
 
     // Link payment to the first unpaid/partially paid invoice
     const invoiceId = customerInvoices.length > 0 ? customerInvoices[0].id : undefined;
@@ -2084,8 +2100,8 @@ export default function Payments() {
                           {customerSummary && (
                             <div className="flex items-center gap-4 text-sm">
                               <div className="flex flex-col items-end">
-                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">Total Amount</span>
-                                <span className="font-mono text-lg font-bold text-foreground">₹{grandTotalAllInvoices.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">Total Sales (Credit)</span>
+                                <span className="font-mono text-lg font-bold text-foreground">₹{subtotalAllInvoices.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               </div>
                               
                               <div className="h-8 w-px bg-border mx-1" />
@@ -2102,7 +2118,7 @@ export default function Payments() {
                                 </div>
                                 <div className="h-6 w-px bg-black/20" />
                                 <span className="font-mono font-black text-xl tabular-nums">
-                                  ₹{(grandTotalAllInvoices - (customerSummary?.totalPayments || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  ₹{(subtotalAllInvoices - (customerSummary?.totalPayments || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                               </div>
                             </div>
@@ -2246,7 +2262,7 @@ export default function Payments() {
                               <span className="font-bold text-lg uppercase">Current Balance Due:</span>
                             </div>
                             <div className="text-3xl font-black font-mono">
-                              ₹{(grandTotalAllInvoices - (customerSummary?.totalPayments || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              ₹{(subtotalAllInvoices - (customerSummary?.totalPayments || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                           </div>
                         </div>
