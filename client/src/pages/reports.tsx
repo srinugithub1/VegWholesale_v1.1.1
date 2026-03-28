@@ -355,7 +355,18 @@ export default function Reports() {
       .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     const openingBalance = salesBeforePeriod - paymentsBeforePeriod;
 
-    const salesInPeriod = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
+    let actualSalesInPeriod = 0;
+    let oldBalancesInPeriod = 0;
+
+    filteredInvoices.forEach(inv => {
+      const gTotal = Number(inv.grandTotal) || 0;
+      if (inv.invoiceNumber && inv.invoiceNumber.startsWith('OB-')) {
+        oldBalancesInPeriod += gTotal;
+      } else {
+        actualSalesInPeriod += gTotal;
+      }
+    });
+
     const paymentsBreakdown = {
       directCash: 0,
       customerPayments: 0,
@@ -384,10 +395,11 @@ export default function Reports() {
     });
 
     const paymentsInPeriod = paymentsBreakdown.directCash + paymentsBreakdown.customerPayments;
-    const closingBalance = openingBalance + salesInPeriod - paymentsInPeriod;
+    const closingBalance = openingBalance + oldBalancesInPeriod + actualSalesInPeriod - paymentsInPeriod;
 
     return {
-      totalSales,
+      totalSales: actualSalesInPeriod,
+      oldBalancesInPeriod,
       totalSubtotal,
       totalHamali,
       totalWeight,
@@ -408,6 +420,7 @@ export default function Reports() {
     const dateMap = new Map<string, DailySummary>();
 
     filteredInvoices.forEach((inv) => {
+      if (inv.invoiceNumber && inv.invoiceNumber.startsWith('OB-')) return;
       const existing = dateMap.get(inv.date) || {
         date: inv.date,
         sales: 0,
@@ -659,8 +672,9 @@ export default function Reports() {
   ];
 
   const downloadSalesReport = () => {
+    const salesInvoices = filteredInvoices.filter(inv => !(inv.invoiceNumber && inv.invoiceNumber.startsWith('OB-')));
     const headers = ["Invoice #", "Date", "Vehicle", "Customer", "Vendor", "Weight (KG)", "Subtotal", "Hamali", "Grand Total"];
-    const rows = filteredInvoices.map((inv) => [
+    const rows = salesInvoices.map((inv) => [
       inv.invoiceNumber || "",
       inv.date || "",
       getVehicleNumber(inv.vehicleId),
@@ -675,7 +689,7 @@ export default function Reports() {
       "TOTAL",
       "",
       "",
-      `${filteredInvoices.length} sales`,
+      `${salesInvoices.length} sales`,
       "",
       summary.totalWeight.toFixed(2),
       summary.totalSubtotal.toFixed(2),
@@ -1526,7 +1540,7 @@ export default function Reports() {
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[300px]">
                           <div className="space-y-2">
-                            <p className="font-semibold underline">Closing = Opening + Sales - Payments</p>
+                            <p className="font-semibold underline">Closing = Opening + (Old Balances) + Sales - Payments</p>
                             <p>Total net credit owed by customers at the end of the selected period (or today if range ends today).</p>
                           </div>
                         </TooltipContent>
@@ -1545,12 +1559,18 @@ export default function Reports() {
                       <span className="text-muted-foreground">1. Opening Balance:</span>
                       <span className={`font-medium ${summary.openingBalance > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-green-600 dark:text-green-500'}`}>{formatCurrency(summary.openingBalance)}</span>
                     </div>
+                    {summary.oldBalancesInPeriod > 0 && (
+                      <div className="flex justify-between items-center text-xs mt-1">
+                        <span className="text-muted-foreground">2. Old Balances Uploaded (+):</span>
+                        <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.oldBalancesInPeriod)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center text-xs mt-1">
-                      <span className="text-muted-foreground">2. Total Sales (+):</span>
+                      <span className="text-muted-foreground">{summary.oldBalancesInPeriod > 0 ? '3.' : '2.'} Total Sales (+):</span>
                       <span className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(summary.totalSales)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs mt-1">
-                      <span className="text-muted-foreground">3. Payments (-):</span>
+                      <span className="text-muted-foreground">{summary.oldBalancesInPeriod > 0 ? '4.' : '3.'} Payments (-):</span>
                       <span className="font-medium text-green-600 dark:text-green-500">{formatCurrency(summary.paymentsInPeriod)}</span>
                     </div>
                   </div>
