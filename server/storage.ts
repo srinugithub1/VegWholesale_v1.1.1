@@ -1398,7 +1398,7 @@ export class DatabaseStorage implements IStorage {
     if (tableName === "invoices") {
       await db.delete(invoiceItems);
       // SAFETY: Protect Opening Balance invoices even during clearTable
-      await db.delete(invoices).where(sql`NOT invoice_number LIKE 'OB-%'`);
+      await db.delete(invoices).where(sql`invoice_number IS NULL OR invoice_number NOT LIKE 'OB-%'`);
       console.log("Cleared non-Opening Balance invoices.");
     } else if (tableName === "purchases") {
       await db.delete(purchaseItems);
