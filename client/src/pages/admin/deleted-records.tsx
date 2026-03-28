@@ -64,8 +64,8 @@ export default function ModifiedRecords() {
                 limit: limit.toString(),
             });
 
-            if (dateRange?.from) params.append("fromDate", dateRange.from.toISOString());
-            if (dateRange?.to) params.append("toDate", dateRange.to.toISOString());
+            if (dateRange?.from) params.append("fromDate", format(dateRange.from, "yyyy-MM-dd"));
+            if (dateRange?.to) params.append("toDate", format(dateRange.to, "yyyy-MM-dd"));
 
             const res = await fetch(`/api/admin/short-payments?${params.toString()}`);
             if (!res.ok) throw new Error("Failed to fetch short payments");

@@ -236,13 +236,13 @@ export default function Dashboard() {
 
   const todaySales = invoices
     .filter((i) => i.date === today)
-    .reduce((acc, i) => acc + i.grandTotal, 0);
+    .reduce((acc, i) => acc + (i.subtotal || 0), 0);
 
   // Calculate opening and closing balances with detailed breakdowns
   const balances = useMemo(() => {
     const totalSalesBeforeToday = invoices
       .filter(inv => inv.date < today)
-      .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+      .reduce((sum, inv) => sum + (inv.subtotal || 0), 0);
 
     const shopInvoiceIds = new Set(invoices.map(i => i.id));
     const deletedInvoiceIds = new Set(deletedRecords
@@ -288,7 +288,7 @@ export default function Dashboard() {
       return acc;
     }, { cashSales: 0, creditSales: 0, hamaliAmount: 0 });
 
-    const todayTotalSales = todayInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+    const todayTotalSales = todayInvoices.reduce((sum, inv) => sum + (inv.subtotal || 0), 0);
 
     // Payments Received Breakdown
     const todayPaymentsList = filteredPayments.filter(p => p.date === today);
@@ -301,7 +301,7 @@ export default function Dashboard() {
     // Calculate Deleted Amount from archived invoices today
     todayPaymentsBreakdown.deletedAmount = deletedRecords
       .filter(r => r.tableName === 'invoices' && r.action === 'delete')
-      .reduce((sum, r) => sum + (Number(r.grandTotal) || 0), 0);
+      .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
     todayPaymentsList.forEach(p => {
       if (p.invoiceId) {
@@ -364,7 +364,7 @@ export default function Dashboard() {
     const salesByDate = new Map<string, { sales: number; count: number }>();
     invoices.forEach((inv) => {
       const existing = salesByDate.get(inv.date) || { sales: 0, count: 0 };
-      existing.sales += inv.grandTotal;
+      existing.sales += (inv.subtotal || 0);
       existing.count += 1;
       salesByDate.set(inv.date, existing);
     });

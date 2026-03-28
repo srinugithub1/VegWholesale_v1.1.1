@@ -965,7 +965,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCustomerBalance(customerId: string): Promise<{ totalInvoices: number; totalPayments: number; balance: number }> {
-    const invoiceResult = await db.select({ total: sql<number>`COALESCE(SUM(${invoices.grandTotal}), 0)` })
+    const invoiceResult = await db.select({ total: sql<number>`COALESCE(SUM(${invoices.subtotal}), 0)` })
       .from(invoices)
       .where(eq(invoices.customerId, customerId));
 
@@ -981,11 +981,6 @@ export class DatabaseStorage implements IStorage {
       totalPayments,
       balance: totalInvoices - totalPayments,
     };
-    return {
-      totalInvoices,
-      totalPayments,
-      balance: totalInvoices - totalPayments,
-    };
   }
 
   async getCustomerBalances(): Promise<(Customer & { totalInvoices: number; totalPayments: number; balance: number })[]> {
@@ -993,7 +988,7 @@ export class DatabaseStorage implements IStorage {
 
     const invoiceStats = await db.select({
       customerId: invoices.customerId,
-      total: sql<number>`COALESCE(SUM(${invoices.grandTotal}), 0)`
+      total: sql<number>`COALESCE(SUM(${invoices.subtotal}), 0)`
     }).from(invoices).groupBy(invoices.customerId);
 
     const paymentStats = await db.select({
@@ -1068,7 +1063,7 @@ export class DatabaseStorage implements IStorage {
     // Get total invoices per customer
     const invoiceData = await db.select({
       customerId: invoices.customerId,
-      total: sql<number>`COALESCE(SUM(${invoices.grandTotal}), 0)`
+      total: sql<number>`COALESCE(SUM(${invoices.subtotal}), 0)`
     })
       .from(invoices)
       .groupBy(invoices.customerId);
@@ -1649,6 +1644,26 @@ export class DatabaseStorage implements IStorage {
     }).returning();
 
     return invoice;
+  }
+  
+  async clearOpeningBalances(customerId: string): Promise<boolean> {
+    const customerInvoices = await db.select().from(invoices).where(eq(invoices.customerId, customerId));
+    const obInvoices = customerInvoices.filter(inv => inv.invoiceNumber.startsWith("OB-"));
+    const obIds = obInvoices.map(inv => inv.id);
+    
+    if (obIds.length === 0) return true;
+    
+    // Safety archive
+    for (const inv of obInvoices) {
+       await this.archiveRecord('invoices', inv.id, inv, 'system', 'clear_ob');
+    }
+    
+    // Since OB invoices usually don't have items or stock movements, a simple delete is mostly fine, 
+    // but let's be thorough and delete associated items if any
+    await db.delete(invoiceItems).where(inArray(invoiceItems.invoiceId, obIds));
+    await db.delete(invoices).where(inArray(invoices.id, obIds));
+    
+    return true;
   }
 }
 

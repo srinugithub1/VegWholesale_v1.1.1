@@ -15,6 +15,7 @@ import {
   insertHamaliCashPaymentSchema,
   insertInvoiceSchema,
   insertInvoiceItemSchema,
+  invoices,
   type User as DbUser,
   type SystemMetric,
 } from "@shared/schema";
@@ -102,6 +103,21 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Error clearing table:", error);
       res.status(500).json({ error: error.message || "Failed to clear table" });
+    }
+  });
+
+  app.post("/api/admin/clear-opening-balances", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).send("Unauthorized");
+    }
+
+    try {
+      // Direct SQL to bypass protection in clearTable
+      await db.delete(invoices).where(sql`invoice_number LIKE 'OB-%'`);
+      res.json({ message: "All Opening Balance invoices cleared successfully" });
+    } catch (error) {
+      console.error("Error clearing opening balances:", error);
+      res.status(500).json({ error: "Failed to clear opening balances" });
     }
   });
 
@@ -1211,6 +1227,26 @@ export async function registerRoutes(
     }
   });
 
+  // Admin Tools
+  app.post("/api/admin/clear-opening-balances", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    
+    try {
+      const { customerId } = req.body;
+      if (!customerId) {
+        return res.status(400).json({ error: "Missing customerId" });
+      }
+      
+      const success = await storage.clearOpeningBalances(customerId);
+      res.json({ success });
+    } catch (error) {
+      console.error("Clear OB error:", error);
+      res.status(500).json({ error: "Failed to clear opening balances" });
+    }
+  });
+
   // Reports
   app.get("/api/reports/profit-loss", async (req, res) => {
     try {
@@ -1296,7 +1332,8 @@ export async function registerRoutes(
         const customerInvoices = invoices.filter((i) => i.customerId === customer.id);
         const customerPayments = allCustomerPayments.filter((p) => p.customerId === customer.id);
 
-        const totalInvoiced = customerInvoices.reduce((sum, i) => sum + i.grandTotal, 0);
+        // USE SUBTOTAL for consistency with Credit Balances
+        const totalInvoiced = customerInvoices.reduce((sum, i) => sum + i.subtotal, 0);
         const totalPaid = customerPayments.reduce((sum, p) => sum + p.amount, 0);
         const balance = totalInvoiced - totalPaid;
 
