@@ -1387,7 +1387,7 @@ export class DatabaseStorage implements IStorage {
       "vehicles", "products", "stock_movements",
       "customer_payments", "vendor_payments", "vendor_returns",
       "hamali_cash_payments", "vehicle_inventory_movements",
-      "vehicle_inventory"
+      "vehicle_inventory", "deleted_records"
     ];
 
     if (!allowedTables.includes(tableName)) {
@@ -1426,6 +1426,8 @@ export class DatabaseStorage implements IStorage {
       await db.delete(vehicleInventoryMovements);
     } else if (tableName === "vehicle_inventory") {
       await db.delete(vehicleInventory);
+    } else if (tableName === "deleted_records") {
+      await db.delete(deletedRecords);
     } else {
       return false;
     }
@@ -1442,7 +1444,7 @@ export class DatabaseStorage implements IStorage {
       "vehicles", "products", "stock_movements",
       "customer_payments", "vendor_payments", "vendor_returns",
       "hamali_cash_payments", "vehicle_inventory_movements",
-      "vehicle_inventory"
+      "vehicle_inventory", "deleted_records"
     ];
 
     for (const table of allowedTables) {

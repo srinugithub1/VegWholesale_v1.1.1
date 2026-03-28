@@ -104,6 +104,12 @@ const TABLES: TableInfo[] = [
         label: "Vendor Returns",
         description: "Records of returned goods.",
         risk: "medium"
+    },
+    {
+        id: "deleted_records",
+        label: "Audit Logs",
+        description: "History of modified and deleted records.",
+        risk: "low"
     }
 ];
 
