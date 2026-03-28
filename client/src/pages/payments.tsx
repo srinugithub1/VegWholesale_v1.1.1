@@ -2042,310 +2042,313 @@ export default function Payments() {
                       {step === 'completed' && 'Payment has been recorded successfully'}
                     </DialogDescription>
                   </DialogHeader>
-
-                  {step === 'select' && (
-                    <div className="space-y-4 pt-4">
-                      {loadingInvoices ? (
-                        <div className="flex flex-col items-center justify-center py-12 space-y-4 text-muted-foreground">
-                          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                          <p>Loading customer details...</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <Label>Customer</Label>
-                          <Select value={selectedCustomer} onValueChange={handleCustomerSelect}>
-                            <SelectTrigger data-testid="select-customer">
-                              <SelectValue placeholder="Select customer" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {customers
-                                .filter(c => c.name.toLowerCase() !== "cash account" && c.name.toLowerCase() !== "cash sale account")
-                                .map((customer) => (
-                                  <SelectItem key={customer.id} value={customer.id}>
-                                    {customer.name}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                          <p className="text-sm text-muted-foreground">Select a customer to process payment</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {step === 'review' && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => setStep('select')}>
-                            <X className="h-4 w-4 mr-1" /> Back
-                          </Button>
-                          <Badge variant="secondary" className="text-xs">{filteredCustomerInvoices.length} Invoice(s)</Badge>
-                        </div>
-                        {customerSummary && (
-                          <div className="flex items-center gap-3 text-sm">
-                            <span className="text-muted-foreground font-medium">
-                              Total: <span className="font-mono text-base text-foreground">{customerSummary.totalInvoices.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
-                            </span>
-                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md border border-green-200 shadow-sm flex items-center gap-1">
-                              <span className="text-xs font-semibold uppercase">Paid:</span>
-                              <span className="font-mono font-bold text-base">{customerSummary.totalPayments.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
-                            </span>
-                            <span className={`${customerSummary.remainingBalance > 0 ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-green-100 text-green-800 border-green-200"} px-2 py-1 rounded-md border shadow-sm flex items-center gap-1`}>
-                              <span className="text-xs font-semibold uppercase">Due:</span>
-                              <span className="font-mono font-bold text-base">{customerSummary.remainingBalance.toLocaleString("en-IN", { style: "currency", currency: "INR" })}</span>
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="border rounded-md overflow-x-auto shadow-sm">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/40 uppercase text-xs hover:bg-muted/40">
-                              <TableHead className="w-[50px] text-center font-bold text-black">S.No</TableHead>
-                              <TableHead className="w-[100px] font-bold text-black">Date</TableHead>
-                              <TableHead className="w-[140px] font-bold text-black">Invoice No</TableHead>
-                              <TableHead className="w-[80px] text-center font-bold text-black">Shop</TableHead>
-                              <TableHead className="min-w-[150px] font-bold text-black">Product</TableHead>
-                              <TableHead className="w-[80px] text-center font-bold text-black">Qty</TableHead>
-                              <TableHead className="w-[100px] text-center font-bold text-black">Price/Unit</TableHead>
-                              <TableHead className="w-[200px] text-center font-bold text-black">Hamali Charge</TableHead>
-                              <TableHead className="w-[120px] text-right font-bold text-black">Total</TableHead>
-                              <TableHead className="w-[100px] text-center font-bold text-black">Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredCustomerInvoices.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                                  No invoices found for this customer
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              filteredCustomerInvoices.map((invoice, index) => {
-                                const edited = editedInvoices[invoice.id];
-                                const items = invoice.items;
-
-                                return items.map((item, itemIndex) => {
-                                  const isFirstItem = itemIndex === 0;
-                                  const editedItem = edited?.items?.find(e => e.itemId === item.id);
-                                  const quantity = editedItem?.quantity ?? item.quantity;
-                                  const unitPrice = editedItem?.unitPrice ?? item.unitPrice;
-                                  const total = editedItem?.total ?? item.total;
-
-                                  const hamaliBags = edited?.bags || 0;
-                                  const hamaliRate = edited?.ratePerBag || 0;
-                                  const hamaliAmount = edited?.hamaliChargeAmount || invoice.hamaliChargeAmount || 0;
-                                  const invoiceTotal = (edited?.items?.reduce((s, i) => s + i.total, 0) || invoice.subtotal) + hamaliAmount;
-
-                                  return (
-                                    <TableRow key={`${invoice.id}-${item.id}`} className={isFirstItem ? "border-t" : "border-0"}>
-                                      {isFirstItem && (
-                                        <>
-                                          <TableCell rowSpan={items.length} className="text-center align-top border-r bg-muted/5 font-medium">{index + 1}</TableCell>
-                                          <TableCell rowSpan={items.length} className="align-top border-r bg-muted/5 font-medium">
-                                            {invoice.date}
-                                          </TableCell>
-                                          <TableCell rowSpan={items.length} className="align-top border-r bg-muted/5">
-                                            <div className="font-mono text-[10px] text-muted-foreground break-all">{invoice.invoiceNumber}</div>
-                                          </TableCell>
-                                          <TableCell rowSpan={items.length} className="text-center align-top border-r bg-muted/5">
-                                            {invoice.shop && (
-                                              <Badge variant="outline" className={`text-xs px-1 ${invoice.shop === 45 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
-                                                Shop {invoice.shop}
-                                              </Badge>
-                                            )}
-                                          </TableCell>
-                                        </>
-                                      )}
-
-                                      <TableCell className="align-top border-r font-medium">{item.product?.name || 'Unknown'}</TableCell>
-
-                                      <TableCell className="text-center align-top border-r p-1 font-mono">
-                                        {quantity}
-                                      </TableCell>
-
-                                      <TableCell className="text-center align-top border-r p-1 font-mono">
-                                        ₹{unitPrice}
-                                      </TableCell>
-
-                                      {isFirstItem && (
-                                        <TableCell rowSpan={items.length} className="text-center align-top border-r bg-muted/5 p-2">
-                                          <div className="flex flex-col gap-1 items-center">
-                                            <div className="flex items-center gap-1 justify-center">
-                                              <Input
-                                                type="number"
-                                                className="h-7 w-12 px-1 text-center bg-white/50 border-muted-foreground/30 focus:border-primary"
-                                                value={hamaliBags || ''}
-                                                onChange={(e) => handleHamaliChange(invoice.id, 'bags', e.target.value)}
-                                                placeholder="Bags"
-                                              />
-                                              <span className="text-[10px] text-muted-foreground">×</span>
-                                              <Input
-                                                type="number"
-                                                className="h-7 w-12 px-1 text-center bg-white/50 border-muted-foreground/30 focus:border-primary"
-                                                value={hamaliRate || ''}
-                                                onChange={(e) => handleHamaliChange(invoice.id, 'ratePerBag', e.target.value)}
-                                                placeholder="Rate"
-                                              />
-                                              <span className="text-[10px] text-muted-foreground">=</span>
-                                            </div>
-                                            <div className="font-bold text-[11px] text-primary">
-                                              ₹{hamaliAmount.toLocaleString("en-IN")}
-                                            </div>
-                                          </div>
-                                        </TableCell>
-                                      )}
-
-                                      {isFirstItem && (
-                                        <TableCell rowSpan={items.length} className="text-right align-top border-r font-mono font-bold bg-muted/10 text-primary">
-                                          ₹{invoiceTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </TableCell>
-                                      )}
-
-                                      {isFirstItem && (
-                                        <TableCell rowSpan={items.length} className="text-center align-top bg-muted/5">
-                                          <Badge 
-                                            variant={invoice.status === 'completed' ? 'default' : 'secondary'} 
-                                            className={`text-[10px] uppercase font-bold ${invoice.status === 'completed' ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'}`}
-                                          >
-                                            {invoice.status === 'completed' ? 'Paid' : 'Pending'}
-                                          </Badge>
-                                        </TableCell>
-                                      )}
-                                    </TableRow>
-                                  );
-                                });
-                              })
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-
-                      <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg">
-                        <div className="text-sm font-medium">Grand Total (All Invoices):</div>
-                        <div className="text-2xl font-bold font-mono">
-                          {filteredCustomerInvoices.reduce((sum, inv) => {
-                            const edited = editedInvoices[inv.id];
-                            const hamaliAmount = edited?.hamaliChargeAmount || inv.hamaliChargeAmount || 0;
-                            const itemTotal = edited?.items?.reduce((s, i) => s + i.total, 0) || inv.subtotal;
-                            return sum + itemTotal + hamaliAmount;
-                          }, 0).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                        </div>
-                      </div>
-
-                      {/* Remaining Balance Section */}
-                      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                        <div className="flex justify-between items-center text-yellow-800">
-                          <div className="font-bold text-lg">Remaining Balance:</div>
-                          <div className="text-xl font-bold font-mono">
-                            {/* Dynamic Remaining Balance Calculation */}
-                            {(filteredCustomerInvoices.reduce((sum, inv) => {
-                              const edited = editedInvoices[inv.id];
-                              const hamaliAmount = edited?.hamaliChargeAmount || inv.hamaliChargeAmount || 0;
-                              const itemTotal = edited?.items?.reduce((s, i) => s + i.total, 0) || inv.subtotal;
-                              return sum + itemTotal + hamaliAmount;
-                            }, 0) - (customerSummary?.totalPayments || 0)).toLocaleString("en-IN", { style: "currency", currency: "INR" })}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-4 md:grid-cols-2 bg-muted/20 p-4 rounded-lg">
-                        <div className="space-y-2">
-                          <Label>Payment Method</Label>
-                          <Select value={customerPaymentMethod} onValueChange={setCustomerPaymentMethod}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="cash">Cash</SelectItem>
-                              <SelectItem value="bank">Bank Transfer</SelectItem>
-                              <SelectItem value="upi">UPI</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Payment Amount (Enter amount to pay now)</Label>
-                          <Input
-                            type="number"
-                            placeholder="Enter payment amount"
-                            value={customerPaymentAmount}
-                            onChange={(e) => setCustomerPaymentAmount(e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end gap-3 pt-4">
-                        {completedPaymentData ? (
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => {
-                              setCustomerPaymentAmount("");
-                              setCompletedPaymentData(null);
-                              setStep('select');
-                            }}>
-                              New Payment
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={handlePrintReceipt}>
-                              <Printer className="mr-2 h-4 w-4" /> Print Receipt
-                            </Button>
+                  <>
+                    {step === 'select' && (
+                      <div className="space-y-4 pt-4">
+                        {loadingInvoices ? (
+                          <div className="flex flex-col items-center justify-center py-12 space-y-4 text-muted-foreground">
+                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                            <p>Loading customer details...</p>
                           </div>
                         ) : (
-                          <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => handleCustomerDialogClose(false)}>
-                              Cancel
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              onClick={handleSaveChanges}
-                              disabled={saveInvoiceChanges.isPending}
-                            >
-                              <Save className="mr-2 h-4 w-4" /> Save Changes
-                            </Button>
-                            <Button
-                              onClick={handleCustomerPaymentSubmit}
-                              disabled={!customerPaymentAmount || Number(customerPaymentAmount) <= 0 || createCustomerPayment.isPending}
-                              className={Number(customerPaymentAmount) > 0 ? "bg-green-600 hover:bg-green-700" : ""}
-                            >
-                              {createCustomerPayment.isPending ? "Processing..." : `PAID: ₹${Number(customerPaymentAmount || 0).toLocaleString("en-IN")}`}
-                            </Button>
+                          <div className="space-y-2">
+                            <Label>Customer</Label>
+                            <Select value={selectedCustomer} onValueChange={handleCustomerSelect}>
+                              <SelectTrigger data-testid="select-customer">
+                                <SelectValue placeholder="Select customer" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {customers
+                                  .filter(c => c.name.toLowerCase() !== "cash account" && c.name.toLowerCase() !== "cash sale account")
+                                  .map((customer) => (
+                                    <SelectItem key={customer.id} value={customer.id}>
+                                      {customer.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-sm text-muted-foreground">Select a customer to process payment</p>
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {step === 'completed' && completedPaymentData && (
-                    <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                      <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-                        <CheckCircle className="h-8 w-8 text-green-600" />
+                    {step === 'review' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5 bg-muted/50 border-muted-foreground/20">
+                              {filteredCustomerInvoices.length} INVOICE(S)
+                            </Badge>
+                          </div>
+                          {customerSummary && (
+                            <div className="flex items-center gap-4 text-sm">
+                              <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">Total Amount</span>
+                                <span className="font-mono text-lg font-bold text-foreground">₹{grandTotalAllInvoices.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+                              
+                              <div className="h-8 w-px bg-border mx-1" />
+
+                              <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-green-600 font-bold uppercase tracking-tighter">Paid Amount</span>
+                                <span className="font-mono text-lg font-bold text-green-600">₹{customerSummary.totalPayments.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </div>
+
+                              <div className="flex items-center gap-3 bg-yellow-400 text-black px-4 py-2 rounded-lg border-2 border-yellow-500 shadow-lg transform hover:scale-105 transition-all cursor-default">
+                                <div className="flex flex-col items-start leading-none">
+                                  <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Remaining</span>
+                                  <span className="text-xs font-bold uppercase">Balance Due</span>
+                                </div>
+                                <div className="h-6 w-px bg-black/20" />
+                                <span className="font-mono font-black text-xl tabular-nums">
+                                  ₹{(grandTotalAllInvoices - (customerSummary?.totalPayments || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="border rounded-md overflow-x-auto shadow-sm">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/40 uppercase text-xs hover:bg-muted/40">
+                                <TableHead className="w-[50px] text-center font-bold text-black">S.No</TableHead>
+                                <TableHead className="w-[100px] font-bold text-black">Date</TableHead>
+                                <TableHead className="w-[140px] font-bold text-black">Invoice No</TableHead>
+                                <TableHead className="w-[80px] text-center font-bold text-black">Shop</TableHead>
+                                <TableHead className="min-w-[150px] font-bold text-black">Product</TableHead>
+                                <TableHead className="w-[80px] text-center font-bold text-black">Qty</TableHead>
+                                <TableHead className="w-[100px] text-center font-bold text-black">Price/Unit</TableHead>
+                                <TableHead className="w-[200px] text-center font-bold text-black">Hamali Charge</TableHead>
+                                <TableHead className="w-[120px] text-right font-bold text-black">Total</TableHead>
+                                <TableHead className="w-[100px] text-center font-bold text-black">Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredCustomerInvoices.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                                    No invoices found for this customer
+                                  </TableCell>
+                                </TableRow>
+                              ) : (
+                                filteredCustomerInvoices.map((invoice, index) => {
+                                  const edited = editedInvoices[invoice.id];
+                                  const items = invoice.items;
+
+                                  return items.map((item, itemIndex) => {
+                                    const isFirstItem = itemIndex === 0;
+                                    const editedItem = edited?.items?.find(e => e.itemId === item.id);
+                                    const quantity = editedItem?.quantity ?? item.quantity;
+                                    const unitPrice = editedItem?.unitPrice ?? item.unitPrice;
+
+                                    const hamaliBags = edited?.bags || 0;
+                                    const hamaliRate = edited?.ratePerBag || 0;
+                                    const hamaliAmount = edited?.hamaliChargeAmount || invoice.hamaliChargeAmount || 0;
+                                    const invoiceSubtotal = edited?.items?.reduce((s, i) => s + i.total, 0) || invoice.subtotal;
+                                    const invoiceTotal = invoiceSubtotal + hamaliAmount;
+
+                                    return (
+                                      <TableRow key={`${invoice.id}-${item.id}`} className={isFirstItem ? "border-t" : "border-0"}>
+                                        {isFirstItem && (
+                                          <>
+                                            <TableCell rowSpan={items.length} className="text-center align-top border-r bg-muted/5 font-medium">{index + 1}</TableCell>
+                                            <TableCell rowSpan={items.length} className="align-top border-r bg-muted/5 font-medium">
+                                              {invoice.date}
+                                            </TableCell>
+                                            <TableCell rowSpan={items.length} className="align-top border-r bg-muted/5">
+                                              <div className="font-mono text-[10px] text-muted-foreground break-all">{invoice.invoiceNumber}</div>
+                                            </TableCell>
+                                            <TableCell rowSpan={items.length} className="text-center align-top border-r bg-muted/5">
+                                              {invoice.shop && (
+                                                <Badge variant="outline" className={`text-xs px-1 ${invoice.shop === 45 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
+                                                  Shop {invoice.shop}
+                                                </Badge>
+                                              )}
+                                            </TableCell>
+                                          </>
+                                        )}
+
+                                        <TableCell className="align-top border-r font-medium">{item.product?.name || 'Unknown'}</TableCell>
+
+                                        <TableCell className="text-center align-top border-r p-1 font-mono">
+                                          {quantity}
+                                        </TableCell>
+
+                                        <TableCell className="text-center align-top border-r p-1 font-mono">
+                                          ₹{unitPrice}
+                                        </TableCell>
+
+                                        {isFirstItem && (
+                                          <TableCell rowSpan={items.length} className="text-center align-top border-r bg-muted/5 p-2">
+                                            <div className="flex flex-col gap-1 items-center">
+                                              <div className="flex items-center gap-1 justify-center">
+                                                <Input
+                                                  type="number"
+                                                  className="h-7 w-12 px-1 text-center bg-white/50 border-muted-foreground/30 focus:border-primary"
+                                                  value={hamaliBags || ''}
+                                                  onChange={(e) => handleHamaliChange(invoice.id, 'bags', e.target.value)}
+                                                  placeholder="Bags"
+                                                />
+                                                <span className="text-[10px] text-muted-foreground">×</span>
+                                                <Input
+                                                  type="number"
+                                                  className="h-7 w-12 px-1 text-center bg-white/50 border-muted-foreground/30 focus:border-primary"
+                                                  value={hamaliRate || ''}
+                                                  onChange={(e) => handleHamaliChange(invoice.id, 'ratePerBag', e.target.value)}
+                                                  placeholder="Rate"
+                                                />
+                                                <span className="text-[10px] text-muted-foreground">=</span>
+                                              </div>
+                                              <div className="font-bold text-[11px] text-primary">
+                                                ₹{hamaliAmount.toLocaleString("en-IN")}
+                                              </div>
+                                            </div>
+                                          </TableCell>
+                                        )}
+
+                                        {isFirstItem && (
+                                          <TableCell rowSpan={items.length} className="text-right align-top border-r font-mono font-bold bg-muted/10 text-primary">
+                                            ₹{invoiceTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                          </TableCell>
+                                        )}
+
+                                        {isFirstItem && (
+                                          <TableCell rowSpan={items.length} className="text-center align-top bg-muted/5">
+                                            <Badge 
+                                              variant={invoice.status === 'completed' ? 'default' : 'secondary'} 
+                                              className={`text-[10px] uppercase font-bold ${invoice.status === 'completed' ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'}`}
+                                            >
+                                              {invoice.status === 'completed' ? 'Paid' : 'Pending'}
+                                            </Badge>
+                                          </TableCell>
+                                        )}
+                                      </TableRow>
+                                    );
+                                  });
+                                })
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        <div className="flex justify-between items-center bg-muted/50 p-4 rounded-lg">
+                          <div className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Invoice Total (Subtotal + Hamali):</div>
+                          <div className="text-2xl font-bold font-mono">
+                            ₹{grandTotalAllInvoices.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+
+                        <div className="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-200 shadow-sm">
+                          <div className="flex justify-between items-center text-yellow-900">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-black uppercase tracking-tighter opacity-70">Total Remaining</span>
+                              <span className="font-bold text-lg uppercase">Current Balance Due:</span>
+                            </div>
+                            <div className="text-3xl font-black font-mono">
+                              ₹{(grandTotalAllInvoices - (customerSummary?.totalPayments || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2 bg-muted/20 p-4 rounded-lg border">
+                          <div className="space-y-2">
+                            <Label className="font-bold">Payment Method</Label>
+                            <Select value={customerPaymentMethod} onValueChange={setCustomerPaymentMethod}>
+                              <SelectTrigger className="bg-white">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="cash">Cash</SelectItem>
+                                <SelectItem value="bank">Bank Transfer</SelectItem>
+                                <SelectItem value="upi">UPI</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="font-bold text-primary">Payment Amount (Enter amount to pay now)</Label>
+                            <Input
+                              type="number"
+                              placeholder="Enter payment amount"
+                              value={customerPaymentAmount}
+                              onChange={(e) => setCustomerPaymentAmount(e.target.value)}
+                              className="bg-white text-lg font-mono font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4 border-t">
+                          {completedPaymentData ? (
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={() => {
+                                setCustomerPaymentAmount("");
+                                setCompletedPaymentData(null);
+                                setStep('select');
+                              }}>
+                                New Payment
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={handlePrintReceipt}>
+                                <Printer className="mr-2 h-4 w-4" /> Print Receipt
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="lg" onClick={() => handleCustomerDialogClose(false)}>
+                                Cancel
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="lg"
+                                onClick={handleSaveChanges}
+                                disabled={saveInvoiceChanges.isPending}
+                              >
+                                <Save className="mr-2 h-4 w-4" /> Save Changes
+                              </Button>
+                              <Button
+                                size="lg"
+                                onClick={handleCustomerPaymentSubmit}
+                                disabled={!customerPaymentAmount || Number(customerPaymentAmount) <= 0 || createCustomerPayment.isPending}
+                                className={Number(customerPaymentAmount) > 0 ? "bg-green-600 hover:bg-green-700 text-lg px-8" : "text-lg px-8"}
+                              >
+                                {createCustomerPayment.isPending ? "Processing..." : `CONFIRM PAYMENT: ₹${Number(customerPaymentAmount || 0).toLocaleString("en-IN")}`}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <h3 className="text-lg font-semibold">Payment Successful</h3>
-                        <p className="text-muted-foreground">
-                          Payment of {completedPaymentData.amount.toLocaleString("en-IN", { style: "currency", currency: "INR" })} has been recorded.
-                        </p>
+                    )}
+
+                    {step === 'completed' && completedPaymentData && (
+                      <div className="flex flex-col items-center justify-center py-12 space-y-6">
+                        <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center animate-bounce">
+                          <CheckCircle className="h-12 w-12 text-green-600" />
+                        </div>
+                        <div className="text-center space-y-2">
+                          <h3 className="text-2xl font-bold text-green-700">Payment Successful!</h3>
+                          <p className="text-muted-foreground text-lg">
+                            Payment of <span className="font-bold text-foreground">₹{completedPaymentData.amount.toLocaleString("en-IN")}</span> has been recorded.
+                          </p>
+                        </div>
+                        <div className="bg-muted/30 p-4 rounded-lg max-w-md w-full text-center">
+                          <span className="font-medium font-mono text-sm text-muted-foreground uppercase tracking-widest block mb-2">Invoices Updated</span>
+                          <p className="text-xs break-all">{completedPaymentData.invoices.map(inv => inv.invoiceNumber).join(', ')}</p>
+                        </div>
+                        <div className="flex gap-4 pt-4">
+                          <Button variant="outline" size="lg" onClick={handlePrintReceipt}>
+                            <Printer className="mr-2 h-4 w-4" /> Print Receipt
+                          </Button>
+                          <Button size="lg" className="bg-green-600 hover:bg-green-700 px-12" onClick={() => {
+                            setStep('select');
+                            setCompletedPaymentData(null);
+                            setCustomerPaymentAmount("");
+                            handleCustomerDialogClose(false);
+                          }}>
+                            Done
+                          </Button>
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <span className="font-medium font-mono text-xs text-muted-foreground">
-                          Invoices: {completedPaymentData.invoices.map(inv => inv.invoiceNumber).join(', ')}
-                        </span>
-                      </div>
-                      <div className="flex gap-4 pt-4">
-                        <Button variant="outline" onClick={handlePrintReceipt}>
-                          <Printer className="mr-2 h-4 w-4" /> Print Receipt
-                        </Button>
-                        <Button onClick={() => {
-                          setStep('select');
-                          setCompletedPaymentData(null);
-                          setCustomerPaymentAmount("");
-                          // queryClient.invalidateQueries({ queryKey: ["/api/reports/customer-balances"] });
-                          handleCustomerDialogClose(false);
-                        }}>
-                          Done
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </>
                 </DialogContent>
               </Dialog>
 
@@ -2612,6 +2615,6 @@ export default function Payments() {
           </Tabs>
         </TabsContent>
       </Tabs>
-    </div >
+    </div>
   );
 }
