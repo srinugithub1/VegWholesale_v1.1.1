@@ -259,21 +259,38 @@ export default function Reports() {
           invPayments.forEach(p => {
             const method = p.paymentMethod?.toLowerCase() || 'cash';
             const paymentAmount = Number(p.amount) || 0;
-            // Attribute subtotal proportionally to the volume of payments in each method
             const subtotalPortion = subtotal * (paymentAmount / totalPaymentsForInv);
             
-            if (method.includes('upi')) acc.upi += subtotalPortion;
-            else if (method.includes('bank')) acc.bank += subtotalPortion;
-            else if (method.includes('cheque')) acc.cheque += subtotalPortion;
-            else acc.cash += subtotalPortion;
+            // Check if it's a direct customer (Cash Account)
+            const customer = customers.find(c => c.id === (inv.customerId || p.customerId));
+            const cName = (customer?.name || "").toLowerCase();
+            const isDirect = cName.includes('cash') || cName === 'direct customer';
+
+            if (isDirect) {
+              acc.directCash += subtotalPortion;
+            } else if (method.includes('upi')) {
+              acc.upi += subtotalPortion;
+            } else if (method.includes('bank')) {
+              acc.bank += subtotalPortion;
+            } else if (method.includes('cheque')) {
+              acc.cheque += subtotalPortion;
+            } else {
+              acc.cash += subtotalPortion;
+            }
           });
         } else {
-          // If completed but no payment records, assume cash
-          acc.cash += subtotal;
+          // Fallback if no payment records
+          const customer = customers.find(c => c.id === inv.customerId);
+          const cName = (customer?.name || "").toLowerCase();
+          if (cName.includes('cash') || cName === 'direct customer') {
+            acc.directCash += subtotal;
+          } else {
+            acc.cash += subtotal;
+          }
         }
       }
       return acc;
-    }, { cash: 0, credit: 0, upi: 0, bank: 0, cheque: 0 });
+    }, { directCash: 0, cash: 0, credit: 0, upi: 0, bank: 0, cheque: 0 });
 
     const invoiceCount = filteredInvoices.length;
     const invoicesWithHamali = filteredInvoices.filter(inv => (inv.hamaliChargeAmount || 0) > 0).length;
@@ -341,13 +358,13 @@ export default function Reports() {
     const salesInPeriod = filteredInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
     const paymentsBreakdown = {
       directCash: 0,
+      cash: 0,
+      upi: 0,
+      bank: 0,
+      cheque: 0,
       customerPayments: 0,
-      hamaliCollected: 0,
       deletedAmount: 0,
     };
-
-    // Calculate Deleted Amount from archived invoices in this period
-    paymentsBreakdown.deletedAmount = deletedInvoicesForPeriod.reduce((sum, r) => sum + (Number(r.grandTotal) || 0), 0);
 
     const paymentsInPeriodList = safeCustomerPayments
       .filter(p => {
@@ -628,17 +645,34 @@ export default function Reports() {
             const paymentAmount = Number(p.amount) || 0;
             const subtotalPortion = subtotal * (paymentAmount / totalPaymentsForInv);
             
-            if (method.includes('upi')) acc.upi += subtotalPortion;
-            else if (method.includes('bank')) acc.bank += subtotalPortion;
-            else if (method.includes('cheque')) acc.cheque += subtotalPortion;
-            else acc.cash += subtotalPortion;
+            const customer = customers.find(c => c.id === (inv.customerId || p.customerId));
+            const cName = (customer?.name || "").toLowerCase();
+            const isDirect = cName.includes('cash') || cName === 'direct customer';
+
+            if (isDirect) {
+              acc.directCash += subtotalPortion;
+            } else if (method.includes('upi')) {
+              acc.upi += subtotalPortion;
+            } else if (method.includes('bank')) {
+              acc.bank += subtotalPortion;
+            } else if (method.includes('cheque')) {
+              acc.cheque += subtotalPortion;
+            } else {
+              acc.cash += subtotalPortion;
+            }
           });
         } else {
-          acc.cash += subtotal;
+          const customer = customers.find(c => c.id === inv.customerId);
+          const cName = (customer?.name || "").toLowerCase();
+          if (cName.includes('cash') || cName === 'direct customer') {
+            acc.directCash += subtotal;
+          } else {
+            acc.cash += subtotal;
+          }
         }
       }
       return acc;
-    }, { cash: 0, credit: 0, upi: 0, bank: 0, cheque: 0 });
+    }, { directCash: 0, cash: 0, credit: 0, upi: 0, bank: 0, cheque: 0 });
 
     return {
       ...summary,
@@ -1485,36 +1519,55 @@ export default function Reports() {
                     {formatCurrency(summary.paymentsInPeriod)}
                   </div>
                   <div className="pt-2 border-t border-muted/30 space-y-1">
-                    {summary.paymentsBreakdown.cash > 0 && (
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-muted-foreground">Cash Collection:</span>
-                        <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.paymentsBreakdown.cash)}</span>
-                      </div>
-                    )}
-                    {summary.paymentsBreakdown.upi > 0 && (
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-muted-foreground">UPI Collection:</span>
-                        <span className="font-medium text-purple-600 dark:text-purple-400">{formatCurrency(summary.paymentsBreakdown.upi)}</span>
-                      </div>
-                    )}
-                    {summary.paymentsBreakdown.bank > 0 && (
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-muted-foreground">Bank Collection:</span>
-                        <span className="font-medium text-blue-700 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.bank)}</span>
-                      </div>
-                    )}
-                    {summary.paymentsBreakdown.cheque > 0 && (
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-muted-foreground">Cheque Collection:</span>
-                        <span className="font-medium text-emerald-600 dark:text-emerald-500">{formatCurrency(summary.paymentsBreakdown.cheque)}</span>
-                      </div>
-                    )}
-                    {summary.paymentsBreakdown.deletedAmount > 0 && (
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-muted-foreground">Deleted Record Info:</span>
-                        <span className="font-medium text-destructive">{formatCurrency(summary.paymentsBreakdown.deletedAmount)}</span>
-                      </div>
-                    )}
+                    {(() => {
+                      let count = 0;
+                      return (
+                        <>
+                          {summary.paymentsBreakdown.directCash > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">{++count}. Direct Cash:</span>
+                              <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.paymentsBreakdown.directCash)}</span>
+                            </div>
+                          )}
+                          {summary.paymentsBreakdown.cash > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">{++count}. Cash:</span>
+                              <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.paymentsBreakdown.cash)}</span>
+                            </div>
+                          )}
+                          {summary.paymentsBreakdown.upi > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">{++count}. UPI:</span>
+                              <span className="font-medium text-purple-600 dark:text-purple-400">{formatCurrency(summary.paymentsBreakdown.upi)}</span>
+                            </div>
+                          )}
+                          {summary.paymentsBreakdown.bank > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">{++count}. Bank:</span>
+                              <span className="font-medium text-blue-700 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.bank)}</span>
+                            </div>
+                          )}
+                          {summary.paymentsBreakdown.cheque > 0 && (
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">{++count}. Cheque:</span>
+                              <span className="font-medium text-emerald-600 dark:text-emerald-500">{formatCurrency(summary.paymentsBreakdown.cheque)}</span>
+                            </div>
+                          )}
+                          {summary.paymentsBreakdown.customerPayments > 0 && (
+                            <div className="flex justify-between items-center text-xs border-t border-dashed mt-1 pt-1 opacity-80">
+                              <span className="text-muted-foreground font-semibold">Customer Payments:</span>
+                              <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.customerPayments)}</span>
+                            </div>
+                          )}
+                          {summary.paymentsBreakdown.deletedAmount > 0 && (
+                            <div className="flex justify-between items-center text-xs mt-1 pt-1 border-t border-dashed">
+                              <span className="text-muted-foreground">{++count}. Deleted Record Amount:</span>
+                              <span className="font-medium text-destructive">{formatCurrency(summary.paymentsBreakdown.deletedAmount)}</span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                     {Object.values(summary.paymentsBreakdown).every(v => v === 0) && (
                       <div className="text-center py-2 text-xs text-muted-foreground italic">No collections found</div>
                     )}
@@ -1579,42 +1632,55 @@ export default function Reports() {
                 </div>
                 <p className="text-xs text-muted-foreground">{reportSummary.invoiceCount} sales</p>
                 <div className="pt-2 border-t border-muted/30 mt-2 space-y-1">
-                  {reportSummary.salesBreakdown.cash > 0 && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Cash Sale:</span>
-                      <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(reportSummary.salesBreakdown.cash)}</span>
-                    </div>
-                  )}
-                  {reportSummary.salesBreakdown.upi > 0 && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">UPI Sale:</span>
-                      <span className="font-medium text-purple-600 dark:text-purple-400">{formatCurrency(reportSummary.salesBreakdown.upi)}</span>
-                    </div>
-                  )}
-                  {reportSummary.salesBreakdown.bank > 0 && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Bank Sale:</span>
-                      <span className="font-medium text-blue-700 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.bank)}</span>
-                    </div>
-                  )}
-                  {reportSummary.salesBreakdown.cheque > 0 && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Cheque Sale:</span>
-                      <span className="font-medium text-emerald-600 dark:text-emerald-500">{formatCurrency(reportSummary.salesBreakdown.cheque)}</span>
-                    </div>
-                  )}
-                  {reportSummary.salesBreakdown.credit > 0 && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Credit Sale:</span>
-                      <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.credit)}</span>
-                    </div>
-                  )}
-                  {reportSummary.totalHamali > 0 && (
-                    <div className="flex justify-between items-center text-xs border-t border-dashed mt-1 pt-1 font-bold">
-                      <span className="text-muted-foreground">Hamali Amount:</span>
-                      <span className="text-green-600 dark:text-green-500">{formatCurrency(reportSummary.totalHamali)}</span>
-                    </div>
-                  )}
+                  {(() => {
+                    let count = 0;
+                    return (
+                      <>
+                        {reportSummary.salesBreakdown.directCash > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{++count}. Cash Sale (Direct):</span>
+                            <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(reportSummary.salesBreakdown.directCash)}</span>
+                          </div>
+                        )}
+                        {reportSummary.salesBreakdown.cash > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{++count}. Cash Sale:</span>
+                            <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(reportSummary.salesBreakdown.cash)}</span>
+                          </div>
+                        )}
+                        {reportSummary.salesBreakdown.upi > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{++count}. UPI:</span>
+                            <span className="font-medium text-purple-600 dark:text-purple-400">{formatCurrency(reportSummary.salesBreakdown.upi)}</span>
+                          </div>
+                        )}
+                        {reportSummary.salesBreakdown.bank > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{++count}. Bank:</span>
+                            <span className="font-medium text-blue-700 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.bank)}</span>
+                          </div>
+                        )}
+                        {reportSummary.salesBreakdown.cheque > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{++count}. Cheqk:</span>
+                            <span className="font-medium text-emerald-600 dark:text-emerald-500">{formatCurrency(reportSummary.salesBreakdown.cheque)}</span>
+                          </div>
+                        )}
+                        {reportSummary.salesBreakdown.credit > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{++count}. Credit Sale:</span>
+                            <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.credit)}</span>
+                          </div>
+                        )}
+                        {reportSummary.totalHamali > 0 && (
+                          <div className="flex justify-between items-center text-xs border-t border-dashed mt-1 pt-1 font-bold">
+                            <span className="text-muted-foreground">{++count}. Hamali Amount:</span>
+                            <span className="text-green-600 dark:text-green-500">{formatCurrency(reportSummary.totalHamali)}</span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </CardContent>
             </Card>
