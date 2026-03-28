@@ -349,21 +349,17 @@ export default function Reports() {
 
     const salesBeforePeriod = safeAllInvoices
       .filter(inv => matchesFilters(inv) && startDate && inv.date < startDate)
-      .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+      .reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
     const paymentsBeforePeriod = safeCustomerPayments
       .filter(p => matchesFilters(p) && startDate && p.date < startDate)
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     const openingBalance = salesBeforePeriod - paymentsBeforePeriod;
 
-    const salesInPeriod = filteredInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+    const salesInPeriod = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
     const paymentsBreakdown = {
       directCash: 0,
-      cash: 0,
-      upi: 0,
-      bank: 0,
-      cheque: 0,
       customerPayments: 0,
-      deletedAmount: 0,
+      deletedAmount: Number(deletedInvoicesForPeriod.reduce((sum, r) => sum + (Number(r.grandTotal) || 0), 0)) || 0,
     };
 
     const paymentsInPeriodList = safeCustomerPayments
@@ -374,52 +370,20 @@ export default function Reports() {
         return true;
       });
 
-    const activeInvoiceIds = new Set(filteredInvoices.map(i => i.id));
-
     paymentsInPeriodList.forEach(p => {
-      // If it's linked to an active invoice, count it in active categories
-      if (p.invoiceId && activeInvoiceIds.has(p.invoiceId)) {
-        const inv = filteredInvoices.find(i => i.id === p.invoiceId);
-        const customer = customers.find(c => c.id === (inv?.customerId || p.customerId));
-        const cName = (customer?.name || "").toLowerCase();
+      const pAmount = Number(p.amount) || 0;
+      const customer = customers.find(c => c.id === p.customerId);
+      const cName = (customer?.name || "").toLowerCase();
+      const isDirect = cName.includes('cash') || cName === 'direct customer';
 
-        if (cName.includes('cash') || cName === 'direct customer') {
-          paymentsBreakdown.directCash += (inv?.subtotal || p.amount || 0);
-          paymentsBreakdown.hamaliCollected += (inv?.hamaliChargeAmount || 0);
-        } else {
-          paymentsBreakdown.customerPayments += (p.amount || 0);
-        }
+      if (isDirect) {
+        paymentsBreakdown.directCash += pAmount;
       } else {
-        // If it's NOT linked to an active invoice, it's either:
-        // 1. A payment for a deleted invoice (orphan)
-        // 2. A generic customer payment not linked to any invoice
-
-        // Check if it's an orphan (linked to a deleted invoice in this period)
-        const isOrphan = deletedInvoicesForPeriod.some(r => r.recordId === p.invoiceId);
-
-        if (isOrphan) {
-          // Already accounted for in paymentsBreakdown.deletedAmount via deletedInvoicesForPeriod
-          // We don't add to active ones as per user request to exclude deleted from main total
-        } else {
-          // Generic payment or linked to ancient deleted invoice?
-          // Fix: Check if this unlinked payment belongs to a "Cash" customer
-          const customer = customers.find(c => c.id === p.customerId);
-          const cName = (customer?.name || "").toLowerCase();
-          const isCash = cName.includes('cash') || cName === 'direct customer';
-
-          if (isCash) {
-            paymentsBreakdown.directCash += (p.amount || 0);
-          } else {
-            paymentsBreakdown.customerPayments += (p.amount || 0);
-          }
-        }
+        paymentsBreakdown.customerPayments += pAmount;
       }
     });
 
-    // The main total (Big No) only includes active Cash + Credit + Hamali payments
-    const paymentsInPeriod = paymentsBreakdown.directCash + paymentsBreakdown.customerPayments + paymentsBreakdown.hamaliCollected;
-
-    // Discrepancy Fix: Closing Balance must be consistent with opening + change
+    const paymentsInPeriod = paymentsBreakdown.directCash + paymentsBreakdown.customerPayments;
     const closingBalance = openingBalance + salesInPeriod - paymentsInPeriod;
 
     return {
@@ -1529,33 +1493,9 @@ export default function Reports() {
                               <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.paymentsBreakdown.directCash)}</span>
                             </div>
                           )}
-                          {summary.paymentsBreakdown.cash > 0 && (
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-muted-foreground">{++count}. Cash:</span>
-                              <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.paymentsBreakdown.cash)}</span>
-                            </div>
-                          )}
-                          {summary.paymentsBreakdown.upi > 0 && (
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-muted-foreground">{++count}. UPI:</span>
-                              <span className="font-medium text-purple-600 dark:text-purple-400">{formatCurrency(summary.paymentsBreakdown.upi)}</span>
-                            </div>
-                          )}
-                          {summary.paymentsBreakdown.bank > 0 && (
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-muted-foreground">{++count}. Bank:</span>
-                              <span className="font-medium text-blue-700 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.bank)}</span>
-                            </div>
-                          )}
-                          {summary.paymentsBreakdown.cheque > 0 && (
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-muted-foreground">{++count}. Cheque:</span>
-                              <span className="font-medium text-emerald-600 dark:text-emerald-500">{formatCurrency(summary.paymentsBreakdown.cheque)}</span>
-                            </div>
-                          )}
                           {summary.paymentsBreakdown.customerPayments > 0 && (
-                            <div className="flex justify-between items-center text-xs border-t border-dashed mt-1 pt-1 opacity-80">
-                              <span className="text-muted-foreground font-semibold">Customer Payments:</span>
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">{++count}. Customer Payments:</span>
                               <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.customerPayments)}</span>
                             </div>
                           )}
@@ -1568,7 +1508,7 @@ export default function Reports() {
                         </>
                       );
                     })()}
-                    {Object.values(summary.paymentsBreakdown).every(v => v === 0) && (
+                    {summary.paymentsBreakdown.directCash === 0 && summary.paymentsBreakdown.customerPayments === 0 && summary.paymentsBreakdown.deletedAmount === 0 && (
                       <div className="text-center py-2 text-xs text-muted-foreground italic">No collections found</div>
                     )}
                   </div>
