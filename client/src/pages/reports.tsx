@@ -249,48 +249,21 @@ export default function Reports() {
 
     const salesBreakdown = filteredInvoices.reduce((acc, inv) => {
       const subtotal = Number(inv.subtotal) || 0;
-      if (inv.status === 'pending') {
-        acc.credit += subtotal;
+      if (inv.invoiceNumber && inv.invoiceNumber.startsWith('OB-')) return acc;
+
+      const customer = customers.find(c => c.id === inv.customerId);
+      const cName = (customer?.name || "").toLowerCase();
+      const isDirect = cName.includes('cash') || cName === 'direct customer';
+
+      if (isDirect) {
+        acc.directCustomer += subtotal;
+      } else if (inv.status === 'pending') {
+        acc.creditSale += subtotal;
       } else {
-        const invPayments = customerPayments.filter(p => p.invoiceId === inv.id);
-        const totalPaymentsForInv = invPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-        if (totalPaymentsForInv > 0) {
-          invPayments.forEach(p => {
-            const method = p.paymentMethod?.toLowerCase() || 'cash';
-            const paymentAmount = Number(p.amount) || 0;
-            const subtotalPortion = subtotal * (paymentAmount / totalPaymentsForInv);
-            
-            // Check if it's a direct customer (Cash Account)
-            const customer = customers.find(c => c.id === (inv.customerId || p.customerId));
-            const cName = (customer?.name || "").toLowerCase();
-            const isDirect = cName.includes('cash') || cName === 'direct customer';
-
-            if (isDirect) {
-              acc.directCash += subtotalPortion;
-            } else if (method.includes('upi')) {
-              acc.upi += subtotalPortion;
-            } else if (method.includes('bank')) {
-              acc.bank += subtotalPortion;
-            } else if (method.includes('cheque')) {
-              acc.cheque += subtotalPortion;
-            } else {
-              acc.cash += subtotalPortion;
-            }
-          });
-        } else {
-          // Fallback if no payment records
-          const customer = customers.find(c => c.id === inv.customerId);
-          const cName = (customer?.name || "").toLowerCase();
-          if (cName.includes('cash') || cName === 'direct customer') {
-            acc.directCash += subtotal;
-          } else {
-            acc.cash += subtotal;
-          }
-        }
+        acc.cashReceived += subtotal;
       }
       return acc;
-    }, { directCash: 0, cash: 0, credit: 0, upi: 0, bank: 0, cheque: 0 });
+    }, { directCustomer: 0, creditSale: 0, cashReceived: 0 });
 
     const invoiceCount = filteredInvoices.length;
     const invoicesWithHamali = filteredInvoices.filter(inv => (inv.hamaliChargeAmount || 0) > 0).length;
@@ -376,7 +349,7 @@ export default function Reports() {
     });
 
     const paymentsBreakdown = {
-      directCash: 0,
+      directCustomer: salesBreakdown.directCustomer,
       customerPayments: 0,
       deletedAmount: Number(deletedInvoicesForPeriod.reduce((sum, r) => sum + (Number(r.grandTotal) || 0), 0)) || 0,
     };
@@ -391,18 +364,17 @@ export default function Reports() {
 
     paymentsInPeriodList.forEach(p => {
       const pAmount = Number(p.amount) || 0;
-      const customer = customers.find(c => c.id === p.customerId);
+      const inv = p.invoiceId ? safeAllInvoices.find(i => i.id === p.invoiceId) : null;
+      const customer = customers.find(c => c.id === (inv?.customerId || p.customerId));
       const cName = (customer?.name || "").toLowerCase();
       const isDirect = cName.includes('cash') || cName === 'direct customer';
 
-      if (isDirect) {
-        paymentsBreakdown.directCash += pAmount;
-      } else {
+      if (!isDirect) {
         paymentsBreakdown.customerPayments += pAmount;
       }
     });
 
-    const paymentsInPeriod = paymentsBreakdown.directCash + paymentsBreakdown.customerPayments;
+    const paymentsInPeriod = paymentsBreakdown.directCustomer + paymentsBreakdown.customerPayments;
     const closingBalance = openingBalance + oldBalancesInPeriod + actualSalesInPeriod - paymentsInPeriod;
 
     return {
@@ -615,49 +587,16 @@ export default function Reports() {
     const totalSales = reportItems.reduce((sum, i) => sum + i.total, 0);
 
     const salesBreakdown = reportItems.reduce((acc, item) => {
-      const inv = invoices.find(i => i.id === item.invoiceId);
       const subtotal = Number(item.subtotal) || 0;
-      
-      if (!inv || inv.status === 'pending') {
-        acc.credit += subtotal;
+      if (item.type === "Direct Customer") {
+        acc.directCustomer += subtotal;
+      } else if (item.type === "CREDIT") {
+        acc.creditSale += subtotal;
       } else {
-        const invPayments = customerPayments.filter(p => p.invoiceId === inv.id);
-        const totalPaymentsForInv = invPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-        if (totalPaymentsForInv > 0) {
-          invPayments.forEach(p => {
-            const method = p.paymentMethod?.toLowerCase() || 'cash';
-            const paymentAmount = Number(p.amount) || 0;
-            const subtotalPortion = subtotal * (paymentAmount / totalPaymentsForInv);
-            
-            const customer = customers.find(c => c.id === (inv.customerId || p.customerId));
-            const cName = (customer?.name || "").toLowerCase();
-            const isDirect = cName.includes('cash') || cName === 'direct customer';
-
-            if (isDirect) {
-              acc.directCash += subtotalPortion;
-            } else if (method.includes('upi')) {
-              acc.upi += subtotalPortion;
-            } else if (method.includes('bank')) {
-              acc.bank += subtotalPortion;
-            } else if (method.includes('cheque')) {
-              acc.cheque += subtotalPortion;
-            } else {
-              acc.cash += subtotalPortion;
-            }
-          });
-        } else {
-          const customer = customers.find(c => c.id === inv.customerId);
-          const cName = (customer?.name || "").toLowerCase();
-          if (cName.includes('cash') || cName === 'direct customer') {
-            acc.directCash += subtotal;
-          } else {
-            acc.cash += subtotal;
-          }
-        }
+        acc.cashReceived += subtotal;
       }
       return acc;
-    }, { directCash: 0, cash: 0, credit: 0, upi: 0, bank: 0, cheque: 0 });
+    }, { directCustomer: 0, creditSale: 0, cashReceived: 0 });
 
     return {
       ...summary,
@@ -1509,15 +1448,15 @@ export default function Reports() {
                       let count = 0;
                       return (
                         <>
-                          {summary.paymentsBreakdown.directCash > 0 && (
+                          {summary.paymentsBreakdown.directCustomer > 0 && (
                             <div className="flex justify-between items-center text-xs">
-                              <span className="text-muted-foreground">{++count}. Direct Cash:</span>
-                              <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.paymentsBreakdown.directCash)}</span>
+                              <span className="text-muted-foreground">{++count}. Direct Customer:</span>
+                              <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(summary.paymentsBreakdown.directCustomer)}</span>
                             </div>
                           )}
                           {summary.paymentsBreakdown.customerPayments > 0 && (
                             <div className="flex justify-between items-center text-xs">
-                              <span className="text-muted-foreground">{++count}. Customer Payments:</span>
+                              <span className="text-muted-foreground">{++count}. Customer Payment:</span>
                               <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(summary.paymentsBreakdown.customerPayments)}</span>
                             </div>
                           )}
@@ -1530,7 +1469,7 @@ export default function Reports() {
                         </>
                       );
                     })()}
-                    {summary.paymentsBreakdown.directCash === 0 && summary.paymentsBreakdown.customerPayments === 0 && summary.paymentsBreakdown.deletedAmount === 0 && (
+                    {summary.paymentsBreakdown.directCustomer === 0 && summary.paymentsBreakdown.customerPayments === 0 && summary.paymentsBreakdown.deletedAmount === 0 && (
                       <div className="text-center py-2 text-xs text-muted-foreground italic">No collections found</div>
                     )}
                   </div>
@@ -1604,40 +1543,22 @@ export default function Reports() {
                     let count = 0;
                     return (
                       <>
-                        {reportSummary.salesBreakdown.directCash > 0 && (
+                        {reportSummary.salesBreakdown.directCustomer > 0 && (
                           <div className="flex justify-between items-center text-xs">
-                            <span className="text-muted-foreground">{++count}. Cash Sale (Direct):</span>
-                            <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(reportSummary.salesBreakdown.directCash)}</span>
+                            <span className="text-muted-foreground">{++count}. Direct Customer:</span>
+                            <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(reportSummary.salesBreakdown.directCustomer)}</span>
                           </div>
                         )}
-                        {reportSummary.salesBreakdown.cash > 0 && (
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-muted-foreground">{++count}. Cash Sale:</span>
-                            <span className="font-medium text-amber-600 dark:text-amber-500">{formatCurrency(reportSummary.salesBreakdown.cash)}</span>
-                          </div>
-                        )}
-                        {reportSummary.salesBreakdown.upi > 0 && (
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-muted-foreground">{++count}. UPI:</span>
-                            <span className="font-medium text-purple-600 dark:text-purple-400">{formatCurrency(reportSummary.salesBreakdown.upi)}</span>
-                          </div>
-                        )}
-                        {reportSummary.salesBreakdown.bank > 0 && (
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-muted-foreground">{++count}. Bank:</span>
-                            <span className="font-medium text-blue-700 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.bank)}</span>
-                          </div>
-                        )}
-                        {reportSummary.salesBreakdown.cheque > 0 && (
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-muted-foreground">{++count}. Cheqk:</span>
-                            <span className="font-medium text-emerald-600 dark:text-emerald-500">{formatCurrency(reportSummary.salesBreakdown.cheque)}</span>
-                          </div>
-                        )}
-                        {reportSummary.salesBreakdown.credit > 0 && (
+                        {reportSummary.salesBreakdown.creditSale > 0 && (
                           <div className="flex justify-between items-center text-xs">
                             <span className="text-muted-foreground">{++count}. Credit Sale:</span>
-                            <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.credit)}</span>
+                            <span className="font-medium text-blue-600 dark:text-blue-500">{formatCurrency(reportSummary.salesBreakdown.creditSale)}</span>
+                          </div>
+                        )}
+                        {reportSummary.salesBreakdown.cashReceived > 0 && (
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{++count}. Cash Received:</span>
+                            <span className="font-medium text-purple-600 dark:text-purple-400">{formatCurrency(reportSummary.salesBreakdown.cashReceived)}</span>
                           </div>
                         )}
                         {reportSummary.totalHamali > 0 && (

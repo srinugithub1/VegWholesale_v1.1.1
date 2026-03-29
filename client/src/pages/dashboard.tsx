@@ -277,48 +277,43 @@ export default function Dashboard() {
     const todaySalesBreakdown = todayInvoices.reduce((acc, inv) => {
       const customer = customers.find(c => c.id === inv.customerId);
       const cName = (customer?.name || "").toLowerCase();
-      const isCash = cName.includes('cash') || cName === 'direct customer';
+      const isDirect = cName.includes('cash') || cName === 'direct customer';
 
-      if (isCash) {
-        acc.cashSales += (inv.subtotal || 0);
+      if (isDirect) {
+        acc.directCustomer += (inv.subtotal || 0);
+      } else if (inv.status === 'pending') {
+        acc.creditSale += (inv.subtotal || 0);
       } else {
-        acc.creditSales += (inv.subtotal || 0);
+        acc.cashReceived += (inv.subtotal || 0);
       }
       acc.hamaliAmount += (inv.hamaliChargeAmount || 0);
       return acc;
-    }, { cashSales: 0, creditSales: 0, hamaliAmount: 0 });
+    }, { directCustomer: 0, creditSale: 0, cashReceived: 0, hamaliAmount: 0 });
 
     const todayTotalSales = todayInvoices.reduce((sum, inv) => sum + (inv.subtotal || 0), 0);
 
     // Payments Received Breakdown
     const todayPaymentsList = filteredPayments.filter(p => p.date === today);
     const todayPaymentsBreakdown = {
-      directCash: 0,
+      directCustomer: todaySalesBreakdown.directCustomer,
       customerPayments: 0,
       deletedAmount: 0,
     };
 
     // Calculate Deleted Amount from archived invoices today
     todayPaymentsBreakdown.deletedAmount = deletedRecords
-      .filter(r => r.tableName === 'invoices' && r.action === 'delete')
+      .filter(r => r.tableName === 'invoices' && r.action === 'delete' && r.deletedAt && r.deletedAt.startsWith(today))
       .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
-    todayPaymentsList.forEach(p => {
-      if (p.invoiceId) {
-        const inv = allInvoices.find(i => i.id === p.invoiceId);
-        const customer = customers.find(c => c.id === (inv?.customerId || p.customerId));
-        const cName = (customer?.name || "").toLowerCase();
-        if (cName.includes('cash') || cName === 'direct customer') {
-          todayPaymentsBreakdown.directCash += (inv?.subtotal || p.amount || 0);
-        } else {
-          todayPaymentsBreakdown.customerPayments += (p.amount || 0);
-        }
-      } else {
-        todayPaymentsBreakdown.customerPayments += (p.amount || 0);
-      }
-    });
+    todayPaymentsBreakdown.customerPayments = todayPaymentsList.reduce((sum, p) => {
+      const inv = p.invoiceId ? allInvoices.find(i => i.id === p.invoiceId) : null;
+      const customer = customers.find(c => c.id === (inv?.customerId || p.customerId));
+      const cName = (customer?.name || "").toLowerCase();
+      if (cName.includes('cash') || cName === 'direct customer') return sum;
+      return sum + (Number(p.amount) || 0);
+    }, 0);
 
-    const todayPaymentsBigNumber = todayPaymentsBreakdown.directCash + todayPaymentsBreakdown.customerPayments;
+    const todayPaymentsBigNumber = todayPaymentsBreakdown.directCustomer + todayPaymentsBreakdown.customerPayments;
     const closingBalance = openingBalance + todayTotalSales - todayPaymentsBigNumber;
 
     return {
@@ -467,18 +462,30 @@ export default function Dashboard() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">{invoices.filter(i => i.date === today).length} invoices today</p>
             <div className="mt-4 space-y-1 text-sm border-t pt-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">1. Cash Sale:</span>
-                <span className="font-medium text-orange-500">₹{balances.todaySalesBreakdown.cashSales.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">2. Credit Sale:</span>
-                <span className="font-medium text-blue-500">₹{balances.todaySalesBreakdown.creditSales.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="flex justify-between border-t border-dashed mt-1 pt-1">
-                <span className="text-muted-foreground">3. Hamali Amount:</span>
-                <span className="font-medium text-green-500">₹{balances.todaySalesBreakdown.hamaliAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
+              {balances.todaySalesBreakdown.directCustomer > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">1. Direct Customer:</span>
+                  <span className="font-medium text-orange-500">₹{balances.todaySalesBreakdown.directCustomer.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              {balances.todaySalesBreakdown.creditSale > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">2. Credit Sale:</span>
+                  <span className="font-medium text-blue-500">₹{balances.todaySalesBreakdown.creditSale.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              {balances.todaySalesBreakdown.cashReceived > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">3. Cash Received:</span>
+                  <span className="font-medium text-purple-500">₹{balances.todaySalesBreakdown.cashReceived.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              {balances.todaySalesBreakdown.hamaliAmount > 0 && (
+                <div className="flex justify-between border-t border-dashed mt-1 pt-1">
+                  <span className="text-muted-foreground">Hamali Amount:</span>
+                  <span className="font-medium text-green-500">₹{balances.todaySalesBreakdown.hamaliAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -506,18 +513,24 @@ export default function Dashboard() {
               ₹{balances.todayPayments.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </div>
             <div className="mt-4 space-y-1 text-sm border-t pt-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">1. Cash Sale (Direct):</span>
-                <span className="font-medium text-orange-500">₹{balances.todayPaymentsBreakdown.directCash.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">2. Customer Payment:</span>
-                <span className="font-medium text-blue-500">₹{balances.todayPaymentsBreakdown.customerPayments.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
-              <div className="flex justify-between border-t border-dashed mt-1 pt-1">
-                <span className="text-muted-foreground">3. Deleted Record Info:</span>
-                <span className="font-medium text-red-500">₹{balances.todayPaymentsBreakdown.deletedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
-              </div>
+              {balances.todayPaymentsBreakdown.directCustomer > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">1. Direct Customer:</span>
+                  <span className="font-medium text-orange-500">₹{balances.todayPaymentsBreakdown.directCustomer.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              {balances.todayPaymentsBreakdown.customerPayments > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">2. Customer Payment:</span>
+                  <span className="font-medium text-blue-500">₹{balances.todayPaymentsBreakdown.customerPayments.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              {balances.todayPaymentsBreakdown.deletedAmount > 0 && (
+                <div className="flex justify-between border-t border-dashed mt-1 pt-1">
+                  <span className="text-muted-foreground">3. Deleted Record Amount:</span>
+                  <span className="font-medium text-red-500">₹{balances.todayPaymentsBreakdown.deletedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
