@@ -242,7 +242,7 @@ export default function Dashboard() {
   const balances = useMemo(() => {
     const totalSalesBeforeToday = invoices
       .filter(inv => inv.date < today)
-      .reduce((sum, inv) => sum + (inv.subtotal || 0), 0);
+      .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
 
     const shopInvoiceIds = new Set(invoices.map(i => i.id));
     const deletedInvoiceIds = new Set(deletedRecords
@@ -290,7 +290,7 @@ export default function Dashboard() {
       return acc;
     }, { directCustomer: 0, creditSale: 0, cashReceived: 0, hamaliAmount: 0 });
 
-    const todayTotalSales = todayInvoices.reduce((sum, inv) => sum + (inv.subtotal || 0), 0);
+    const todayTotalSales = todayInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
 
     // Payments Received Breakdown
     const todayPaymentsList = filteredPayments.filter(p => p.date === today);

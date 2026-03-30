@@ -323,7 +323,7 @@ export default function Reports() {
     const salesBeforePeriod = safeAllInvoices
       .filter(inv => matchesFilters(inv) && startDate && inv.date < startDate)
       .reduce((sum, inv) => {
-        let sTotal = Number(inv.subtotal) || 0;
+        let sTotal = Number(inv.grandTotal) || 0;
         if (inv.invoiceNumber?.startsWith('OB-') && sTotal === 0) sTotal = Number(inv.grandTotal) || 0;
         return sum + sTotal;
       }, 0);
@@ -336,7 +336,7 @@ export default function Reports() {
     let oldBalancesInPeriod = 0;
 
     filteredInvoices.forEach(inv => {
-      let sTotal = Number(inv.subtotal) || 0;
+      let sTotal = Number(inv.grandTotal) || 0;
       if (inv.invoiceNumber && inv.invoiceNumber.startsWith('OB-') && sTotal === 0) {
         sTotal = Number(inv.grandTotal) || 0;
       }
@@ -1487,7 +1487,7 @@ export default function Reports() {
                         </TooltipTrigger>
                         <TooltipContent className="max-w-[300px]">
                           <div className="space-y-2">
-                            <p className="font-semibold underline">Closing = Opening + (Old Balances) + Product Sales - Payments</p>
+                            <p className="font-semibold underline">Closing = Opening + (Old Balances) + Total Sales - Payments</p>
                             <p>Total net credit owed by customers at the end of the selected period (or today if range ends today).</p>
                           </div>
                         </TooltipContent>
@@ -1513,7 +1513,7 @@ export default function Reports() {
                       </div>
                     )}
                     <div className="flex justify-between items-center text-xs mt-1">
-                      <span className="text-muted-foreground">{summary.oldBalancesInPeriod > 0 ? '3.' : '2.'} Product Sales (+):</span>
+                      <span className="text-muted-foreground">{summary.oldBalancesInPeriod > 0 ? '3.' : '2.'} Total Sales (+):</span>
                       <span className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(summary.totalSales)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs mt-1">
