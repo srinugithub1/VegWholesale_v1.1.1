@@ -25,8 +25,14 @@ import { CalendarIcon, Search, FileText, X, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Invoice, CustomerPayment, Customer } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { jsPDF } from "jspdf";
+import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+type InvoicesResponse = {
+  invoices: Invoice[];
+  total: number;
+  totalAmount: number;
+};
 
 export default function CompletedPayments() {
   const { shop } = useShop();
@@ -45,9 +51,11 @@ export default function CompletedPayments() {
     queryKey: ["/api/customers"],
   });
 
-  const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
+  const { data: invoicesData, isLoading: invoicesLoading } = useQuery<InvoicesResponse>({
     queryKey: ["/api/invoices"],
   });
+
+  const invoices = invoicesData?.invoices || [];
 
   const { data: customerPayments = [], isLoading: paymentsLoading } = useQuery<CustomerPayment[]>({
     queryKey: ["/api/customer-payments"],
@@ -58,6 +66,7 @@ export default function CompletedPayments() {
   // Compute Outstanding Balances and filter for matching customers
   const completedCustomers = useMemo(() => {
     if (isLoading) return [];
+    if (!Array.isArray(customers) || !Array.isArray(invoices) || !Array.isArray(customerPayments)) return [];
 
     // Filter by Shop logic (Optional, since payments technically span cross-shop sometimes
     // but we can apply standard shop filter logic if invoices exist)
@@ -368,6 +377,10 @@ export default function CompletedPayments() {
 
 function LedgerTable({ customer, invoices, payments, fromDate, toDate }: { customer: Customer, invoices: Invoice[], payments: CustomerPayment[], fromDate?: Date, toDate?: Date }) {
   const ledgerData = useMemo(() => {
+    if (!Array.isArray(invoices) || !Array.isArray(payments)) {
+        return { openingBalance: 0, transactions: [], finalBalance: 0 };
+    }
+
     const custInvoices = invoices.filter(i => i.customerId === customer.id);
     const custPayments = payments.filter(p => p.customerId === customer.id);
 
