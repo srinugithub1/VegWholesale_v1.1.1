@@ -25,7 +25,7 @@ import { CalendarIcon, Search, FileText, X, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Invoice, CustomerPayment, Customer } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export default function CompletedPayments() {
