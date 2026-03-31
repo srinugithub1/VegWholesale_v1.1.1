@@ -37,6 +37,7 @@ import TallyExport from "@/pages/tally-export";
 // import InvoicesPage from "@/pages/invoices";
 
 import DeletedRecords from "@/pages/admin/deleted-records";
+import CompletedPayments from "@/pages/completed-payments";
 
 function Router() {
   return (
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/vendor-returns" component={VendorReturns} />
       <Route path="/weighing" component={Weighing} />
       <Route path="/payments" component={Payments} />
+      <Route path="/completed-payments" component={CompletedPayments} />
       <Route path="/reports" component={Reports} />
       <Route path="/print" component={PrintCenter} />
       <Route path="/settings" component={Settings} />
@@ -82,7 +84,7 @@ function ProtectedApp() {
 
     if (isRestrictedAdmin) {
       // Allowed routes for restricted admin
-      const allowed = ['/', '/stock', '/reports', '/payments', '/sell', '/customer-edit', '/print', '/customers'];
+      const allowed = ['/', '/stock', '/reports', '/payments', '/completed-payments', '/sell', '/customer-edit', '/print', '/customers'];
       if (!allowed.includes(location)) {
         setLocation('/');
       }
@@ -129,8 +131,8 @@ function ProtectedApp() {
               </div>
             </div>
 
-            {/* Shop Icons (Sell, Customer Edit, Reports, Payments) - Centered */}
-            {['/', '/sell', '/customer-edit', '/reports', '/payments'].includes(location) && (
+            {/* Shop Icons (Sell, Customer Edit, Reports, Payments, Completed Payments) - Centered */}
+            {['/', '/sell', '/customer-edit', '/reports', '/payments', '/completed-payments'].includes(location) && (
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-8">
                 {/* Shop 42 */}
                 <div
@@ -156,8 +158,8 @@ function ProtectedApp() {
                   <span className={`text-xl font-bold transition-colors ${shop === 50 ? 'text-blue-700' : 'text-blue-700/70'}`}>50</span>
                 </div>
 
-                {/* Shop Both (Only on Reports & Payments) */}
-                {['/', '/reports', '/payments'].includes(location) && (
+                {/* Shop Both (Only on selected pages) */}
+                {['/', '/reports', '/payments', '/completed-payments'].includes(location) && (
                   <div
                     className={`flex items-center gap-2 cursor-pointer group transition-all duration-300 ${shop === 'all' ? 'scale-110 opacity-100' : 'opacity-50 hover:opacity-80'}`}
                     onClick={() => setShop('all')}

@@ -31,6 +31,7 @@ import {
   Database,
   Trash2,
   FileJson, // Imported FileJson icon for Tally
+  ClipboardCheck,
 } from "lucide-react";
 
 const navigationItems = [
@@ -114,6 +115,12 @@ const transactionItems = [
     url: "/payments",
     icon: CreditCard,
     roles: ["admin", "payment", "restricted_admin"],
+  },
+  {
+    title: "Completed Payments",
+    url: "/completed-payments",
+    icon: ClipboardCheck,
+    roles: ["admin", "restricted_admin"],
   },
 ];
 

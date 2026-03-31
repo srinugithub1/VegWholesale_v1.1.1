@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useShop } from "@/hooks/use-shop";
@@ -136,6 +136,8 @@ function LowStockAlert({ products }: { products: Product[] }) {
 
 export default function Dashboard() {
   const { shop } = useShop();
+  const [pendingPage, setPendingPage] = useState(1);
+  const itemsPerPage = 5;
 
   const { data: vendors = [], isLoading: vendorsLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -326,9 +328,7 @@ export default function Dashboard() {
     };
   }, [invoices, customerPayments, today, customers, allInvoices, vehicles, shop, deletedRecords]);
 
-  const recentInvoices = [...invoices]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+
 
   const recentPurchases = [...purchases]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -352,6 +352,24 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
   }, [shopStock, products]);
+
+  // Paginated Pending Invoices logic
+  const pendingInvoices = useMemo(() => {
+    return invoices
+      .filter((inv) => inv.status === "pending")
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [invoices]);
+
+  const totalPendingPages = Math.max(1, Math.ceil(pendingInvoices.length / itemsPerPage));
+  const paginatedPendingInvoices = useMemo(() => {
+    const startIndex = (pendingPage - 1) * itemsPerPage;
+    return pendingInvoices.slice(startIndex, startIndex + itemsPerPage);
+  }, [pendingInvoices, pendingPage]);
+
+  // Ensure page is valid if items are deleted
+  if (pendingPage > totalPendingPages && totalPendingPages > 0) {
+    setPendingPage(totalPendingPages);
+  }
 
   // Chart data: Last 7 days sales trend
   const salesTrendData = useMemo(() => {
@@ -700,52 +718,69 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-lg font-semibold">Recent Invoices</CardTitle>
+            <CardTitle className="text-lg font-semibold">Pending Invoices</CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/print">View All</Link>
             </Button>
           </CardHeader>
           <CardContent>
-            {recentInvoices.length === 0 ? (
+            {pendingInvoices.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                 <Receipt className="h-8 w-8 mb-2" />
-                <p className="text-sm">No invoices yet</p>
+                <p className="text-sm">No pending invoices</p>
                 <Button variant="outline" size="sm" className="mt-2" asChild>
-                  <Link href="/weighing">Create First Invoice</Link>
+                  <Link href="/weighing">Create New Invoice</Link>
                 </Button>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentInvoices.map((invoice) => (
-                    <TableRow key={invoice.id} data-testid={`row-invoice-${invoice.id}`}>
-                      <TableCell className="font-mono text-sm">
-                        {invoice.invoiceNumber}
-                      </TableCell>
-                      <TableCell className="text-sm">{invoice.date}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        ₹{invoice.grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={invoice.status === "completed" ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          {invoice.status}
-                        </Badge>
-                      </TableCell>
+              <div className="space-y-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice #</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Total Amount</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedPendingInvoices.map((invoice) => (
+                      <TableRow key={invoice.id} data-testid={`row-invoice-${invoice.id}`}>
+                        <TableCell className="font-mono text-sm">
+                          {invoice.invoiceNumber}
+                        </TableCell>
+                        <TableCell className="text-sm">{invoice.date}</TableCell>
+                        <TableCell className="text-right font-mono font-medium text-amber-600 dark:text-amber-500">
+                          ₹{invoice.grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {((pendingPage - 1) * itemsPerPage) + 1} to {Math.min(pendingPage * itemsPerPage, pendingInvoices.length)} of {pendingInvoices.length} pending
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPendingPage(Math.max(1, pendingPage - 1))}
+                      disabled={pendingPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPendingPage(Math.min(totalPendingPages, pendingPage + 1))}
+                      disabled={pendingPage === totalPendingPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
