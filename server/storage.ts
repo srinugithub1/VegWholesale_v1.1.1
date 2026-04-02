@@ -132,7 +132,7 @@ export interface IStorage {
   updateVendorPayment(id: string, payment: Partial<InsertVendorPayment>): Promise<VendorPayment | undefined>;
   getVendorBalance(vendorId: string): Promise<{ totalPurchases: number; totalPayments: number; totalReturns: number; balance: number }>;
 
-  getCustomerPayments(customerId?: string): Promise<CustomerPayment[]>;
+  getCustomerPayments(customerId?: string, startDate?: string, endDate?: string): Promise<CustomerPayment[]>;
   createCustomerPayment(payment: InsertCustomerPayment): Promise<CustomerPayment>;
   updateCustomerPayment(id: string, payment: Partial<InsertCustomerPayment>): Promise<CustomerPayment | undefined>;
   getCustomerBalance(customerId: string): Promise<{ totalInvoices: number; totalPayments: number; balance: number }>;
@@ -932,13 +932,19 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getCustomerPayments(customerId?: string): Promise<CustomerPayment[]> {
-    if (customerId) {
-      return await db.select().from(customerPayments)
-        .where(eq(customerPayments.customerId, customerId))
-        .orderBy(desc(customerPayments.date), desc(customerPayments.id));
+  async getCustomerPayments(customerId?: string, startDate?: string, endDate?: string): Promise<CustomerPayment[]> {
+    const conditions = [];
+    if (customerId) conditions.push(eq(customerPayments.customerId, customerId));
+    if (startDate) conditions.push(gte(customerPayments.date, startDate));
+    if (endDate) conditions.push(lte(customerPayments.date, endDate));
+
+    const query = db.select().from(customerPayments).orderBy(desc(customerPayments.date), desc(customerPayments.id));
+    
+    if (conditions.length > 0) {
+      query.where(and(...conditions));
     }
-    return await db.select().from(customerPayments).orderBy(desc(customerPayments.date), desc(customerPayments.id));
+    
+    return await query;
   }
 
   async createCustomerPayment(insertPayment: InsertCustomerPayment): Promise<CustomerPayment> {

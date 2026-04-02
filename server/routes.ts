@@ -945,8 +945,12 @@ export async function registerRoutes(
 
   // Customer Payments
   app.get("/api/customer-payments", async (req, res) => {
-    const { customerId } = req.query;
-    const payments = await storage.getCustomerPayments(customerId as string | undefined);
+    const { customerId, startDate, endDate } = req.query;
+    const payments = await storage.getCustomerPayments(
+      customerId as string | undefined,
+      startDate as string | undefined,
+      endDate as string | undefined
+    );
 
     // Enrich payments with invoice numbers
     const allInvoices = await storage.getInvoices();
