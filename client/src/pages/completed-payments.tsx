@@ -222,7 +222,8 @@ export default function CompletedPayments() {
     let filtered = customerBalances.filter(c => {
        const isCleared = (c.balance || 0) <= 0.01;
        const hasRecentPayment = paymentCustomerIds.has(c.id);
-       return isCleared && hasRecentPayment;
+       const isSpecialAccount = c.name === "Cash Sale Account";
+       return isCleared && hasRecentPayment && !isSpecialAccount;
     });
 
     if (searchQuery) {
