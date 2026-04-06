@@ -706,17 +706,20 @@ export default function Dashboard() {
             <CardTitle className="text-lg font-semibold">Stock Value by Product</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64 relative" data-testid="chart-stock-value">
+            <div className="h-72 relative" data-testid="chart-stock-value">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={stockValueData}
-                    cx="50%"
+                    cx="40%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
+                    innerRadius={65}
+                    outerRadius={85}
                     paddingAngle={5}
                     dataKey="value"
+                    animationBegin={0}
+                    animationDuration={1500}
+                    isAnimationActive={true}
                   >
                     {stockValueData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -730,22 +733,50 @@ export default function Dashboard() {
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
-                      borderRadius: "6px",
-                      fontSize: "12px"
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
                     }}
                   />
                   <Legend 
                     layout="vertical" 
                     verticalAlign="middle" 
                     align="right"
-                    wrapperStyle={{ fontSize: '11px', paddingLeft: '20px' }}
+                    content={(props) => {
+                      const { payload } = props;
+                      return (
+                        <div className="flex flex-col gap-2 ml-4">
+                          {payload?.map((entry: any, index: number) => (
+                            <div key={`legend-${index}`} className="flex items-center justify-between gap-4 min-w-[140px]">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                                <span className="text-[11px] font-medium text-muted-foreground truncate max-w-[80px]" title={entry.value}>
+                                  {entry.value}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-mono font-bold text-foreground">
+                                ₹{(entry.payload.value / 100000).toFixed(1)}L
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
-              {/* Center Summary Label */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
-                <span className="text-[10px] uppercase text-muted-foreground font-semibold">Total Value</span>
-                <span className="text-sm font-bold">
+              {/* Center Summary Label - Adjusted for cx="40%" */}
+                <div 
+                className="absolute flex flex-col items-center justify-center pointer-events-none"
+                style={{ 
+                  left: '40%', 
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '120px'
+                }}
+              >
+                <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Total Value</span>
+                <span className="text-xl font-black text-primary">
                   ₹{(totalStockValue / 100000).toFixed(1)}L
                 </span>
               </div>
