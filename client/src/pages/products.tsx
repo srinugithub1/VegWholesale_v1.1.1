@@ -355,6 +355,18 @@ export default function Products() {
               <DialogTitle>
                 {editingProduct ? "Edit Product" : "Add New Product"}
               </DialogTitle>
+              {editingProduct && (
+                <div className="mt-2 p-2 bg-muted rounded-md border border-border">
+                  <div className="flex justify-between items-baseline text-sm">
+                    <span className="text-muted-foreground font-medium">Total Stock (Inc. Vehicles):</span>
+                    <span className="text-lg font-bold">
+                      {(editingProduct.currentStock + vehicleInventories
+                        .filter(inv => inv.productId === editingProduct.id)
+                        .reduce((sum, inv) => sum + inv.quantity, 0)).toFixed(2)} {editingProduct.unit}
+                    </span>
+                  </div>
+                </div>
+              )}
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -429,7 +441,7 @@ export default function Products() {
                     name="salePrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Sale Price *</FormLabel>
+                        <FormLabel>Catalog Base Price *</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -450,7 +462,7 @@ export default function Products() {
                     name="currentStock"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Current Stock</FormLabel>
+                        <FormLabel>Warehouse/Main Stock</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
