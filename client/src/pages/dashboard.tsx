@@ -151,36 +151,30 @@ export default function Dashboard() {
     queryKey: ["/api/products"],
   });
 
-  const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
-    queryKey: ["/api/invoices?limit=100000"],
-  });
-  const allInvoices = invoicesResult?.invoices || [];
-
-  const { data: allPurchases = [], isLoading: purchasesLoading } = useQuery<Purchase[]>({
-    queryKey: ["/api/purchases"],
+  const { data: invoiceItems = [], isLoading: itemsLoading } = useQuery<InvoiceItem[]>({
+    queryKey: ["/api/invoice-items"],
   });
 
-  const { data: customerPayments = [], isLoading: paymentsLoading } = useQuery<CustomerPayment[]>({
-    queryKey: ["/api/customer-payments"],
-  });
+  const isLoading = vendorsLoading || customersLoading || productsLoading || invoicesLoading || purchasesLoading || paymentsLoading || vehiclesLoading || deletedLoading || itemsLoading;
 
-  const { data: vehicles = [], isLoading: vehiclesLoading } = useQuery<Vehicle[]>({
-    queryKey: ["/api/vehicles"],
-  });
+  // Calculate Average Selling Price (ASP) for each product globally from all invoice items
+  const productASPs = useMemo(() => {
+    const stats = new Map<string, { totalVal: number; totalQty: number }>();
+    invoiceItems.forEach(item => {
+      const current = stats.get(item.productId) || { totalVal: 0, totalQty: 0 };
+      current.totalVal += Number(item.total || 0);
+      current.totalQty += Number(item.quantity || 0);
+      stats.set(item.productId, current);
+    });
 
-  const { data: vehicleInventories = [] } = useQuery<VehicleInventory[]>({
-    queryKey: ["/api/all-vehicle-inventories"],
-  });
-
-  const { data: deletedRecordsResult, isLoading: deletedLoading } = useQuery<{ records: any[] }>({
-    queryKey: ["/api/admin/deleted-records", {
-      // Fetch a wide range for balance filtering
-      limit: 10000
-    }],
-  });
-  const deletedRecords = deletedRecordsResult?.records || [];
-
-  const isLoading = vendorsLoading || customersLoading || productsLoading || invoicesLoading || purchasesLoading || paymentsLoading || vehiclesLoading || deletedLoading;
+    const asps = new Map<string, number>();
+    stats.forEach((val, productId) => {
+      if (val.totalQty > 0) {
+        asps.set(productId, val.totalVal / val.totalQty);
+      }
+    });
+    return asps;
+  }, [invoiceItems]);
 
   // Filter data by selected shop
   const { invoices, purchases, shopStock } = useMemo(() => {
@@ -228,11 +222,13 @@ export default function Dashboard() {
     shopStock.forEach((quantity, productId) => {
       const product = products.find(p => p.id === productId);
       if (product) {
-        total += quantity * product.purchasePrice;
+        // Use ASP if available, otherwise fallback to product.salePrice or purchasePrice
+        const price = productASPs.get(productId) || product.salePrice || product.purchasePrice || 0;
+        total += quantity * price;
       }
     });
     return total;
-  }, [shopStock, products]);
+  }, [shopStock, products, productASPs]);
 
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -240,7 +236,8 @@ export default function Dashboard() {
     .filter((i) => i.date === today)
     .reduce((acc, i) => acc + (i.subtotal || 0), 0);
 
-  // Calculate opening and closing balances with detailed breakdowns
+  // ... (balances calculation remains same)
+  // ... (ensure consistency by keeping original balances implementation) ...
   const balances = useMemo(() => {
     const totalSalesBeforeToday = invoices
       .filter(inv => inv.date < today)
@@ -252,15 +249,11 @@ export default function Dashboard() {
       .map(r => r.recordId));
 
     const filteredPayments = customerPayments.filter(p => {
-      // If payment is linked to an invoice, check if that invoice is in our current list
       if (p.invoiceId) {
-        // If it's linked to an active invoice BUT not in this shop, exclude it
         const linkedInvoiceExists = allInvoices.some(inv => inv.id === p.invoiceId);
         if (linkedInvoiceExists && !shopInvoiceIds.has(p.invoiceId)) {
           return false;
         }
-
-        // If it's linked to a deleted invoice, exclude it (to match reports logic)
         if (deletedInvoiceIds.has(p.invoiceId)) {
           return false;
         }
@@ -274,7 +267,6 @@ export default function Dashboard() {
 
     const openingBalance = totalSalesBeforeToday - totalPaymentsBeforeToday;
 
-    // Today's Sales Breakdown
     const todayInvoices = invoices.filter(inv => inv.date === today);
     const todaySalesBreakdown = todayInvoices.reduce((acc, inv) => {
       const customer = customers.find(c => c.id === inv.customerId);
@@ -294,7 +286,6 @@ export default function Dashboard() {
 
     const todayTotalSales = todayInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
 
-    // Payments Received Breakdown
     const todayPaymentsList = filteredPayments.filter(p => p.date === today);
     const todayPaymentsBreakdown = {
       directCustomer: todaySalesBreakdown.directCustomer,
@@ -302,7 +293,6 @@ export default function Dashboard() {
       deletedAmount: 0,
     };
 
-    // Calculate Deleted Amount from archived invoices today
     todayPaymentsBreakdown.deletedAmount = deletedRecords
       .filter(r => r.tableName === 'invoices' && r.action === 'delete' && r.deletedAt && r.deletedAt.startsWith(today))
       .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
@@ -328,30 +318,43 @@ export default function Dashboard() {
     };
   }, [invoices, customerPayments, today, customers, allInvoices, vehicles, shop, deletedRecords]);
 
-
-
   const recentPurchases = [...purchases]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5);
 
-  // Chart data: Top products by stock value (Shop specific)
+  // Chart data: Top products by stock potential value (Quantity * ASP)
   const stockValueData = useMemo(() => {
-    return Array.from(shopStock.entries())
+    const data = Array.from(shopStock.entries())
       .map(([productId, quantity]) => {
         const product = products.find(p => p.id === productId);
         if (!product) return null;
+        const asp = productASPs.get(productId) || product.salePrice || product.purchasePrice || 0;
         return {
           name: product.name.length > 12 ? product.name.slice(0, 12) + "..." : product.name,
           fullName: product.name,
-          value: quantity * product.purchasePrice,
+          value: Number((quantity * asp).toFixed(2)),
           stock: quantity,
           unit: product.unit,
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null && item.stock > 0)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 6);
-  }, [shopStock, products]);
+      .sort((a, b) => b.value - a.value);
+
+    // Group items beyond top 5 into "Others" for cleaner Donut view
+    if (data.length > 6) {
+      const top = data.slice(0, 5);
+      const others = data.slice(5).reduce((acc, item) => ({
+        ...acc,
+        value: acc.value + item.value,
+        stock: acc.stock + item.stock,
+      }), { name: "Others", fullName: "Other Products", value: 0, stock: 0, unit: "mixed" });
+      return [...top, others];
+    }
+    return data;
+  }, [shopStock, products, productASPs]);
+
+  // Colors for Donut Chart
+  const CHART_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#a855f7", "#ec4899", "#64748b"];
 
   // Paginated Pending Invoices logic
   const pendingInvoices = useMemo(() => {
@@ -373,7 +376,6 @@ export default function Dashboard() {
 
   // Chart data: Last 7 days sales trend
   const salesTrendData = useMemo(() => {
-    // First, aggregate all invoices by date in a single pass
     const salesByDate = new Map<string, { sales: number; count: number }>();
     invoices.forEach((inv) => {
       const existing = salesByDate.get(inv.date) || { sales: 0, count: 0 };
@@ -382,7 +384,6 @@ export default function Dashboard() {
       salesByDate.set(inv.date, existing);
     });
 
-    // Then build the 7-day array using the pre-aggregated map
     const days: { date: string; sales: number; invoices: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
@@ -599,9 +600,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Stock Value"
+          title="Potential Stock Value"
           value={`₹${totalStockValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
-          subtitle={`${products.length} products`}
+          subtitle={`Based on Avg Selling Price`}
           icon={IndianRupee}
         />
         <MetricCard
@@ -677,39 +678,49 @@ export default function Dashboard() {
             <CardTitle className="text-lg font-semibold">Stock Value by Product</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64" data-testid="chart-stock-value">
+            <div className="h-64 relative" data-testid="chart-stock-value">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stockValueData} layout="vertical">
-                  <XAxis
-                    type="number"
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={80}
-                  />
+                <PieChart>
+                  <Pie
+                    data={stockValueData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {stockValueData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
                   <ChartTooltip
-                    formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Value"]}
+                    formatter={(value: number, name: string, props: any) => [
+                      `₹${value.toLocaleString("en-IN")}`,
+                      `${props.payload.fullName} (${props.payload.stock} ${props.payload.unit})`
+                    ]}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "6px",
+                      fontSize: "12px"
                     }}
                   />
-                  <Bar
-                    dataKey="value"
-                    fill="hsl(var(--primary))"
-                    radius={[0, 4, 4, 0]}
+                  <Legend 
+                    layout="vertical" 
+                    verticalAlign="middle" 
+                    align="right"
+                    wrapperStyle={{ fontSize: '11px', paddingLeft: '20px' }}
                   />
-                </BarChart>
+                </PieChart>
               </ResponsiveContainer>
+              {/* Center Summary Label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
+                <span className="text-[10px] uppercase text-muted-foreground font-semibold">Total Value</span>
+                <span className="text-sm font-bold">
+                  ₹{(totalStockValue / 100000).toFixed(1)}L
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
