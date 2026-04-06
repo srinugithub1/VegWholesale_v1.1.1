@@ -87,7 +87,7 @@ const navigationItems = [
     title: "Products",
     url: "/products",
     icon: Package,
-    roles: ["admin"],
+    roles: ["admin", "restricted_admin"],
   },
 ];
 
