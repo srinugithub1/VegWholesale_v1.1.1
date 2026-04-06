@@ -542,7 +542,7 @@ export default function Products() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 overflow-hidden">
+          <CardContent className="flex-1 overflow-hidden flex flex-col">
             {filteredRows.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Package className="h-12 w-12 mb-4" />
@@ -564,7 +564,7 @@ export default function Products() {
                 )}
               </div>
             ) : (
-              <ScrollArea className="h-full">
+              <ScrollArea className="flex-1 overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -584,8 +584,6 @@ export default function Products() {
                       <TableHead className="text-right">Loaded Stock</TableHead>
                       <TableHead className="text-right">Remain Stock</TableHead>
                       <TableHead className="text-right text-blue-600">Total Sold</TableHead>
-                      <TableHead className="text-right text-red-500">Loss Stock</TableHead>
-                      <TableHead className="text-right text-green-600">Gain Stock</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Avg Selling Price</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -631,12 +629,6 @@ export default function Products() {
                           </TableCell>
                           <TableCell className="text-right font-mono text-blue-600 font-medium">
                             {row.totalSold.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-red-500 bg-red-50/30">
-                            {row.lossStock.toFixed(3)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-green-600 bg-green-50/30">
-                            {row.gainStock.toFixed(3)}
                           </TableCell>
                           <TableCell>
                             {row.isLowStock ? (
