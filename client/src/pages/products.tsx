@@ -167,25 +167,39 @@ export default function Products() {
 
   const productStockRows = useMemo(() => {
     const rows: any[] = [];
-    const today = format(new Date(), "yyyy-MM-dd");
 
-    // Group items by product AND vehicle for All-Time ASP and Total Sold calculation
-    // Map key: `${productId}-${vehicleId || 'none'}`
+    // Pre-calculate sales stats per Product-Vehicle combination
     const salesStats = new Map<string, { totalVal: number; totalQty: number }>();
-
     invoiceItems.forEach(item => {
       const key = `${item.productId}-${item.vehicleId || 'none'}`;
       const stats = salesStats.get(key) || { totalVal: 0, totalQty: 0 };
-      stats.totalVal += item.total;
-      stats.totalQty += item.quantity;
+      stats.totalVal += Number(item.total || 0);
+      stats.totalQty += Number(item.quantity || 0);
       salesStats.set(key, stats);
     });
 
+    // Pre-calculate total loaded amount per Product-Vehicle
+    const loadedStats = new Map<string, number>();
+    movements.forEach(m => {
+      if (m.type === 'load') {
+        const key = `${m.productId}-${m.vehicleId}`;
+        const current = loadedStats.get(key) || 0;
+        loadedStats.set(key, current + Number(m.quantity || 0));
+      }
+    });
+
+    // Group vehicle inventories by product for O(1) retrieval
+    const invsByProduct = new Map<string, VehicleInventory[]>();
+    vehicleInventories.forEach(inv => {
+      const list = invsByProduct.get(inv.productId) || [];
+      list.push(inv);
+      invsByProduct.set(inv.productId, list);
+    });
+
     products.forEach(product => {
-      const productInvs = vehicleInventories.filter(inv => inv.productId === product.id);
+      const productInvs = invsByProduct.get(product.id) || [];
 
       if (productInvs.length === 0) {
-        // Stats for product without vehicle (if any)
         const stats = salesStats.get(`${product.id}-none`) || { totalVal: 0, totalQty: 0 };
         const asp = stats.totalQty > 0 ? stats.totalVal / stats.totalQty : 0;
 
@@ -199,8 +213,6 @@ export default function Products() {
           loadedStock: 0,
           remainStock: 0,
           totalSold: stats.totalQty,
-          lossStock: 0,
-          gainStock: 0,
           status: "Catalog",
           asp: asp,
           isLowStock: product.currentStock <= (product.reorderLevel || 10),
@@ -210,13 +222,9 @@ export default function Products() {
         productInvs.forEach(inv => {
           const vehicle = vehicles.find(v => v.id === inv.vehicleId);
           const vendor = vendors.find(v => v.id === vehicle?.vendorId);
-
           const stats = salesStats.get(`${product.id}-${inv.vehicleId}`) || { totalVal: 0, totalQty: 0 };
           const asp = stats.totalQty > 0 ? stats.totalVal / stats.totalQty : 0;
-
-          const totalLoaded = movements
-            .filter(m => m.vehicleId === inv.vehicleId && m.productId === inv.productId && m.type === 'load')
-            .reduce((sum, m) => sum + m.quantity, 0);
+          const totalLoaded = loadedStats.get(`${product.id}-${inv.vehicleId}`) || 0;
 
           rows.push({
             id: `${inv.id}`,
@@ -228,8 +236,6 @@ export default function Products() {
             loadedStock: totalLoaded,
             remainStock: inv.quantity,
             totalSold: stats.totalQty,
-            lossStock: vehicle?.totalWeightLoss || 0,
-            gainStock: vehicle?.totalWeightGain || 0,
             status: inv.quantity <= (product.reorderLevel || 10) ? "Low" : "OK",
             asp: asp,
             isLowStock: inv.quantity <= (product.reorderLevel || 10),
