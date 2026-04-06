@@ -169,21 +169,16 @@ export default function Products() {
     const rows: any[] = [];
     const today = format(new Date(), "yyyy-MM-dd");
 
-    // Group items by product AND vehicle for ASP and Total Sold calculation (Today's sales)
+    // Group items by product AND vehicle for All-Time ASP and Total Sold calculation
     // Map key: `${productId}-${vehicleId || 'none'}`
     const salesStats = new Map<string, { totalVal: number; totalQty: number }>();
 
     invoiceItems.forEach(item => {
-      // Filter for today's items for accurate ASP
-      const itemDate = item.createdAt ? format(new Date(item.createdAt), "yyyy-MM-dd") : "";
-
-      if (itemDate === today) {
-        const key = `${item.productId}-${item.vehicleId || 'none'}`;
-        const stats = salesStats.get(key) || { totalVal: 0, totalQty: 0 };
-        stats.totalVal += item.total;
-        stats.totalQty += item.quantity;
-        salesStats.set(key, stats);
-      }
+      const key = `${item.productId}-${item.vehicleId || 'none'}`;
+      const stats = salesStats.get(key) || { totalVal: 0, totalQty: 0 };
+      stats.totalVal += item.total;
+      stats.totalQty += item.quantity;
+      salesStats.set(key, stats);
     });
 
     products.forEach(product => {
