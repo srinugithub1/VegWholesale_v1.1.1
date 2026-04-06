@@ -48,7 +48,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { HelpCircle } from "lucide-react";
-import type { Vendor, Customer, Product, Invoice, Purchase, CustomerPayment, Vehicle, VehicleInventory } from "@shared/schema";
+import type { Vendor, Customer, Product, Invoice, Purchase, CustomerPayment, Vehicle, VehicleInventory, InvoiceItem } from "@shared/schema";
 
 function MetricCard({
   title,
@@ -151,11 +151,39 @@ export default function Dashboard() {
     queryKey: ["/api/products"],
   });
 
+  const { data: invoicesResult, isLoading: invoicesLoading } = useQuery<{ invoices: Invoice[], total: number }>({
+    queryKey: ["/api/invoices?limit=100000"],
+  });
+  const allInvoices = invoicesResult?.invoices || [];
+
+  const { data: allPurchases = [], isLoading: purchasesLoading } = useQuery<Purchase[]>({
+    queryKey: ["/api/purchases"],
+  });
+
+  const { data: customerPayments = [], isLoading: paymentsLoading } = useQuery<CustomerPayment[]>({
+    queryKey: ["/api/customer-payments"],
+  });
+
+  const { data: vehicles = [], isLoading: vehiclesLoading } = useQuery<Vehicle[]>({
+    queryKey: ["/api/vehicles"],
+  });
+
+  const { data: vehicleInventories = [], isLoading: inventoriesLoading } = useQuery<VehicleInventory[]>({
+    queryKey: ["/api/all-vehicle-inventories"],
+  });
+
+  const { data: deletedRecordsResult, isLoading: deletedLoading } = useQuery<{ records: any[] }>({
+    queryKey: ["/api/admin/deleted-records", {
+      limit: 10000
+    }],
+  });
+  const deletedRecords = deletedRecordsResult?.records || [];
+
   const { data: invoiceItems = [], isLoading: itemsLoading } = useQuery<InvoiceItem[]>({
     queryKey: ["/api/invoice-items"],
   });
 
-  const isLoading = vendorsLoading || customersLoading || productsLoading || invoicesLoading || purchasesLoading || paymentsLoading || vehiclesLoading || deletedLoading || itemsLoading;
+  const isLoading = vendorsLoading || customersLoading || productsLoading || invoicesLoading || purchasesLoading || paymentsLoading || vehiclesLoading || inventoriesLoading || deletedLoading || itemsLoading;
 
   // Calculate Average Selling Price (ASP) for each product globally from all invoice items
   const productASPs = useMemo(() => {
