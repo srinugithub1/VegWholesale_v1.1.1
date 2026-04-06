@@ -214,8 +214,8 @@ export default function Products() {
           const stats = salesStats.get(`${product.id}-${inv.vehicleId}`) || { totalVal: 0, totalQty: 0 };
           const asp = stats.totalQty > 0 ? stats.totalVal / stats.totalQty : 0;
 
-          const loadedToday = movements
-            .filter(m => m.vehicleId === inv.vehicleId && m.productId === inv.productId && m.type === 'load' && m.date === today)
+          const totalLoaded = movements
+            .filter(m => m.vehicleId === inv.vehicleId && m.productId === inv.productId && m.type === 'load')
             .reduce((sum, m) => sum + m.quantity, 0);
 
           rows.push({
@@ -225,7 +225,7 @@ export default function Products() {
             unit: product.unit,
             vendorName: vendor?.name || "N/A",
             vehicleNumber: vehicle?.number || "N/A",
-            loadedStock: loadedToday,
+            loadedStock: totalLoaded,
             remainStock: inv.quantity,
             totalSold: stats.totalQty,
             lossStock: vehicle?.totalWeightLoss || 0,
