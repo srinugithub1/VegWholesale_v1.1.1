@@ -36,7 +36,8 @@ export const generateSalesCSV = (
         "UOM",
         "RATE",
         "Sales Ledger",
-        "Amount"
+        "Amount",
+        "Hamali"
     ];
 
     const rows: string[][] = [headers];
@@ -64,7 +65,8 @@ export const generateSalesCSV = (
                 productInfo.unit,                  // 12. UOM
                 item.unitPrice.toString(),         // 13. RATE
                 "Sales Account",                   // 14. Sales Ledger
-                item.total.toFixed(2)              // 15. Amount
+                item.total.toFixed(2),             // 15. Amount
+                (inv.hamaliChargeAmount || 0).toString() // 16. Hamali
             ];
             rows.push(row);
         });
