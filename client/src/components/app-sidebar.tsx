@@ -153,7 +153,7 @@ const reportItems = [
     title: "Tally Export",
     url: "/admin/tally",
     icon: FileJson,
-    roles: ["admin"],
+    roles: ["admin", "restricted_admin"],
   },
   {
     title: "Modified Records",
