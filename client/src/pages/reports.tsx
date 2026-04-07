@@ -610,6 +610,63 @@ export default function Reports() {
     };
   }, [reportItems, summary]);
 
+  const vendorReportItems = useMemo(() => {
+    if (selectedVendorId === "all") return [];
+    
+    // 1. Get all invoices for this vendor (direct or via vehicle)
+    const vendorInvoices = invoices.filter(inv => {
+      if (inv.vendorId === selectedVendorId) return true;
+      const vehicle = vehicles.find(v => v.id === inv.vehicleId);
+      return vehicle?.vendorId === selectedVendorId;
+    });
+    
+    // Sort by date descending
+    vendorInvoices.sort((a, b) => b.date.localeCompare(a.date));
+
+    const invoiceIds = new Set(vendorInvoices.map(inv => inv.id));
+    
+    // 2. Get all invoice items for these invoices
+    const items = invoiceItems
+      .filter(item => {
+        const matchesInvoices = invoiceIds.has(item.invoiceId);
+        // Also respect product filter if it's active
+        if (selectedProductId !== "all" && item.productId !== selectedProductId) return false;
+        return matchesInvoices;
+      })
+      .map(item => {
+        const product = products.find(p => p.id === item.productId);
+        const invoice = invoices.find(inv => inv.id === item.invoiceId);
+        
+        const itemsInInvoice = invoiceItems.filter(i => i.invoiceId === item.invoiceId);
+        const isSingleItem = itemsInInvoice.length === 1;
+        const bags = (invoice && isSingleItem) ? (invoice.bags || 0) : 0;
+
+        return {
+          ...item,
+          productName: product?.name || "Unknown",
+          date: invoice?.date || "",
+          bags: bags,
+        };
+      });
+
+    // Sort items by date descending, then by name
+    return items.sort((a, b) => b.date.localeCompare(a.date) || a.productName.localeCompare(b.productName));
+  }, [selectedVendorId, invoices, invoiceItems, vehicles, products, selectedProductId]);
+
+  const vendorReportSummary = useMemo(() => {
+    const totalWeight = vendorReportItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const totalBags = vendorReportItems.reduce((sum, item) => sum + (item.bags || 0), 0);
+    const totalAmount = vendorReportItems.reduce((sum, item) => sum + (item.total || 0), 0);
+    
+    return {
+      totalWeight,
+      totalBags,
+      totalAmount,
+      avgPriceWeight: totalWeight > 0 ? totalAmount / totalWeight : 0,
+      avgPriceBags: totalBags > 0 ? totalAmount / totalBags : 0,
+    };
+  }, [vendorReportItems]);
+
   const CHART_COLORS = [
     "hsl(var(--chart-1))",
     "hsl(var(--chart-2))",
@@ -1323,22 +1380,26 @@ export default function Reports() {
       </div>
 
       <Tabs defaultValue="dashboard" className="space-y-4 w-full h-full flex flex-col">
-        <TabsList className="w-full grid grid-cols-4 h-12 bg-muted/20 p-1">
-          <TabsTrigger value="dashboard" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
-            <LayoutDashboard className="h-4 w-4 mr-2" />
+        <TabsList className="w-full grid grid-cols-5 h-12 bg-muted/20 p-1">
+          <TabsTrigger value="dashboard" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm px-2">
+            <LayoutDashboard className="h-4 w-4 mr-1" />
             Dashboard
           </TabsTrigger>
-          <TabsTrigger value="sales" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
-            <FileText className="h-4 w-4 mr-2" />
-            Sales Report
+          <TabsTrigger value="sales" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm px-2">
+            <FileText className="h-4 w-4 mr-1" />
+            Sales
           </TabsTrigger>
-          <TabsTrigger value="daily" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
-            <Calendar className="h-4 w-4 mr-2" />
-            Daily Summary
+          <TabsTrigger value="daily" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm px-2">
+            <Calendar className="h-4 w-4 mr-1" />
+            Daily
           </TabsTrigger>
-          <TabsTrigger value="hamali" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-base">
-            <Users className="h-4 w-4 mr-2" />
-            Hamali Details
+          <TabsTrigger value="hamali" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm px-2">
+            <Users className="h-4 w-4 mr-1" />
+            Hamali
+          </TabsTrigger>
+          <TabsTrigger value="vendor-sale" className="h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-sm px-2">
+            <TrendingUp className="h-4 w-4 mr-1" />
+            Vendor Sale
           </TabsTrigger>
         </TabsList>
 
@@ -2072,6 +2133,117 @@ export default function Reports() {
                       Next
                       <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="vendor-sale" className="space-y-6 animate-in fade-in duration-500">
+          <FilterSection />
+          
+          <Card className="border-0 shadow-sm overflow-hidden">
+            <CardContent className="p-0">
+              {selectedVendorId === "all" ? (
+                <div className="flex flex-col items-center justify-center p-12 text-muted-foreground bg-muted/10 font-sans">
+                  <Users className="h-12 w-12 mb-4 opacity-20" />
+                  <p className="text-lg font-medium">Please select a vendor</p>
+                  <p className="text-sm">Choose a vendor from the filters above to view their product sale report.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col font-sans">
+                  {/* Specialized Header from Screenshot */}
+                  <div className="bg-primary/5 p-6 border-b border-primary/10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div className="space-y-1">
+                        <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Vendor/Farmer Name</Label>
+                        <div className="text-lg font-bold text-primary">
+                          {vendors.find(v => v.id === selectedVendorId)?.name || "N/A"}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Vendor ID</Label>
+                        <div className="text-lg font-mono">
+                          {vendors.find(v => v.id === selectedVendorId)?.id?.slice(0, 8) || "N/A"}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Product Name</Label>
+                        <div className="text-lg font-semibold flex flex-wrap gap-1">
+                          {Array.from(new Set(vendorReportItems.map(item => item.productName))).join(" + ") || "N/A"}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Date Range</Label>
+                        <div className="text-lg font-medium">
+                          {fromDate && toDate ? (
+                            `${format(fromDate, "dd/MM/yyyy")} - ${format(toDate, "dd/MM/yyyy")}`
+                          ) : "All Time"}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-8 flex justify-center">
+                      <div className="px-12 py-1 bg-primary text-primary-foreground font-bold rounded-t-lg uppercase tracking-widest text-sm">
+                        Purchases
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader className="bg-muted/50 border-y">
+                        <TableRow>
+                          <TableHead className="font-bold text-foreground">Product Name</TableHead>
+                          <TableHead className="text-right font-bold text-foreground">Weight</TableHead>
+                          <TableHead className="text-right font-bold text-foreground">Bags</TableHead>
+                          <TableHead className="text-right font-bold text-foreground">Price</TableHead>
+                          <TableHead className="text-right font-bold text-foreground">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {vendorReportItems.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-12 text-muted-foreground italic">
+                              No product sales found for this vendor in the selected period.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          vendorReportItems.map((item, idx) => (
+                            <TableRow key={item.id + idx} className="hover:bg-muted/30 transition-colors">
+                              <TableCell className="font-medium text-base">{item.productName}</TableCell>
+                              <TableCell className="text-right font-mono text-base">{item.quantity.toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-mono text-base">{item.bags || "-"}</TableCell>
+                              <TableCell className="text-right font-mono text-base">{item.unitPrice.toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-mono font-semibold text-base">{formatCurrency(item.total)}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                      {vendorReportItems.length > 0 && (
+                        <tfoot className="bg-primary/5 font-bold border-t-2 border-primary/20">
+                          <TableRow>
+                            <TableCell className="text-lg underline underline-offset-4 decoration-primary">Total</TableCell>
+                            <TableCell className="text-right text-lg font-mono">
+                              {vendorReportSummary.totalWeight.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right text-lg font-mono">
+                              {vendorReportSummary.totalBags}
+                            </TableCell>
+                            <TableCell className="text-right text-lg font-mono text-primary/80 italic">
+                               <div className="flex flex-col items-end leading-tight">
+                                 <span className="text-[10px] text-muted-foreground font-normal uppercase">Avg Price</span>
+                                 <span>{vendorReportSummary.avgPriceWeight.toFixed(2)}</span>
+                               </div>
+                            </TableCell>
+                            <TableCell className="text-right text-lg font-mono text-primary">
+                              {formatCurrency(vendorReportSummary.totalAmount)}
+                            </TableCell>
+                          </TableRow>
+                        </tfoot>
+                      )}
+                    </Table>
                   </div>
                 </div>
               )}
