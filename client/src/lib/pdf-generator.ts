@@ -612,3 +612,148 @@ export const generateHamaliReportPDF = (data: HamaliReportData) => {
     const timestamp = new Date().toISOString().split('T')[0];
     doc.save(`Hamali_Report_${timestamp}.pdf`);
 };
+
+export interface VendorProductSaleReportData {
+    vendorName: string;
+    vendorId: string;
+    productNames: string; // Combined with +
+    date: string;
+    items: {
+        productName: string;
+        weight: number;
+        bags: number;
+        price: number;
+        amount: number;
+    }[];
+    totals: {
+        weight: number;
+        bags: number;
+        avgPrice: number;
+        amount: number;
+    };
+}
+
+export const generateVendorProductSaleReportPDF = (data: VendorProductSaleReportData) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    const contentWidth = pageWidth - (margin * 2);
+
+    // --- Enterprise Header (Optional, keeping consistent with other reports) ---
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Dr B. R. Ambedkar Vegetable Market (Shop No. 42)", margin, 15);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Bowenpally, Secunderabad", margin, 21);
+
+    // --- Custom Grid Header from Mockup ---
+    const headerStartY = 28;
+    const rowHeight = 10;
+    
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(0);
+
+    // First Row: Vendor/Farmer Name
+    doc.rect(margin, headerStartY, contentWidth, rowHeight);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Vendor/Farmer Name:", margin + 5, headerStartY + 6.5);
+    doc.setFont("helvetica", "normal");
+    doc.text(data.vendorName, margin + 50, headerStartY + 6.5);
+
+    // Second Row: Vendor ID | Product Name | Date
+    const secondRowY = headerStartY + rowHeight;
+    const col1Width = contentWidth * 0.25;
+    const col2Width = contentWidth * 0.45;
+    const col3Width = contentWidth * 0.30;
+
+    doc.rect(margin, secondRowY, col1Width, rowHeight);
+    doc.rect(margin + col1Width, secondRowY, col2Width, rowHeight);
+    doc.rect(margin + col1Width + col2Width, secondRowY, col3Width, rowHeight);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Vendor ID:", margin + 5, secondRowY + 6.5);
+    doc.setFont("helvetica", "normal");
+    doc.text(data.vendorId, margin + 25, secondRowY + 6.5);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Product:", margin + col1Width + 5, secondRowY + 6.5);
+    doc.setFont("helvetica", "normal");
+    doc.text(data.productNames, margin + col1Width + 25, secondRowY + 6.5);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Date:", margin + col1Width + col2Width + 5, secondRowY + 6.5);
+    doc.setFont("helvetica", "normal");
+    doc.text(data.date, margin + col1Width + col2Width + 20, secondRowY + 6.5);
+
+    // Third Row: "Purchases" Section Header
+    const thirdRowY = secondRowY + rowHeight;
+    doc.setFillColor(245, 245, 245);
+    doc.rect(margin, thirdRowY, contentWidth, rowHeight, "F");
+    doc.rect(margin, thirdRowY, contentWidth, rowHeight);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    const purchasesText = "PURCHASES";
+    const textWidth = doc.getTextWidth(purchasesText);
+    doc.text(purchasesText, margin + (contentWidth - textWidth) / 2, thirdRowY + 6.5);
+
+    // --- Main Purchases Table ---
+    const tableColumn = ["Product Name", "Weight", "Bags", "Price", "Amount"];
+    const tableRows = data.items.map(item => [
+        item.productName,
+        item.weight.toFixed(2),
+        item.bags || '-',
+        item.price.toFixed(2),
+        item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })
+    ]);
+
+    // Footer for Table
+    const footRows = [
+        [
+            { content: 'Total', styles: { fontStyle: 'bold' as const } },
+            { content: data.totals.weight.toFixed(2), styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+            { content: data.totals.bags.toString(), styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+            { content: data.totals.avgPrice.toFixed(2), styles: { halign: 'right' as const, fontStyle: 'italic' as const } },
+            { content: data.totals.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 }), styles: { halign: 'right' as const, fontStyle: 'bold' as const } }
+        ]
+    ];
+
+    autoTable(doc, {
+        startY: thirdRowY + rowHeight + 5,
+        head: [tableColumn],
+        body: tableRows,
+        foot: footRows,
+        theme: 'grid',
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            lineColor: [0, 0, 0],
+            lineWidth: 0.1,
+            textColor: [0, 0, 0]
+        },
+        headStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: 'bold',
+            lineWidth: 0.1,
+            lineColor: [0, 0, 0]
+        },
+        footStyles: {
+            fillColor: [240, 240, 240],
+            textColor: [0, 0, 0],
+            lineWidth: 0.1,
+            lineColor: [0, 0, 0]
+        },
+        columnStyles: {
+            1: { halign: 'right' },
+            2: { halign: 'right' },
+            3: { halign: 'right' },
+            4: { halign: 'right' }
+        }
+    });
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    doc.save(`Vendor_Sale_Report_${data.vendorName.replace(/\s+/g, '_')}_${timestamp}.pdf`);
+};

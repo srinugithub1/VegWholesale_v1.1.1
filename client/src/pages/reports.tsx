@@ -15,14 +15,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Package, ArrowUpRight, Receipt, CreditCard, Download, Calendar, Filter, Truck, Users, Scale, ShoppingBag, FileText, BarChart3, LayoutDashboard, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw } from "lucide-react";
+import { TrendingUp, Package, ArrowUpRight, Receipt, CreditCard, Download, Calendar, Filter, Truck, Users, Scale, ShoppingBag, FileText, BarChart3, LayoutDashboard, Calendar as CalendarIcon, Check, ChevronsUpDown, Plus, ChevronLeft, ChevronRight, HelpCircle, RefreshCw, FileDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { Product, Invoice, Customer, Vehicle, InvoiceItem, Vendor, CustomerPayment } from "@shared/schema";
-import { generateDetailedReport, generateHamaliReportPDF } from "@/lib/pdf-generator";
+import { generateDetailedReport, generateHamaliReportPDF, generateVendorProductSaleReportPDF } from "@/lib/pdf-generator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BarChart,
@@ -89,6 +89,15 @@ export default function Reports() {
   const [hamaliCurrentPage, setHamaliCurrentPage] = useState(1);
   const [openHamaliCustomer, setOpenHamaliCustomer] = useState(false);
   const hamaliItemsPerPage = 20;
+
+  // Vendor Product Sale Report Pagination
+  const [vendorReportCurrentPage, setVendorReportCurrentPage] = useState(1);
+  const vendorReportItemsPerPage = 20;
+
+  // Reset pagination when filters change
+  useMemo(() => {
+    setVendorReportCurrentPage(1);
+  }, [selectedVendorId, selectedProductId, fromDate, toDate]);
 
   const startDate = fromDate ? format(fromDate, 'yyyy-MM-dd') : "";
   const endDate = toDate ? format(toDate, 'yyyy-MM-dd') : "";
@@ -666,6 +675,13 @@ export default function Reports() {
       avgPriceBags: totalBags > 0 ? totalAmount / totalBags : 0,
     };
   }, [vendorReportItems]);
+
+  const paginatedVendorReportItems = useMemo(() => {
+    const startIndex = (vendorReportCurrentPage - 1) * vendorReportItemsPerPage;
+    return vendorReportItems.slice(startIndex, startIndex + vendorReportItemsPerPage);
+  }, [vendorReportItems, vendorReportCurrentPage]);
+
+  const totalVendorReportPages = Math.ceil(vendorReportItems.length / vendorReportItemsPerPage);
 
   const CHART_COLORS = [
     "hsl(var(--chart-1))",
@@ -2184,9 +2200,42 @@ export default function Reports() {
                       </div>
                     </div>
                     
-                    <div className="mt-8 flex justify-center">
+                    <div className="mt-8 flex justify-between items-end">
+                      <div className="flex-1"></div>
                       <div className="px-12 py-1 bg-primary text-primary-foreground font-bold rounded-t-lg uppercase tracking-widest text-sm">
                         Purchases
+                      </div>
+                      <div className="flex-1 flex justify-end pb-2 pr-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-8 gap-2 border-primary/20 hover:bg-primary/5"
+                          onClick={() => {
+                            const vendor = vendors.find(v => v.id === selectedVendorId);
+                            generateVendorProductSaleReportPDF({
+                              vendorName: vendor?.name || "N/A",
+                              vendorId: vendor?.id?.slice(0, 8) || "N/A",
+                              productNames: Array.from(new Set(vendorReportItems.map(item => item.productName))).join(" + ") || "N/A",
+                              date: fromDate && toDate ? `${format(fromDate, "dd/MM/yyyy")} - ${format(toDate, "dd/MM/yyyy")}` : "All Time",
+                              items: vendorReportItems.map(item => ({
+                                productName: item.productName,
+                                weight: item.quantity,
+                                bags: item.bags,
+                                price: item.unitPrice,
+                                amount: item.total
+                              })),
+                              totals: {
+                                weight: vendorReportSummary.totalWeight,
+                                bags: vendorReportSummary.totalBags,
+                                avgPrice: vendorReportSummary.avgPriceWeight,
+                                amount: vendorReportSummary.totalAmount
+                              }
+                            });
+                          }}
+                        >
+                          <FileDown className="h-4 w-4" />
+                          Download PDF
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -2203,14 +2252,14 @@ export default function Reports() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {vendorReportItems.length === 0 ? (
+                        {paginatedVendorReportItems.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={5} className="text-center py-12 text-muted-foreground italic">
                               No product sales found for this vendor in the selected period.
                             </TableCell>
                           </TableRow>
                         ) : (
-                          vendorReportItems.map((item, idx) => (
+                          paginatedVendorReportItems.map((item, idx) => (
                             <TableRow key={item.id + idx} className="hover:bg-muted/30 transition-colors">
                               <TableCell className="font-medium text-base">{item.productName}</TableCell>
                               <TableCell className="text-right font-mono text-base">{item.quantity.toFixed(2)}</TableCell>
@@ -2245,6 +2294,58 @@ export default function Reports() {
                       )}
                     </Table>
                   </div>
+
+                  {/* Pagination Controls */}
+                  {totalVendorReportPages > 1 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/5">
+                      <div className="text-sm text-muted-foreground font-sans">
+                        Showing {((vendorReportCurrentPage - 1) * vendorReportItemsPerPage) + 1} to {Math.min(vendorReportCurrentPage * vendorReportItemsPerPage, vendorReportItems.length)} of {vendorReportItems.length} entries
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setVendorReportCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={vendorReportCurrentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-2" />
+                          Previous
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, totalVendorReportPages) }).map((_, i) => {
+                            let pageNum = vendorReportCurrentPage;
+                            if (vendorReportCurrentPage <= 3) pageNum = i + 1;
+                            else if (vendorReportCurrentPage >= totalVendorReportPages - 2) pageNum = totalVendorReportPages - 4 + i;
+                            else pageNum = vendorReportCurrentPage - 2 + i;
+
+                            if (pageNum > 0 && pageNum <= totalVendorReportPages) {
+                              return (
+                                <Button
+                                  key={`page-${pageNum}`}
+                                  variant={vendorReportCurrentPage === pageNum ? "default" : "outline"}
+                                  size="sm"
+                                  className="w-8 h-8 p-0"
+                                  onClick={() => setVendorReportCurrentPage(pageNum)}
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setVendorReportCurrentPage(p => Math.min(totalVendorReportPages, p + 1))}
+                          disabled={vendorReportCurrentPage === totalVendorReportPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
