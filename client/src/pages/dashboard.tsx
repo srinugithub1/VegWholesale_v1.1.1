@@ -289,10 +289,28 @@ export default function Dashboard() {
       return true;
     });
 
-    const totalPaymentsBeforeToday = filteredPayments
+    const customerPaymentsBeforeToday = filteredPayments
       .filter(p => p.date < today)
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .reduce((sum, p) => {
+        const inv = p.invoiceId ? allInvoices.find(i => i.id === p.invoiceId) : null;
+        const customer = customers.find(c => c.id === (inv?.customerId || p.customerId));
+        const cName = (customer?.name || "").toLowerCase();
+        if (cName.includes('cash') || cName === 'direct customer') return sum;
+        return sum + (p.amount || 0);
+      }, 0);
 
+    const directCashSalesBeforeToday = invoices
+      .filter(inv => inv.date < today && !(inv.invoiceNumber && inv.invoiceNumber.startsWith('OB-')))
+      .reduce((sum, inv) => {
+        const customer = customers.find(c => c.id === inv.customerId);
+        const cName = (customer?.name || "").toLowerCase();
+        if (cName.includes('cash') || cName === 'direct customer') {
+          return sum + (inv.subtotal || 0);
+        }
+        return sum;
+      }, 0);
+
+    const totalPaymentsBeforeToday = customerPaymentsBeforeToday + directCashSalesBeforeToday;
     const openingBalance = totalSalesBeforeToday - totalPaymentsBeforeToday;
 
     const todayInvoices = invoices.filter(inv => inv.date === today);
