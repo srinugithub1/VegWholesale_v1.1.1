@@ -336,9 +336,29 @@ export default function Reports() {
         if (inv.invoiceNumber?.startsWith('OB-') && sTotal === 0) sTotal = Number(inv.grandTotal) || 0;
         return sum + sTotal;
       }, 0);
-    const paymentsBeforePeriod = safeCustomerPayments
-      .filter(p => matchesFilters(p) && startDate && p.date < startDate)
+    const customerPaymentsBeforePeriod = safeCustomerPayments
+      .filter(p => {
+        if (!(matchesFilters(p) && startDate && p.date < startDate)) return false;
+        
+        const inv = p.invoiceId ? safeAllInvoices.find(i => i.id === p.invoiceId) : null;
+        const customer = customers.find(c => c.id === (inv?.customerId || p.customerId));
+        const cName = (customer?.name || "").toLowerCase();
+        return !(cName.includes('cash') || cName === 'direct customer');
+      })
       .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+    const directCashSalesBefore = safeAllInvoices
+      .filter(inv => {
+        if (!(matchesFilters(inv) && startDate && inv.date < startDate)) return false;
+        if (inv.invoiceNumber && inv.invoiceNumber.startsWith('OB-')) return false;
+
+        const customer = customers.find(c => c.id === inv.customerId);
+        const cName = (customer?.name || "").toLowerCase();
+        return cName.includes('cash') || cName === 'direct customer';
+      })
+      .reduce((sum, inv) => sum + (Number(inv.subtotal) || 0), 0);
+
+    const paymentsBeforePeriod = customerPaymentsBeforePeriod + directCashSalesBefore;
     const openingBalance = salesBeforePeriod - paymentsBeforePeriod;
 
     let actualSalesInPeriod = 0;
