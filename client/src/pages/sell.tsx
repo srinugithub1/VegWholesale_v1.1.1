@@ -430,24 +430,7 @@ function VehicleSalePane({
         }
       }
 
-      for (const saleProduct of draft.products) {
-        const currentInventory = inventory.find(i => i.productId === saleProduct.productId);
-        if (currentInventory) {
-          const newQuantity = Math.max(0, currentInventory.quantity - saleProduct.weight);
-          await apiRequest("PATCH", `/api/vehicles/${vehicle.id}/inventory/${saleProduct.productId}`, {
-            quantity: newQuantity,
-          });
 
-          await apiRequest("POST", "/api/vehicle-inventory-movements", {
-            vehicleId: vehicle.id,
-            productId: saleProduct.productId,
-            type: "sale",
-            quantity: saleProduct.weight,
-            date: today,
-            notes: `Sold to ${draft.customerName}`,
-          });
-        }
-      }
 
       return invoice;
     },
