@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, serial, integer, real, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, boolean, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -121,7 +121,11 @@ export const invoices = pgTable("invoices", {
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  index("idx_invoices_customer_id").on(table.customerId),
+  index("idx_invoices_date").on(table.date),
+  index("idx_invoices_vehicle_id").on(table.vehicleId),
+]);
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true });
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
@@ -139,7 +143,10 @@ export const invoiceItems = pgTable("invoice_items", {
   weightBreakdown: text("weight_breakdown"), // JSON array of individual weights
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  index("idx_invoice_items_invoice_id").on(table.invoiceId),
+  index("idx_invoice_items_product_id").on(table.productId),
+]);
 
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true });
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
@@ -154,7 +161,10 @@ export const stockMovements = pgTable("stock_movements", {
   reason: text("reason").notNull(),
   date: text("date").notNull(),
   referenceId: text("reference_id"),
-});
+}, (table) => [
+  index("idx_stock_movements_product_id").on(table.productId),
+  index("idx_stock_movements_date").on(table.date),
+]);
 
 export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({ id: true });
 export type InsertStockMovement = z.infer<typeof insertStockMovementSchema>;
@@ -184,7 +194,10 @@ export const customerPayments = pgTable("customer_payments", {
   date: text("date").notNull(),
   paymentMethod: text("payment_method").notNull(),
   notes: text("notes"),
-});
+}, (table) => [
+  index("idx_customer_payments_customer_id").on(table.customerId),
+  index("idx_customer_payments_invoice_id").on(table.invoiceId),
+]);
 
 export const insertCustomerPaymentSchema = createInsertSchema(customerPayments).omit({ id: true });
 export type InsertCustomerPayment = z.infer<typeof insertCustomerPaymentSchema>;
