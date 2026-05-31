@@ -1156,20 +1156,17 @@ export default function Sell() {
   const { data: vehicleInventories = {} } = useQuery<Record<string, VehicleInventory[]>>({
     queryKey: ["/api/all-vehicle-inventories"],
     queryFn: async () => {
-      if (vehicles.length === 0) return {};
+      const res = await fetch("/api/all-vehicle-inventories");
+      if (!res.ok) throw new Error("Failed to fetch vehicle inventories");
+      const list: VehicleInventory[] = await res.json();
+      
       const results: Record<string, VehicleInventory[]> = {};
-      await Promise.all(
-        vehicles.map(async (vehicle) => {
-          try {
-            const res = await fetch(`/api/vehicles/${vehicle.id}/inventory`);
-            if (res.ok) {
-              results[vehicle.id] = await res.json();
-            }
-          } catch {
-            results[vehicle.id] = [];
-          }
-        })
-      );
+      list.forEach((item) => {
+        if (!results[item.vehicleId]) {
+          results[item.vehicleId] = [];
+        }
+        results[item.vehicleId].push(item);
+      });
       return results;
     },
     enabled: vehicles.length > 0,
