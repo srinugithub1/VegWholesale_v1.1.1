@@ -834,9 +834,9 @@ function StockEditDialog({ vehicle, inventory, products }: { vehicle: Vehicle, i
 
       await Promise.all(updates);
     },
-    onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: ["/api/vehicles"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/all-vehicle-inventories"] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/all-vehicle-inventories"] });
       toast({ title: "Stock Updated", description: "Vehicle inventory updated successfully." });
       setOpen(false);
     },
@@ -940,7 +940,10 @@ function StockEditDialog({ vehicle, inventory, products }: { vehicle: Vehicle, i
                   </SelectTrigger>
                   <SelectContent>
                     {products
-                      .filter(p => !mergedInventory.some(inv => inv.productId === p.id))
+                      .filter(p => {
+                        const invItem = mergedInventory.find(inv => inv.productId === p.id);
+                        return !invItem || (invItem.quantity <= 0 && !addedStock[p.id]);
+                      })
                       .map(p => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name} ({p.unit})
