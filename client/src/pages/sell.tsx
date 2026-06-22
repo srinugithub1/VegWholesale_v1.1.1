@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2, Edit, AlertTriangle, ChevronRight, ChevronLeft, ChevronsUpDown } from "lucide-react";
+import { Truck, Plus, Package, X, Check, Minus, Weight, ShoppingBag, Scale, Plug, Unplug, Printer, Share2, Edit, AlertTriangle, ChevronRight, ChevronLeft, ChevronsUpDown, Trash2 } from "lucide-react";
 import { useScale } from "@/hooks/use-scale";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Vehicle, Product, VehicleInventory, Vendor, Customer, Invoice } from "@shared/schema";
@@ -784,39 +784,85 @@ function VehicleSalePane({
 function StockEditDialog({ vehicle, inventory, products }: { vehicle: Vehicle, inventory: VehicleInventory[], products: Product[] }) {
   const [open, setOpen] = useState(false);
   const [addedStock, setAddedStock] = useState<Record<string, string>>({});
+  const [newSelectedProductId, setNewSelectedProductId] = useState<string>("");
+  const [newProductQuantity, setNewProductQuantity] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
       setAddedStock({});
+      setNewSelectedProductId("");
+      setNewProductQuantity("");
     }
   }, [open]);
 
+  const mergedInventory = useMemo(() => {
+    const list = [...inventory];
+    Object.keys(addedStock).forEach(prodId => {
+      if (!list.some(item => item.productId === prodId)) {
+        list.push({
+          id: "",
+          vehicleId: vehicle.id,
+          productId: prodId,
+          quantity: 0
+        });
+      }
+    });
+    return list;
+  }, [inventory, addedStock, vehicle.id]);
+
   const updateInventoryMutation = useMutation({
     mutationFn: async () => {
-      const updates = inventory.map(async (item) => {
-        const addAmount = parseFloat(addedStock[item.productId] || "0");
-        if (addAmount === 0 && !addedStock[item.productId]) return null;
+      const updates = Object.entries(addedStock)
+        .map(([productId, amountStr]) => {
+          const addAmount = parseFloat(amountStr || "0");
+          if (isNaN(addAmount)) return null;
 
-        const newQuantity = (item.quantity || 0) + addAmount;
+          const existingItem = inventory.find(item => item.productId === productId);
+          const currentQty = existingItem ? (existingItem.quantity || 0) : 0;
+          const newQuantity = Math.max(0, currentQty + addAmount);
 
-        // Use the existing endpoint to update vehicle inventory
-        return apiRequest("PATCH", `/api/vehicles/${vehicle.id}/inventory/${item.productId}`, {
-          quantity: newQuantity
-        });
-      });
+          if (existingItem && newQuantity === currentQty && amountStr !== "0" && amountStr !== (-currentQty).toString()) {
+            return null;
+          }
+
+          return apiRequest("PATCH", `/api/vehicles/${vehicle.id}/inventory/${productId}`, {
+            quantity: newQuantity
+          });
+        })
+        .filter((p): p is Promise<Response> => p !== null);
+
       await Promise.all(updates);
     },
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ["/api/vehicles"] });
       await queryClient.refetchQueries({ queryKey: ["/api/all-vehicle-inventories"] });
-      toast({ title: "Stock Updated", description: "Vehicle inventory updated." });
+      toast({ title: "Stock Updated", description: "Vehicle inventory updated successfully." });
       setOpen(false);
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to update stock.", variant: "destructive" });
     }
   });
+
+  const handleAddNewProduct = () => {
+    if (!newSelectedProductId) {
+      toast({ title: "Validation Error", description: "Please select a product.", variant: "destructive" });
+      return;
+    }
+    const qty = parseFloat(newProductQuantity);
+    if (isNaN(qty) || qty <= 0) {
+      toast({ title: "Validation Error", description: "Please enter a valid quantity.", variant: "destructive" });
+      return;
+    }
+
+    setAddedStock(prev => ({
+      ...prev,
+      [newSelectedProductId]: qty.toString()
+    }));
+    setNewSelectedProductId("");
+    setNewProductQuantity("");
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -829,15 +875,14 @@ function StockEditDialog({ vehicle, inventory, products }: { vehicle: Vehicle, i
         <DialogHeader>
           <DialogTitle>Update Stock - {vehicle.number}</DialogTitle>
           <DialogDescription>
-            Add to or subtract from the current stock. <br />
-            <span className="text-xs text-muted-foreground">Type positive for addition, negative for subtraction.</span>
+            Add to, subtract from, or select and load new products to the current stock.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
-          {inventory.length === 0 ? (
+          {mergedInventory.length === 0 ? (
             <p className="text-sm text-muted-foreground">No inventory items found.</p>
           ) : (
-            inventory.map(item => {
+            mergedInventory.map(item => {
               const product = products.find(p => p.id === item.productId);
               const addVal = parseFloat(addedStock[item.productId] || "0");
               const current = item.quantity || 0;
@@ -849,7 +894,7 @@ function StockEditDialog({ vehicle, inventory, products }: { vehicle: Vehicle, i
                     <Label className="truncate block font-medium">{product?.name || "Product"}</Label>
                     <span className="text-xs text-muted-foreground">Current: {current}</span>
                   </div>
-                  <div className="col-span-4 flex items-center gap-1">
+                  <div className="col-span-5 flex items-center gap-1">
                     <Input
                       type="number"
                       placeholder="Add (+/-)"
@@ -857,8 +902,25 @@ function StockEditDialog({ vehicle, inventory, products }: { vehicle: Vehicle, i
                       value={addedStock[item.productId] || ""}
                       onChange={(e) => setAddedStock({ ...addedStock, [item.productId]: e.target.value })}
                     />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                      onClick={() => {
+                        if (current > 0) {
+                          setAddedStock({ ...addedStock, [item.productId]: (-current).toString() });
+                        } else {
+                          const newAddedStock = { ...addedStock };
+                          delete newAddedStock[item.productId];
+                          setAddedStock(newAddedStock);
+                        }
+                      }}
+                      title={current > 0 ? "Remove Product" : "Cancel Add"}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <div className="col-span-4 text-right">
+                  <div className="col-span-3 text-right">
                     <span className="text-xs text-muted-foreground">New Total:</span>
                     <p className={`font-bold ${addVal !== 0 ? 'text-primary' : ''}`}>{final.toFixed(1)}</p>
                   </div>
@@ -866,6 +928,47 @@ function StockEditDialog({ vehicle, inventory, products }: { vehicle: Vehicle, i
               );
             })
           )}
+
+          {/* Add New Product Section */}
+          <div className="border-t pt-3 mt-2">
+            <Label className="text-sm font-semibold mb-2 block">Load Additional Product</Label>
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Select value={newSelectedProductId} onValueChange={setNewSelectedProductId}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products
+                      .filter(p => !mergedInventory.some(inv => inv.productId === p.id))
+                      .map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} ({p.unit})
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-24">
+                <Input
+                  type="number"
+                  placeholder="Qty"
+                  className="h-9"
+                  value={newProductQuantity}
+                  onChange={(e) => setNewProductQuantity(e.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9"
+                onClick={handleAddNewProduct}
+              >
+                Add
+              </Button>
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
@@ -1651,7 +1754,7 @@ export default function Sell() {
                   products={products}
                   customers={customers}
                   vendors={vendors}
-                  draft={saleDrafts[vehicle.id] || { products: [], customerName: "", selectedCustomerId: "", hamaliCharge: 0 }}
+                  draft={saleDrafts[vehicle.id] || { products: [], customerName: "", customerPhone: "", selectedCustomerId: "", hamaliCharge: 0, hamaliRatePerBag: 0, isCashSale: false }}
                   onUpdateDraft={(draft) => handleUpdateDraft(vehicle.id, draft)}
                   onClose={() => handleCloseSale(vehicle.id)}
                   onSaleComplete={(invoice) => {
