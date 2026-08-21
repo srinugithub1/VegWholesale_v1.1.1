@@ -28,6 +28,17 @@ export function setupAuth(app: Express) {
         resave: false,
         saveUninitialized: false,
         store: storage.sessionStore,
+        cookie: {
+            // Without maxAge this was a browser-session cookie, so closing the
+            // browser logged everyone out, and the store fell back to a 24h TTL.
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+            httpOnly: true,
+            sameSite: "lax",
+            // Left false on purpose: the app is not guaranteed to be served over
+            // HTTPS, and a secure cookie over plain HTTP is never sent, which
+            // would break login outright. Set to true once TLS is confirmed.
+            secure: false,
+        },
     };
 
     if (app.get("env") === "production") {
@@ -51,8 +62,15 @@ export function setupAuth(app: Express) {
 
     passport.serializeUser((user, done) => done(null, (user as SelectUser).id));
     passport.deserializeUser(async (id: string, done) => {
-        const user = await storage.getUser(id);
-        done(null, user);
+        try {
+            const user = await storage.getUser(id);
+            done(null, user);
+        } catch (err) {
+            // A DB error here used to reject unhandled, so done() was never
+            // called and the request hung. Surface it as a 500 instead: the
+            // client treats that as transient and keeps the user signed in.
+            done(err as Error);
+        }
     });
 
     app.post("/api/register", async (req, res, next) => {

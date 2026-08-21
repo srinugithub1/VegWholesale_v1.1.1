@@ -190,6 +190,11 @@ export class DatabaseStorage implements IStorage {
     this.sessionStore = new PostgresStore({
       pool,
       createTableIfMissing: true,
+      // Now that the session cookie has a maxAge, express-session would issue a
+      // touch (an UPDATE on the session row) for every authenticated request.
+      // The 30 day window is long enough that sliding expiry buys us nothing,
+      // and skipping the write keeps that load off an already-tight pool.
+      disableTouch: true,
     });
   }
 

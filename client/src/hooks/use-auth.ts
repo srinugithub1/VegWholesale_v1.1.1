@@ -8,17 +8,24 @@ export function useAuth() {
 
   const { data: user, isLoading, error } = useQuery<User | null, Error>({
     queryKey: ["/api/user"],
+    // Uses fetch directly rather than apiRequest so a 401 can be told apart from
+    // a transient failure. Only a real 401 means "logged out" - anything else
+    // (500, DB stall, dropped connection) throws, and React Query keeps the
+    // last known user instead of nulling it and bouncing us to the login page.
     queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", "/api/user");
-        if (res.status === 401) return null;
-        return await res.json();
-      } catch (e) {
-        return null;
+      const res = await fetch("/api/user", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${(await res.text()) || res.statusText}`);
       }
+      return await res.json();
     },
     retry: false,
     staleTime: Infinity,
+    // Override the global 30s refetchInterval. Polling this often only served to
+    // multiply the chances of a transient failure; 5 minutes is still frequent
+    // enough to notice a genuinely expired session.
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const loginMutation = useMutation({
